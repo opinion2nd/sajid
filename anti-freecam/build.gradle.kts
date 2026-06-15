@@ -8,13 +8,10 @@ allprojects {
     version = "1.0.0"
 
     repositories {
-        mavenCentral()
         maven("https://papermc.io/repo/repository/maven-public/")
         maven("https://repo.dmulloy2.net/repository/public/")
-        maven("https://maven.fabricmc.net/")
-        maven("https://maven.neoforged.net/releases/")
+        mavenCentral()
         maven("https://libraries.minecraft.net/")
-        maven("https://repo.jitpack.io")
     }
 }
 
