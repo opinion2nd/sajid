@@ -52,6 +52,14 @@ public class AntiFreeamCommand implements CommandExecutor, TabCompleter {
                 if (args.length < 2) { sender.sendMessage(Component.text("Usage: /" + label + " check <player>", NamedTextColor.YELLOW)); return true; }
                 checkPlayer(sender, args[1]);
             }
+            case "flag" -> {
+                if (args.length < 2) { sender.sendMessage(Component.text("Usage: /" + label + " flag <player>", NamedTextColor.YELLOW)); return true; }
+                flagPlayer(sender, args[1], true);
+            }
+            case "unflag" -> {
+                if (args.length < 2) { sender.sendMessage(Component.text("Usage: /" + label + " unflag <player>", NamedTextColor.YELLOW)); return true; }
+                flagPlayer(sender, args[1], false);
+            }
             case "whitelist" -> {
                 if (args.length < 2) { sender.sendMessage(Component.text("Usage: /" + label + " whitelist <player>", NamedTextColor.YELLOW)); return true; }
                 whitelistPlayer(sender, args[1], true);
@@ -106,10 +114,27 @@ public class AntiFreeamCommand implements CommandExecutor, TabCompleter {
         }
     }
 
+    private void flagPlayer(CommandSender sender, String name, boolean flag) {
+        Player target = Bukkit.getPlayerExact(name);
+        if (target == null) {
+            sender.sendMessage(Component.text("Player not found: " + name, NamedTextColor.RED));
+            return;
+        }
+        if (flag) {
+            injector.applyVoidEffect(target);
+            sender.sendMessage(Component.text("[AntiFreeam] Void effect applied to " + name + ". Check if they see darkness.", NamedTextColor.GREEN));
+        } else {
+            injector.removeVoidEffect(target);
+            sender.sendMessage(Component.text("[AntiFreeam] Void effect removed from " + name + ".", NamedTextColor.YELLOW));
+        }
+    }
+
     private void sendHelp(CommandSender sender, String label) {
         sender.sendMessage(Component.text("[AntiFreeam] Commands:", NamedTextColor.GOLD));
         sender.sendMessage(Component.text("/" + label + " status", NamedTextColor.YELLOW));
         sender.sendMessage(Component.text("/" + label + " check <player>", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("/" + label + " flag <player>", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("/" + label + " unflag <player>", NamedTextColor.YELLOW));
         sender.sendMessage(Component.text("/" + label + " whitelist <player>", NamedTextColor.YELLOW));
         sender.sendMessage(Component.text("/" + label + " unwhitelist <player>", NamedTextColor.YELLOW));
         sender.sendMessage(Component.text("/" + label + " reload", NamedTextColor.YELLOW));
@@ -119,7 +144,7 @@ public class AntiFreeamCommand implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                        @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            return Arrays.asList("status", "check", "whitelist", "unwhitelist", "reload");
+            return Arrays.asList("status", "check", "flag", "unflag", "whitelist", "unwhitelist", "reload");
         }
         if (args.length == 2 && !args[0].equalsIgnoreCase("status") && !args[0].equalsIgnoreCase("reload")) {
             return Bukkit.getOnlinePlayers().stream().map(Player::getName).toList();
