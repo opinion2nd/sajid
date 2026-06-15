@@ -1,0 +1,18 @@
+modLoader = "javafml"
+loaderVersion = "[4,)"
+license = "MIT"
+
+[[mods]]
+modId = "antifreecam"
+version = "${version}"
+displayName = "AntiFreeam"
+description = "Prevents freecam usage on the server. Voids view below Y=10 for detected users."
+authors = "TheWindows"
+logoFile = ""
+
+[[dependencies.antifreecam]]
+modId = "neoforge"
+type = "required"
+versionRange = "[21.1,)"
+ordering = "NONE"
+side = "SERVER"

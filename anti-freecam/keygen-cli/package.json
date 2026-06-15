@@ -1,0 +1,20 @@
+{
+  "name": "antifreecam-keygen",
+  "version": "1.0.0",
+  "description": "CLI tool to generate and manage AntiFreeam license keys",
+  "bin": {
+    "afc-keygen": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "ts-node src/index.ts"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4"
+  }
+}
