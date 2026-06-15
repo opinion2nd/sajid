@@ -1,7 +1,7 @@
 name: AntiFreeam
 version: '${version}'
 main: dev.thewindows.antifreecam.paper.AntiFreeamPlugin
-api-version: "1.21"
+api-version: "1.21.11"
 author: TheWindows
 description: Prevents freecam usage on the server. Voids view below Y=10 for detected freecam users.
 website: https://github.com/thewindows/anti-freecam
