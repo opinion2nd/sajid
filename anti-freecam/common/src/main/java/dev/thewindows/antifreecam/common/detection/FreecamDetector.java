@@ -56,16 +56,16 @@ public class FreecamDetector {
         PlayerPositionBuffer buf = buffers.get(player);
         if (buf == null || !buf.hasEnoughData()) return DetectionResult.insufficient();
 
-        float confidence = 0f;
+        double confidence = 0.0;
         StringBuilder reason = new StringBuilder();
 
         double frozenRatio = buf.getPositionFrozenRatio(config.getFrozenPositionEpsilon());
         double totalLookDelta = buf.getTotalLookDelta();
         double lookThreshold = config.getLookDeltaThresholdPerTick() * buf.size();
 
-        // Signal 1: frozen body + moving look (strongest signal)
+        // Signal 1: frozen body + moving look (strongest signal — sufficient alone)
         if (frozenRatio >= config.getFrozenRatioThreshold() && totalLookDelta > lookThreshold) {
-            confidence += 0.5f;
+            confidence += 0.70;
             reason.append("frozen-body+moving-look ");
         }
 
@@ -73,14 +73,14 @@ public class FreecamDetector {
         double yStdDev = buf.getYStdDev();
         double airRatio = buf.getAirRatio();
         if (yStdDev < 0.01 && airRatio > 0.5) {
-            confidence += 0.2f;
+            confidence += 0.15;
             reason.append("hovering-mid-air ");
         }
 
         // Signal 3: aggressive look rotation while body is high up
         double avgY = buf.getAverageY();
         if (avgY > config.getTriggerY() && totalLookDelta > lookThreshold * 2) {
-            confidence += 0.2f;
+            confidence += 0.10;
             reason.append("aggressive-look-rotation ");
         }
 
@@ -88,11 +88,11 @@ public class FreecamDetector {
         double maxDelta = buf.getMaxPositionDelta();
         double renderLimitBlocks = (config.getRenderDistanceChunks() * 16.0) + 32.0;
         if (maxDelta > renderLimitBlocks) {
-            confidence += 0.4f;
+            confidence += 0.35;
             reason.append("outside-render-distance ");
         }
 
-        confidence = Math.min(confidence, 1.0f);
+        confidence = Math.min(confidence, 1.0);
         boolean detected = confidence >= config.getFlagConfidenceThreshold();
         return new DetectionResult(detected, confidence, reason.toString().trim());
     }

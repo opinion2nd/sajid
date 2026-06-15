@@ -12,7 +12,6 @@ rootProject.name = "anti-freecam"
 
 include(
     "common",
-    "paper",
-    "fabric",
-    "neoforge"
+    "paper"
+    // fabric and neoforge require their own build toolchains; build separately
 )

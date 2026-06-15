@@ -44,13 +44,13 @@ class FreecamDetectorTest {
 
     @Test
     void frozenBodyWithSpinningLookDetected() {
-        // Player body frozen at (100, 64, 200), yaw spinning rapidly
+        // Player body frozen at (100, 64, 200), yaw spinning 10°/tick (well above 5°/tick threshold)
         for (int i = 0; i < 40; i++) {
             detector.recordMovement(player, 100, 64, 200, i * 10f, 0f, true, i);
         }
         DetectionResult result = detector.evaluate(player);
-        assertTrue(result.detected(), "Frozen body + spinning look should be detected");
-        assertTrue(result.confidence() >= 0.5f);
+        assertTrue(result.detected(), "Frozen body + spinning look should exceed 0.70 threshold");
+        assertTrue(result.confidence() >= 0.70);
         assertTrue(result.reason().contains("frozen-body"));
     }
 

@@ -59,7 +59,7 @@ public class PaperDetectionManager {
                     plugin.getLogger().info("[AntiFreeam] Flagged " + player.getName() +
                         " as freecam user (confidence=" + String.format("%.2f", result.confidence()) + ")");
 
-                    if (notifyAdmins && result.confidence() >= config.getAdminNotifyConfidenceThreshold()) {
+                    if (notifyAdmins && result.confidence() >= config.getAdminNotifyConfidenceThreshold()) {  // both double, no cast needed
                         notifyAdmins(player, result);
                     }
                 }
