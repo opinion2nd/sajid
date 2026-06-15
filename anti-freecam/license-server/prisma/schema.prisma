@@ -1,0 +1,35 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model License {
+  id            String     @id @default(uuid())
+  key           String     @unique
+  serverId      String?    @map("server_id")
+  pluginVersion String?    @map("plugin_version")
+  createdAt     DateTime   @default(now()) @map("created_at")
+  expiresAt     DateTime?  @map("expires_at")
+  revokedAt     DateTime?  @map("revoked_at")
+  lastValidAt   DateTime?  @map("last_valid_at")
+  notes         String?
+  auditLogs     AuditLog[]
+
+  @@map("licenses")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  licenseId String   @map("license_id")
+  license   License  @relation(fields: [licenseId], references: [id])
+  event     String
+  serverId  String?  @map("server_id")
+  ipAddress String?  @map("ip_address")
+  timestamp DateTime @default(now())
+
+  @@map("audit_logs")
+}

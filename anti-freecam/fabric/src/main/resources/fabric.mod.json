@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "antifreecam",
+  "version": "${version}",
+  "name": "AntiFreeam",
+  "description": "Prevents freecam usage on the server. Voids view below Y=10 for detected users.",
+  "authors": ["TheWindows"],
+  "environment": "server",
+  "entrypoints": {
+    "main": ["dev.thewindows.antifreecam.fabric.AntiFreeamFabricMod"]
+  },
+  "mixins": ["antifreecam.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "fabric-api": "*",
+    "minecraft": "~1.21"
+  }
+}

@@ -1,0 +1,47 @@
+# AntiFreeam Configuration
+# Plugin by TheWindows
+
+license:
+  key: "YOUR-AFC-LICENSE-KEY-HERE"
+  # URL of the license validation server
+  api-url: "https://license.example.com"
+  # How often to re-validate the license (hours)
+  revalidate-interval-hours: 6
+  # fail-behavior: CLOSE = refuse to work if API unreachable; OPEN = allow (insecure)
+  fail-behavior: CLOSE
+
+detection:
+  enabled: true
+  # Minimum confidence to flag a player and apply void effect (0.0 - 1.0)
+  confidence-threshold: 0.70
+  # Confidence at which admins are notified (0.0 - 1.0)
+  admin-notify-threshold: 0.90
+  # Number of position samples to keep in the buffer
+  buffer-size: 40
+  # Positions within this many blocks are considered "identical" (frozen check)
+  frozen-position-epsilon: 0.001
+  # Degrees per tick of look change above which the look is "moving"
+  look-delta-threshold-per-tick: 5.0
+  # How often to evaluate detections (ticks)
+  evaluation-interval-ticks: 10
+  # Server render distance in chunks (used for render-distance signal)
+  render-distance-chunks: 8
+
+void-effect:
+  enabled: true
+  # Y level below which the void effect triggers
+  trigger-y: 10.0
+  # Chunk radius around the player to send void chunks
+  chunk-radius: 3
+  # How often to re-send void chunks to flagged players (ticks)
+  recheck-interval-ticks: 20
+
+notifications:
+  # Notify admins when a player is flagged
+  notify-admins: true
+  notify-permission: "antifreecam.admin"
+  log-to-console: true
+
+whitelist:
+  # UUIDs of players who bypass detection entirely
+  players: []
