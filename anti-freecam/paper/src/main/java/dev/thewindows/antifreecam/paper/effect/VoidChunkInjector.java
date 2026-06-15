@@ -4,7 +4,7 @@ import com.comphenix.protocol.ProtocolManager;
 import com.comphenix.protocol.events.PacketContainer;
 import org.bukkit.entity.Player;
 
-import java.lang.reflect.InvocationTargetException;
+
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -77,7 +77,7 @@ public class VoidChunkInjector {
     private void sendPacket(Player player, PacketContainer packet) {
         try {
             protocolManager.sendServerPacket(player, packet);
-        } catch (InvocationTargetException e) {
+        } catch (Exception e) {
             logger.warning("[AntiFreeam] Failed to send void chunk to " + player.getName() + ": " + e.getMessage());
         }
     }
