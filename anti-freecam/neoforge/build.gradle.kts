@@ -1,24 +1,44 @@
 plugins {
-    id("net.neoforged.gradle.userdev") version "7.0.+"
+    id("net.neoforged.moddev") version "2.0.78"
+    java
 }
 
-dependencies {
-    implementation(project(":common"))
-    implementation("net.neoforged:neoforge:${rootProject.property("neoForgeVersion")}")
-    jarJar(project(":common"))
+group = "dev.thewindows.antifreecam"
+version = project.property("modVersion") as String
+
+base {
+    archivesName.set("AntiFreeam-NeoForge")
 }
 
-minecraft {
-    accessTransformers {
-        file("src/main/resources/META-INF/accesstransformer.cfg")
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
     }
 }
 
-runs {
-    create("server") {
-        server()
-        workingDirectory(project.file("run"))
-        modSource(project.sourceSets["main"])
+repositories {
+    mavenCentral()
+}
+
+neoForge {
+    version = project.property("neoForgeVersion") as String
+
+    mods {
+        create("antifreecam") {
+            sourceSet(sourceSets.named("main").get())
+        }
+    }
+}
+
+dependencies {
+    // Provided by Minecraft/NeoForge at runtime; only needed to compile shared common sources
+    compileOnly("com.google.code.gson:gson:2.10.1")
+}
+
+// Compile the shared common module sources directly into the NeoForge jar
+sourceSets {
+    named("main") {
+        java.srcDir("../common/src/main/java")
     }
 }
 
@@ -27,4 +47,9 @@ tasks.processResources {
     filesMatching("META-INF/neoforge.mods.toml") {
         expand(mapOf("version" to project.version))
     }
+}
+
+tasks.withType<JavaCompile> {
+    options.encoding = "UTF-8"
+    options.release.set(21)
 }

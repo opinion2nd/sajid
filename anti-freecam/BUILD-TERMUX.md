@@ -57,5 +57,36 @@ cp paper/build/libs/AntiFreeam-Paper-1.0.0.jar ~/storage/downloads/
 - **Permission denied (gradlew)**: `chmod +x gradlew` আবার চালাও।
 
 ## কী কী build হয়
-- `:paper:shadowJar` → Paper + Purpur server-এর plugin JAR (এটাই দরকার)
-- Fabric ও NeoForge আলাদা toolchain লাগে — পরে যোগ করা হবে।
+- `:paper:shadowJar` → Paper + Purpur server-এর plugin JAR
+- Fabric ও NeoForge → নিচে আলাদা নির্দেশনা
+
+---
+
+## Fabric ও NeoForge build (ঐচ্ছিক — ভারী!)
+
+⚠️ **সতর্কতা:** Fabric (Loom) ও NeoForge (NeoGradle) build Minecraft decompile করে।
+এতে **২ GB+ RAM, অনেক storage ও সময় (১৫-৩০ মিনিট)** লাগে। কম RAM-এর ফোনে
+এটা fail করতে বা আটকে যেতে পারে। ভালো WiFi + চার্জে রেখে চালাও।
+
+`anti-freecam` ফোল্ডারের ভেতর থেকে চালাও:
+
+### Fabric
+```bash
+./gradlew -p fabric build
+```
+JAR পাবে: `fabric/build/libs/AntiFreeam-Fabric-1.0.0.jar`
+
+### NeoForge
+```bash
+./gradlew -p neoforge build
+```
+JAR পাবে: `neoforge/build/libs/AntiFreeam-NeoForge-1.0.0.jar`
+
+> এই দুটো build-এর version (Loom, yarn mappings, NeoForge) `fabric/gradle.properties`
+> ও `neoforge/gradle.properties`-এ আছে। নতুন Minecraft version-এর জন্য শুধু ঐ
+> ফাইলগুলো আপডেট করলেই হবে। প্রথমবার build-এ mapping/version error এলে error-টা
+> পাঠালে ঠিক করে দেওয়া যাবে।
+
+## Memory কম হলে
+`fabric/gradle.properties` বা `neoforge/gradle.properties`-এ `-Xmx2G` কমিয়ে
+`-Xmx1536m` করে দেখতে পারো, কিন্তু খুব কম দিলে build fail করবে।

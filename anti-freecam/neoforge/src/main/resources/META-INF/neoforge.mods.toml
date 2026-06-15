@@ -16,3 +16,6 @@ type = "required"
 versionRange = "[21.1,)"
 ordering = "NONE"
 side = "SERVER"
+
+[[mixins]]
+config = "antifreecam.mixins.json"
