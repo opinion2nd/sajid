@@ -7,8 +7,7 @@ import dev.thewindows.antifreecam.common.detection.FreecamDetector;
 import dev.thewindows.antifreecam.paper.command.AntiFreeamCommand;
 import dev.thewindows.antifreecam.paper.detection.PaperDetectionManager;
 import dev.thewindows.antifreecam.paper.effect.VoidChunkInjector;
-import dev.thewindows.antifreecam.paper.license.LicenseException;
-import dev.thewindows.antifreecam.paper.license.PaperLicenseBootstrap;
+
 import dev.thewindows.antifreecam.paper.listener.PacketListener;
 import dev.thewindows.antifreecam.paper.listener.PlayerListener;
 import org.bukkit.Bukkit;
@@ -19,7 +18,6 @@ import java.util.List;
 
 public class AntiFreeamPlugin extends JavaPlugin {
 
-    private PaperLicenseBootstrap licenseBootstrap;
     private PaperDetectionManager detectionManager;
     private FreecamDetector detector;
     private VoidChunkInjector injector;
@@ -28,16 +26,17 @@ public class AntiFreeamPlugin extends JavaPlugin {
     public void onEnable() {
         saveDefaultConfig();
 
-        // Step 1: Validate license (aborts enable if invalid)
-        licenseBootstrap = new PaperLicenseBootstrap(this);
-        try {
-            licenseBootstrap.validate();
-        } catch (LicenseException e) {
-            getLogger().severe("[AntiFreeam] LICENSE ERROR: " + e.getMessage());
-            getLogger().severe("[AntiFreeam] Plugin will not enable.");
-            getServer().getPluginManager().disablePlugin(this);
-            return;
-        }
+        // Step 1: Validate license — DISABLED for testing build
+        // licenseBootstrap = new PaperLicenseBootstrap(this);
+        // try {
+        //     licenseBootstrap.validate();
+        // } catch (LicenseException e) {
+        //     getLogger().severe("[AntiFreeam] LICENSE ERROR: " + e.getMessage());
+        //     getLogger().severe("[AntiFreeam] Plugin will not enable.");
+        //     getServer().getPluginManager().disablePlugin(this);
+        //     return;
+        // }
+        getLogger().warning("[AntiFreeam] Running in TEST MODE — license check disabled.");
 
         // Step 2: Build detection config from config.yml
         FileConfiguration cfg = getConfig();
@@ -98,7 +97,6 @@ public class AntiFreeamPlugin extends JavaPlugin {
     @Override
     public void onDisable() {
         if (detectionManager != null) detectionManager.stop();
-        if (licenseBootstrap != null) licenseBootstrap.shutdown();
         getLogger().info("[AntiFreeam] Disabled.");
     }
 }
