@@ -1,0 +1,58 @@
+name: Build AntiFreeam Plugin
+
+# Run manually from the GitHub website / mobile app (Actions tab -> Run workflow),
+# or automatically when anti-freecam files change on this branch.
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - claude/minecraft-anti-freecam-plugin-xp3x19
+    paths:
+      - 'anti-freecam/**'
+      - '.github/workflows/build-antifreecam.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build-paper:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Make gradlew executable
+        working-directory: anti-freecam
+        run: chmod +x gradlew
+
+      - name: Build Paper plugin JAR
+        working-directory: anti-freecam
+        run: ./gradlew :paper:shadowJar --no-daemon --stacktrace
+
+      - name: Show produced JAR
+        working-directory: anti-freecam
+        run: ls -lh paper/build/libs/
+
+      - name: Upload JAR as build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AntiFreeam-Paper
+          path: anti-freecam/paper/build/libs/*.jar
+          if-no-files-found: error
+
+      - name: Publish JAR to a downloadable Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: antifreecam-latest
+          name: AntiFreeam Plugin (latest build)
+          body: |
+            Latest AntiFreeam Paper/Purpur plugin build.
+            Download the JAR below and place it in your server's `plugins/` folder.
+          files: anti-freecam/paper/build/libs/*.jar
+          fail_on_unmatched_files: true
