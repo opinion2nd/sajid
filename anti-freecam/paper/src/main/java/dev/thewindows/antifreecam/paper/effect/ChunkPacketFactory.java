@@ -3,8 +3,6 @@ package dev.thewindows.antifreecam.paper.effect;
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.ProtocolManager;
 import com.comphenix.protocol.events.PacketContainer;
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 import org.bukkit.Bukkit;
 
 import java.io.ByteArrayOutputStream;
