@@ -1,6 +1,7 @@
 package dev.thewindows.antifreecam.paper.command;
 
 import dev.thewindows.antifreecam.common.detection.FreecamDetector;
+import dev.thewindows.antifreecam.paper.AntiFreeamPlugin;
 import dev.thewindows.antifreecam.paper.effect.VoidChunkInjector;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -10,7 +11,6 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
-import org.bukkit.plugin.java.JavaPlugin;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Arrays;
@@ -19,11 +19,11 @@ import java.util.UUID;
 
 public class AntiFreeamCommand implements CommandExecutor, TabCompleter {
 
-    private final JavaPlugin plugin;
+    private final AntiFreeamPlugin plugin;
     private final FreecamDetector detector;
     private final VoidChunkInjector injector;
 
-    public AntiFreeamCommand(JavaPlugin plugin, FreecamDetector detector, VoidChunkInjector injector) {
+    public AntiFreeamCommand(AntiFreeamPlugin plugin, FreecamDetector detector, VoidChunkInjector injector) {
         this.plugin = plugin;
         this.detector = detector;
         this.injector = injector;
@@ -45,12 +45,16 @@ public class AntiFreeamCommand implements CommandExecutor, TabCompleter {
         switch (args[0].toLowerCase()) {
             case "status" -> sendStatus(sender);
             case "reload" -> {
-                plugin.reloadConfig();
+                plugin.reloadAntiFreeamConfig();
                 sender.sendMessage(Component.text("[AntiFreeam] Config reloaded.", NamedTextColor.GREEN));
             }
             case "check" -> {
                 if (args.length < 2) { sender.sendMessage(Component.text("Usage: /" + label + " check <player>", NamedTextColor.YELLOW)); return true; }
                 checkPlayer(sender, args[1]);
+            }
+            case "debug" -> {
+                if (args.length < 2) { sender.sendMessage(Component.text("Usage: /" + label + " debug <player>", NamedTextColor.YELLOW)); return true; }
+                debugPlayer(sender, args[1]);
             }
             case "flag" -> {
                 if (args.length < 2) { sender.sendMessage(Component.text("Usage: /" + label + " flag <player>", NamedTextColor.YELLOW)); return true; }
@@ -97,6 +101,16 @@ public class AntiFreeamCommand implements CommandExecutor, TabCompleter {
             .append(Component.text(whitelisted ? " [whitelisted]" : "", NamedTextColor.GRAY)));
     }
 
+    private void debugPlayer(CommandSender sender, String name) {
+        Player target = Bukkit.getPlayerExact(name);
+        if (target == null) {
+            sender.sendMessage(Component.text("Player not found: " + name, NamedTextColor.RED));
+            return;
+        }
+        sender.sendMessage(Component.text("[AntiFreeam] " + name + ": ", NamedTextColor.GOLD)
+            .append(Component.text(detector.debugSnapshot(target.getUniqueId()), NamedTextColor.WHITE)));
+    }
+
     private void whitelistPlayer(CommandSender sender, String name, boolean add) {
         Player target = Bukkit.getPlayerExact(name);
         if (target == null) {
@@ -133,6 +147,7 @@ public class AntiFreeamCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(Component.text("[AntiFreeam] Commands:", NamedTextColor.GOLD));
         sender.sendMessage(Component.text("/" + label + " status", NamedTextColor.YELLOW));
         sender.sendMessage(Component.text("/" + label + " check <player>", NamedTextColor.YELLOW));
+        sender.sendMessage(Component.text("/" + label + " debug <player>", NamedTextColor.YELLOW));
         sender.sendMessage(Component.text("/" + label + " flag <player>", NamedTextColor.YELLOW));
         sender.sendMessage(Component.text("/" + label + " unflag <player>", NamedTextColor.YELLOW));
         sender.sendMessage(Component.text("/" + label + " whitelist <player>", NamedTextColor.YELLOW));
@@ -144,7 +159,7 @@ public class AntiFreeamCommand implements CommandExecutor, TabCompleter {
     public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                        @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            return Arrays.asList("status", "check", "flag", "unflag", "whitelist", "unwhitelist", "reload");
+            return Arrays.asList("status", "check", "debug", "flag", "unflag", "whitelist", "unwhitelist", "reload");
         }
         if (args.length == 2 && !args[0].equalsIgnoreCase("status") && !args[0].equalsIgnoreCase("reload")) {
             return Bukkit.getOnlinePlayers().stream().map(Player::getName).toList();

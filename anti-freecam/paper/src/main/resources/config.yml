@@ -26,11 +26,16 @@ detection:
   evaluation-interval-ticks: 10
   # Server render distance in chunks (used for render-distance signal)
   render-distance-chunks: 8
+  # If a player sends NO movement/look packets at all for this long (ms) while online,
+  # they're flagged. Vanilla clients resend position at least once a second even when
+  # idle, so total silence beyond this window means the freecam mod is suppressing
+  # packets client-side. This alone is enough to trigger the flag.
+  packet-silence-ms: 3000
 
 void-effect:
   enabled: true
   # Y level below which the void effect triggers
-  trigger-y: 10.0
+  trigger-y: 20.0
   # Block radius around the player to wall off with fake stone (cube)
   block-radius: 5
   # How often to refresh the fake stone walls around flagged players (ticks)

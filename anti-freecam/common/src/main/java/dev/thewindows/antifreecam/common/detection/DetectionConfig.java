@@ -8,11 +8,12 @@ public class DetectionConfig {
     private double lookDeltaThresholdPerTick = 5.0;
     private double flagConfidenceThreshold = 0.70;
     private double adminNotifyConfidenceThreshold = 0.90;
-    private double triggerY = 10.0;
+    private double triggerY = 20.0;
     private int blockRadius = 5;
     private int evaluationIntervalTicks = 10;
     private int voidRecheckIntervalTicks = 20;
     private int renderDistanceChunks = 8;
+    private long packetSilenceMs = 3000;
 
     public DetectionConfig() {}
 
@@ -48,4 +49,7 @@ public class DetectionConfig {
 
     public int getRenderDistanceChunks() { return renderDistanceChunks; }
     public void setRenderDistanceChunks(int v) { this.renderDistanceChunks = v; }
+
+    public long getPacketSilenceMs() { return packetSilenceMs; }
+    public void setPacketSilenceMs(long v) { this.packetSilenceMs = v; }
 }

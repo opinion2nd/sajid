@@ -23,8 +23,8 @@ import java.util.logging.Logger;
 public class VoidChunkInjector {
 
     private final Logger logger;
-    private final int blockRadius;
-    private final double triggerY;
+    private volatile int blockRadius;
+    private volatile double triggerY;
 
     private final Set<UUID> flaggedPlayers = ConcurrentHashMap.newKeySet();
     private final Map<UUID, Set<Long>> activeFakeBlocks = new ConcurrentHashMap<>();
@@ -51,6 +51,11 @@ public class VoidChunkInjector {
 
     public boolean hasVoidEffect(UUID playerId) {
         return flaggedPlayers.contains(playerId);
+    }
+
+    public void updateConfig(int blockRadius, double triggerY) {
+        this.blockRadius = blockRadius;
+        this.triggerY = triggerY;
     }
 
     public void recheckActive(Player player) {

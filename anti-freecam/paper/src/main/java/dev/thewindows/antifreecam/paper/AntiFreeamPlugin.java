@@ -21,6 +21,7 @@ public class AntiFreeamPlugin extends JavaPlugin {
     private PaperDetectionManager detectionManager;
     private FreecamDetector detector;
     private VoidChunkInjector injector;
+    private DetectionConfig detectionConfig;
 
     @Override
     public void onEnable() {
@@ -40,7 +41,7 @@ public class AntiFreeamPlugin extends JavaPlugin {
 
         // Step 2: Build detection config from config.yml
         FileConfiguration cfg = getConfig();
-        DetectionConfig detectionConfig = new DetectionConfig();
+        detectionConfig = new DetectionConfig();
         detectionConfig.setBufferSize(cfg.getInt("detection.buffer-size", 40));
         detectionConfig.setFrozenPositionEpsilon(cfg.getDouble("detection.frozen-position-epsilon", 0.001));
         detectionConfig.setLookDeltaThresholdPerTick(cfg.getDouble("detection.look-delta-threshold-per-tick", 5.0));
@@ -48,7 +49,8 @@ public class AntiFreeamPlugin extends JavaPlugin {
         detectionConfig.setAdminNotifyConfidenceThreshold(cfg.getDouble("detection.admin-notify-threshold", 0.90));
         detectionConfig.setEvaluationIntervalTicks(cfg.getInt("detection.evaluation-interval-ticks", 10));
         detectionConfig.setRenderDistanceChunks(cfg.getInt("detection.render-distance-chunks", 8));
-        detectionConfig.setTriggerY(cfg.getDouble("void-effect.trigger-y", 10.0));
+        detectionConfig.setPacketSilenceMs(cfg.getLong("detection.packet-silence-ms", 3000));
+        detectionConfig.setTriggerY(cfg.getDouble("void-effect.trigger-y", 20.0));
         detectionConfig.setBlockRadius(cfg.getInt("void-effect.block-radius", 5));
         detectionConfig.setVoidRecheckIntervalTicks(cfg.getInt("void-effect.recheck-interval-ticks", 20));
 
@@ -92,6 +94,21 @@ public class AntiFreeamPlugin extends JavaPlugin {
         }
 
         getLogger().info("[AntiFreeam] Enabled successfully on " + Bukkit.getVersion());
+    }
+
+    public void reloadAntiFreeamConfig() {
+        reloadConfig();
+        FileConfiguration cfg = getConfig();
+        detectionConfig.setBufferSize(cfg.getInt("detection.buffer-size", 40));
+        detectionConfig.setFrozenPositionEpsilon(cfg.getDouble("detection.frozen-position-epsilon", 0.001));
+        detectionConfig.setLookDeltaThresholdPerTick(cfg.getDouble("detection.look-delta-threshold-per-tick", 5.0));
+        detectionConfig.setFlagConfidenceThreshold(cfg.getDouble("detection.confidence-threshold", 0.70));
+        detectionConfig.setAdminNotifyConfidenceThreshold(cfg.getDouble("detection.admin-notify-threshold", 0.90));
+        detectionConfig.setRenderDistanceChunks(cfg.getInt("detection.render-distance-chunks", 8));
+        detectionConfig.setPacketSilenceMs(cfg.getLong("detection.packet-silence-ms", 3000));
+        detectionConfig.setTriggerY(cfg.getDouble("void-effect.trigger-y", 20.0));
+        detectionConfig.setBlockRadius(cfg.getInt("void-effect.block-radius", 5));
+        injector.updateConfig(detectionConfig.getBlockRadius(), detectionConfig.getTriggerY());
     }
 
     @Override
