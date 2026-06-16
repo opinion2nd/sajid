@@ -26,6 +26,12 @@ public class PaperLicenseBootstrap {
 
     public void validate() {
         FileConfiguration config = plugin.getConfig();
+
+        if (!config.getBoolean("license.enabled", false)) {
+            plugin.getLogger().info("[AntiFreeam] License check disabled — running standalone.");
+            return;
+        }
+
         String apiUrl = config.getString("license.api-url", "");
         licenseKey = config.getString("license.key", "");
         String failBehavior = config.getString("license.fail-behavior", "CLOSE");

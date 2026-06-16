@@ -16,17 +16,15 @@ public class VoidChunkInjector {
     private final ChunkPacketFactory factory;
     private final Logger logger;
     private final int chunkRadius;
-    private final double triggerY;
 
     // Players currently receiving void chunks
     private final Set<UUID> activeVoidPlayers = ConcurrentHashMap.newKeySet();
 
-    public VoidChunkInjector(ProtocolManager protocolManager, Logger logger, int chunkRadius, double triggerY) {
+    public VoidChunkInjector(ProtocolManager protocolManager, Logger logger, int chunkRadius) {
         this.protocolManager = protocolManager;
         this.factory = new ChunkPacketFactory(protocolManager);
         this.logger = logger;
         this.chunkRadius = chunkRadius;
-        this.triggerY = triggerY;
     }
 
     public void applyVoidEffect(Player player) {
