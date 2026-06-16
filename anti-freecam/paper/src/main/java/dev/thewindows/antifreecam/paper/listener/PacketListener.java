@@ -6,6 +6,7 @@ import com.comphenix.protocol.events.ListenerPriority;
 import com.comphenix.protocol.events.PacketAdapter;
 import com.comphenix.protocol.events.PacketEvent;
 import dev.thewindows.antifreecam.common.detection.FreecamDetector;
+import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
@@ -28,26 +29,17 @@ public class PacketListener extends PacketAdapter {
         Player player = event.getPlayer();
         if (player == null) return;
 
-        PacketType type = event.getPacketType();
-        double x = player.getLocation().getX();
-        double y = player.getLocation().getY();
-        double z = player.getLocation().getZ();
-        float yaw = player.getLocation().getYaw();
-        float pitch = player.getLocation().getPitch();
-        boolean onGround = true;
-
-        if (type == PacketType.Play.Client.POSITION || type == PacketType.Play.Client.POSITION_LOOK) {
-            x = event.getPacket().getDoubles().read(0);
-            y = event.getPacket().getDoubles().read(1);
-            z = event.getPacket().getDoubles().read(2);
-            onGround = event.getPacket().getBooleans().read(0);
-        }
-
-        if (type == PacketType.Play.Client.POSITION_LOOK || type == PacketType.Play.Client.LOOK) {
-            yaw = event.getPacket().getFloat().read(0);
-            pitch = event.getPacket().getFloat().read(1);
-        }
-
-        detector.recordMovement(player.getUniqueId(), x, y, z, yaw, pitch, onGround, tick++);
+        // Read the live position/look from Bukkit's own player state instead of raw packet
+        // fields. ProtocolLib's structure-modifier field order for these packets can shift
+        // between Minecraft versions and silently misreads x/y/z/yaw/pitch otherwise — this
+        // listener only needs to know *that* and *when* a movement packet arrived; Bukkit
+        // already has the correctly decoded values.
+        Location loc = player.getLocation();
+        detector.recordMovement(player.getUniqueId(),
+            loc.getX(), loc.getY(), loc.getZ(),
+            loc.getYaw(), loc.getPitch(),
+            player.isOnGround(),
+            tick++);
     }
 }
+
