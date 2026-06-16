@@ -1,0 +1,51 @@
+package dev.opinion2nd.antifreecam.mask;
+
+import com.github.retrooper.packetevents.event.PacketListenerAbstract;
+import com.github.retrooper.packetevents.event.PacketListenerPriority;
+import com.github.retrooper.packetevents.event.PacketSendEvent;
+import com.github.retrooper.packetevents.protocol.packettype.PacketType;
+import com.github.retrooper.packetevents.wrapper.play.server.WrapperPlayServerSpawnEntity;
+import dev.opinion2nd.antifreecam.AfConfig;
+import org.bukkit.entity.Player;
+
+/**
+ * Stops entity-spawn packets for entities below {@code hideBelowY} from reaching
+ * surface players, closing the entity-radar / combat-ESP leak.
+ *
+ * <p>Experimental: an entity hidden this way reappears the next time the client
+ * receives a spawn for it (e.g. it moves, or the player relogs). Verify on a
+ * test server.
+ */
+public final class EntityMaskListener extends PacketListenerAbstract {
+
+    private final MaskService service;
+
+    public EntityMaskListener(MaskService service) {
+        super(PacketListenerPriority.NORMAL);
+        this.service = service;
+    }
+
+    @Override
+    public void onPacketSend(PacketSendEvent event) {
+        if (event.getPacketType() != PacketType.Play.Server.SPAWN_ENTITY) {
+            return;
+        }
+        AfConfig cfg = service.config();
+        if (!cfg.maskEntities) {
+            return;
+        }
+        if (!(event.getPlayer() instanceof Player viewer)) {
+            return;
+        }
+
+        PlayerMaskData data = service.get(viewer.getUniqueId());
+        if (data == null || data.bypass || !data.worldActive || data.underground) {
+            return; // only surface players are protected from below-Y entities
+        }
+
+        WrapperPlayServerSpawnEntity spawn = new WrapperPlayServerSpawnEntity(event);
+        if (spawn.getPosition().getY() < cfg.hideBelowY) {
+            event.setCancelled(true);
+        }
+    }
+}
