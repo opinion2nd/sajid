@@ -1,0 +1,60 @@
+name: Build AntiFreecam
+
+on:
+  push:
+    branches:
+      - main
+      - 'claude/**'
+    paths:
+      - 'AntiFreecam/**'
+      - '.github/workflows/antifreecam-build.yml'
+  pull_request:
+    paths:
+      - 'AntiFreecam/**'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: AntiFreecam
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build plugin jar
+        run: ./gradlew build --no-daemon --stacktrace
+
+      - name: Upload AntiFreecam jar (Actions artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: AntiFreecam-jar
+          path: AntiFreecam/build/libs/*.jar
+          if-no-files-found: error
+
+      # Publish a rolling Release so the jar has a direct, mobile-friendly
+      # download link (no login required on a public repo).
+      - name: Publish rolling Release
+        if: github.ref == 'refs/heads/claude/ei-plugins-korte-copy-j6o3rw' || github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: antifreecam-latest
+          name: AntiFreecam (latest build)
+          prerelease: true
+          files: AntiFreecam/build/libs/*.jar
+          body: |
+            Latest AntiFreecam build from `${{ github.sha }}`.
+            Download the jar below and drop it (plus PacketEvents) into your server's `plugins/` folder.

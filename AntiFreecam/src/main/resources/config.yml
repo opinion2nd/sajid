@@ -1,0 +1,73 @@
+# ============================================================================
+# AntiFreecam  —  original anti-freecam / anti-ESP block masker
+# Paper / Purpur 1.21.x  |  requires the PacketEvents plugin
+# ============================================================================
+#
+# HOW IT WORKS (short version):
+#   * A "surface" player (Y >= revealBelowYWhenUnder) is sent STONE for every
+#     block below `hideBelowY`. A freecam/ESP camera flying underground from
+#     the surface therefore sees nothing but stone.
+#   * When the player themselves goes underground, the chunks around them are
+#     re-sent UN-masked so the game looks completely normal while mining.
+#   * When they climb back to the surface, those chunks are re-masked.
+#
+# ----------------------------------------------------------------------------
+
+# Dimensions where masking is active: NORMAL, NETHER, THE_END
+enabledEnvironments:
+  - NORMAL
+  - NETHER
+
+# Worlds where the plugin is fully inactive (exact world folder name).
+disabledWorlds: []
+
+# Hide every block strictly below this Y from surface players.
+hideBelowY: 20
+
+# Masking is active while a player's Y is at or above this value.
+# Drop below it and the area around you is revealed.
+revealBelowYWhenUnder: 30
+
+# Minimum reveal radius (in chunks) around an underground player.
+# Auto-extends toward the player's view distance. Keep >= 4.
+scanRadiusChunks: 4
+
+# Block shown when masking. STONE is solid and indistinguishable (recommended).
+maskBlock: STONE
+
+# If a block below hideBelowY is already AIR, leave it as AIR instead of STONE.
+# false = mask everything to STONE (safest against cave-edge ESP).
+skipMaskIfAlreadyAir: false
+
+# ---- Lazy unmask (progressive reveal while underground) --------------------
+# distance: how far (in blocks) around an underground player is revealed.
+# Set it close to your server view-distance * 16 for a fully vanilla feel
+# (e.g. view-distance 10 chunks -> 160). Larger = more chunks re-sent per move.
+lazyUnmask:
+  distance: 256
+  distanceElytra: 256
+  rescanBlocks: 1        # blocks the player must move before we recompute
+
+# Re-mask previously revealed chunks when the player returns to the surface.
+remaskOnReturn: true
+
+# Hide entities that are below hideBelowY from surface players (anti entity-ESP).
+# NOTE: experimental — verify on a test server before production.
+maskEntities: true
+
+# ---- Mod detection ---------------------------------------------------------
+# Reads the client brand string and registered plugin channels on join.
+# Robust client-side mod detection is inherently best-effort; treat hits as a
+# signal, not proof. Only Wurst is watched by default (per request).
+modDetection:
+  enabled: true
+  autoKick: true
+  kickMessage: "§cThe Wurst client is not allowed on this server. Remove it and rejoin."
+  notifyAdmins: true
+  # Case-insensitive substrings checked against the client brand / channels.
+  detect:
+    Wurst: true
+
+# ---- Update checker (disabled for your own build) --------------------------
+updateChecker:
+  enabled: false
