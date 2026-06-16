@@ -49,14 +49,14 @@ public class AntiFreeamPlugin extends JavaPlugin {
         detectionConfig.setEvaluationIntervalTicks(cfg.getInt("detection.evaluation-interval-ticks", 10));
         detectionConfig.setRenderDistanceChunks(cfg.getInt("detection.render-distance-chunks", 8));
         detectionConfig.setTriggerY(cfg.getDouble("void-effect.trigger-y", 10.0));
-        detectionConfig.setChunkRadius(cfg.getInt("void-effect.chunk-radius", 3));
+        detectionConfig.setBlockRadius(cfg.getInt("void-effect.block-radius", 5));
         detectionConfig.setVoidRecheckIntervalTicks(cfg.getInt("void-effect.recheck-interval-ticks", 20));
 
         // Step 3: Init components
         ProtocolManager protocolManager = ProtocolLibrary.getProtocolManager();
         detector = new FreecamDetector(detectionConfig);
-        injector = new VoidChunkInjector(protocolManager, getLogger(),
-            detectionConfig.getChunkRadius(), detectionConfig.getTriggerY());
+        injector = new VoidChunkInjector(getLogger(),
+            detectionConfig.getBlockRadius(), detectionConfig.getTriggerY());
 
         // Step 4: Register whitelisted players from config
         List<String> whitelistUUIDs = cfg.getStringList("whitelist.players");

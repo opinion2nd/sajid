@@ -9,7 +9,7 @@ public class DetectionConfig {
     private double flagConfidenceThreshold = 0.70;
     private double adminNotifyConfidenceThreshold = 0.90;
     private double triggerY = 10.0;
-    private int chunkRadius = 3;
+    private int blockRadius = 5;
     private int evaluationIntervalTicks = 10;
     private int voidRecheckIntervalTicks = 20;
     private int renderDistanceChunks = 8;
@@ -37,8 +37,8 @@ public class DetectionConfig {
     public double getTriggerY() { return triggerY; }
     public void setTriggerY(double triggerY) { this.triggerY = triggerY; }
 
-    public int getChunkRadius() { return chunkRadius; }
-    public void setChunkRadius(int chunkRadius) { this.chunkRadius = chunkRadius; }
+    public int getBlockRadius() { return blockRadius; }
+    public void setBlockRadius(int blockRadius) { this.blockRadius = blockRadius; }
 
     public int getEvaluationIntervalTicks() { return evaluationIntervalTicks; }
     public void setEvaluationIntervalTicks(int v) { this.evaluationIntervalTicks = v; }

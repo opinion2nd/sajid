@@ -31,9 +31,9 @@ void-effect:
   enabled: true
   # Y level below which the void effect triggers
   trigger-y: 10.0
-  # Chunk radius around the player to send void chunks
-  chunk-radius: 3
-  # How often to re-send void chunks to flagged players (ticks)
+  # Block radius around the player to wall off with fake stone (cube)
+  block-radius: 5
+  # How often to refresh the fake stone walls around flagged players (ticks)
   recheck-interval-ticks: 20
 
 notifications:
