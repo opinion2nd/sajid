@@ -53,8 +53,8 @@ public final class AfConfig {
         this.revealBelowYWhenUnder = c.getInt("revealBelowYWhenUnder", 30);
         this.scanRadiusChunks = Math.max(4, c.getInt("scanRadiusChunks", 4));
 
-        Material mat = Material.matchMaterial(c.getString("maskBlock", "STONE"));
-        this.maskBlock = (mat != null && mat.isBlock()) ? mat : Material.STONE;
+        Material mat = Material.matchMaterial(c.getString("maskBlock", "AIR"));
+        this.maskBlock = (mat != null && mat.isBlock()) ? mat : Material.AIR;
         this.skipMaskIfAlreadyAir = c.getBoolean("skipMaskIfAlreadyAir", false);
 
         this.lazyDistance = Math.max(16, c.getInt("lazyUnmask.distance", 256));

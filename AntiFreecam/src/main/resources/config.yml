@@ -4,13 +4,14 @@
 # ============================================================================
 #
 # HOW IT WORKS (short version):
-#   * A "surface" player (Y >= revealBelowYWhenUnder) is sent STONE for every
-#     block below `hideBelowY`. A freecam/ESP camera flying underground from
-#     the surface therefore sees nothing but stone.
+#   * A "surface" player (Y >= revealBelowYWhenUnder) has every block below
+#     `hideBelowY` replaced with `maskBlock` (AIR by default). A freecam/ESP
+#     camera flying underground from the surface therefore sees only empty void.
 #   * When the player's OWN body goes below revealBelowYWhenUnder, a small
 #     "bubble" of chunks around them (undergroundRevealRadius) becomes visible,
 #     so their base/cave looks normal — but everything beyond the bubble stays
-#     stone, so freecam can never scout further than the body could.
+#     void, so freecam can never scout further than the body could (even at
+#     bedrock the rest is just void).
 #   * When they climb back to the surface, the area is masked again.
 #
 # ----------------------------------------------------------------------------
@@ -34,11 +35,15 @@ revealBelowYWhenUnder: 30
 # Auto-extends toward the player's view distance. Keep >= 4.
 scanRadiusChunks: 4
 
-# Block shown when masking. STONE is solid and indistinguishable (recommended).
-maskBlock: STONE
+# Block shown when masking.
+#   AIR   = freecam/ESP sees pure empty VOID, all the way down to bedrock
+#           (nothing at all — recommended for the strongest "void" look).
+#   STONE = a solid wall instead of void.
+# You can set any block id here.
+maskBlock: AIR
 
-# If a block below hideBelowY is already AIR, leave it as AIR instead of STONE.
-# false = mask everything to STONE (safest against cave-edge ESP).
+# Only used when maskBlock is a solid block: if a block below hideBelowY is
+# already AIR, leave it as AIR. Irrelevant when maskBlock is AIR.
 skipMaskIfAlreadyAir: false
 
 # Re-mask the area again when the player returns to the surface.
