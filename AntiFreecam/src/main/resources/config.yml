@@ -5,14 +5,16 @@
 #
 # HOW IT WORKS (short version):
 #   * A "surface" player (Y >= revealBelowYWhenUnder) has every block below
-#     `hideBelowY` replaced with `maskBlock` (AIR by default). A freecam/ESP
-#     camera flying underground from the surface therefore sees only empty void.
-#   * When the player's OWN body goes below revealBelowYWhenUnder, a small
-#     "bubble" of chunks around them (undergroundRevealRadius) becomes visible,
-#     so their base/cave looks normal — but everything beyond the bubble stays
-#     void, so freecam can never scout further than the body could (even at
-#     bedrock the rest is just void).
-#   * When they climb back to the surface, the area is masked again.
+#     `hideBelowY` replaced with `maskBlock` (AIR by default), so a freecam/ESP
+#     camera flown down from the surface sees only empty void.
+#   * The moment the player's OWN body goes underground, nothing is masked for
+#     them — normal underground play is 100% vanilla with no void anywhere.
+#   * When they climb back to the surface, the area below is masked again.
+#
+#   NOTE: freecam is a client-side mod the server cannot detect, and the server
+#   sends the same block data for the normal view and the freecam view. So it is
+#   impossible to hide blocks ONLY while freecam is active — this plugin instead
+#   hides what a surface body should not be able to see.
 #
 # ----------------------------------------------------------------------------
 
@@ -48,13 +50,6 @@ skipMaskIfAlreadyAir: false
 
 # Re-mask the area again when the player returns to the surface.
 remaskOnReturn: true
-
-# How many chunks around an underground player stay visible. Everything beyond
-# this is shown as stone, so a freecam used from inside a cave still only sees
-# the player's immediate surroundings. Lower = stronger anti-freecam (but the
-# player sees stone walls sooner); higher = more open underground view.
-# 5 chunks (~80 blocks) is a good balance.
-undergroundRevealRadius: 5
 
 # Hide entities that are below hideBelowY from surface players (anti entity-ESP).
 # NOTE: experimental — verify on a test server before production.

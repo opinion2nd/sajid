@@ -45,24 +45,14 @@ public final class MaskService {
      * @return true if blocks below hideBelowY must be masked to STONE for this
      *         player.
      *
-     * <p>Surface players have everything below the threshold hidden. Underground
-     * players keep a small "bubble" of chunks around their body visible (so their
-     * base/cave looks normal) while everything beyond the bubble stays stone — so
-     * a freecam camera, whether driven from the surface or from inside a cave,
-     * can never scout further than the player's real body could.
+     * <p>Masking is tied to the player's OWN body position. Only players who are
+     * on the surface get the area below the threshold hidden (so a freecam camera
+     * flown down from the surface — the common case — sees only void). The moment
+     * the player's body is underground, nothing is masked for them, so normal
+     * underground play is completely vanilla with no void anywhere.
      */
     public boolean shouldMaskChunk(UUID uuid, int cx, int cz) {
         PlayerMaskData data = players.get(uuid);
-        if (data == null || data.bypass || !data.worldActive) {
-            return false;
-        }
-        if (!data.underground) {
-            return true; // surface: hide everything below the threshold
-        }
-        // underground: mask only chunks outside the reveal bubble
-        int r = config.undergroundRevealRadius;
-        int dx = Math.abs(cx - data.centerChunkX);
-        int dz = Math.abs(cz - data.centerChunkZ);
-        return Math.max(dx, dz) > r;
+        return data != null && !data.bypass && data.worldActive && !data.underground;
     }
 }
