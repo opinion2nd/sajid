@@ -1,7 +1,9 @@
 package dev.opinion2nd.antifreecam.mask;
 
+import dev.opinion2nd.antifreecam.AntiFreecamPlugin;
 import dev.opinion2nd.antifreecam.AfConfig;
 import dev.opinion2nd.antifreecam.util.ChunkResender;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -11,20 +13,23 @@ import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 
-import java.util.HashSet;
-import java.util.Set;
-
 /**
- * Keeps each player's {@link PlayerMaskData} in sync on the main thread and
- * re-sends chunks whenever a player's masking neighbourhood changes (descending
- * underground, surfacing, or moving while underground).
+ * Keeps every player's surface/underground state in sync on the main thread.
+ *
+ * <p>Because masking is decided purely from the player's body position, the only
+ * thing we must handle is the transition across the {@code revealBelowYWhenUnder}
+ * line: chunks that were already sent in the old state need re-sending so the new
+ * decision reaches the client. Fresh chunks (e.g. those loaded right after a
+ * teleport to a far base) are handled automatically by the packet listener.
  */
 public final class PlayerTracker implements Listener {
 
+    private final AntiFreecamPlugin plugin;
     private final MaskService service;
     private final ChunkResender resender;
 
-    public PlayerTracker(MaskService service, ChunkResender resender) {
+    public PlayerTracker(AntiFreecamPlugin plugin, MaskService service, ChunkResender resender) {
+        this.plugin = plugin;
         this.service = service;
         this.resender = resender;
     }
@@ -34,7 +39,8 @@ public final class PlayerTracker implements Listener {
         Player player = event.getPlayer();
         PlayerMaskData data = service.getOrCreate(player);
         data.bypass = player.hasPermission("antifreecam.bypass");
-        refresh(player, data, true);
+        applyState(player, data, player.getLocation());
+        // Chunks are sent fresh after join, so no re-send is needed here.
     }
 
     @EventHandler
@@ -48,96 +54,71 @@ public final class PlayerTracker implements Listener {
         if (to == null) {
             return;
         }
-        handleMovement(event.getPlayer(), event.getFrom(), to);
+        Player player = event.getPlayer();
+        PlayerMaskData data = service.getOrCreate(player);
+
+        AfConfig cfg = service.config();
+        boolean nowUnder = to.getY() < cfg.revealBelowYWhenUnder;
+
+        // Only act when the player actually crosses the surface/underground line.
+        if (nowUnder == data.underground && data.worldActive == cfg.isWorldActive(to.getWorld())) {
+            return;
+        }
+        applyState(player, data, to);
+        resendAround(player, to);
     }
 
     @EventHandler
     public void onTeleport(PlayerTeleportEvent event) {
-        if (event.getTo() == null) {
+        Location to = event.getTo();
+        if (to == null) {
             return;
         }
-        // World/large jumps: force a full recompute.
-        refresh(event.getPlayer(), service.getOrCreate(event.getPlayer()), true);
-    }
-
-    private void handleMovement(Player player, Location from, Location to) {
+        Player player = event.getPlayer();
         PlayerMaskData data = service.getOrCreate(player);
-        AfConfig cfg = service.config();
-
-        boolean nowUnder = to.getY() < cfg.revealBelowYWhenUnder;
-        boolean stateFlip = nowUnder != data.underground;
-
-        // Throttle reveal recomputes to once per `rescanBlocks` of movement.
-        boolean movedEnough = Double.isNaN(data.lastScanX)
-                || Math.abs(to.getX() - data.lastScanX) >= cfg.rescanBlocks
-                || Math.abs(to.getZ() - data.lastScanZ) >= cfg.rescanBlocks;
-
-        if (!stateFlip && !movedEnough) {
-            return;
-        }
-        refresh(player, data, stateFlip);
+        // Use the DESTINATION (event fires before the teleport happens) so a TP
+        // straight into an underground base is treated as underground at once.
+        applyState(player, data, to);
+        // Re-send a moment later, once the teleport has completed and the new
+        // chunks exist, to catch any that were already loaded around the target.
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (player.isOnline()) {
+                resendAround(player, player.getLocation());
+            }
+        });
     }
 
-    /**
-     * Recompute world/under state and reveal set; re-send any chunk whose mask
-     * decision changed so the client sees the update.
-     */
-    private void refresh(Player player, PlayerMaskData data, boolean forceResend) {
+    private void applyState(Player player, PlayerMaskData data, Location loc) {
         AfConfig cfg = service.config();
-        Location loc = player.getLocation();
-
-        data.worldActive = cfg.isWorldActive(player.getWorld());
+        data.worldActive = cfg.isWorldActive(loc.getWorld());
         data.underground = loc.getY() < cfg.revealBelowYWhenUnder;
-        data.lastScanX = loc.getX();
-        data.lastScanZ = loc.getZ();
+    }
 
-        Set<Long> previous = new HashSet<>(data.revealedChunks);
-        Set<Long> desired = new HashSet<>();
-
-        if (data.worldActive && !data.bypass && data.underground) {
-            int radius = revealRadiusChunks(player, cfg);
-            int pcx = loc.getBlockX() >> 4;
-            int pcz = loc.getBlockZ() >> 4;
-            for (int dx = -radius; dx <= radius; dx++) {
-                for (int dz = -radius; dz <= radius; dz++) {
-                    desired.add(PlayerMaskData.chunkKey(pcx + dx, pcz + dz));
-                }
-            }
-        }
-        // Surface (or remaskOnReturn) -> desired is empty, so everything that was
-        // revealed gets re-sent and re-masked by the chunk listener.
-
-        if (desired.equals(previous) && !forceResend) {
-            return;
-        }
-
-        data.revealedChunks.clear();
-        data.revealedChunks.addAll(desired);
-
+    /** Re-send the loaded chunks around the player so the new mask state applies. */
+    private void resendAround(Player player, Location loc) {
         if (resender.isBroken()) {
-            return; // progressive reveal unavailable; surface masking still active
+            return; // masking still works on fresh chunks; only in-place refresh is lost
         }
-
-        // Chunks that newly appear or disappear from the reveal set need a re-send.
-        Set<Long> toResend = new HashSet<>(previous);
-        toResend.addAll(desired);
-        if (cfg.remaskOnReturn || !desired.isEmpty()) {
-            for (long key : toResend) {
-                boolean inOld = previous.contains(key);
-                boolean inNew = desired.contains(key);
-                if (inOld != inNew) {
-                    resender.resend(player, (int) (key & 0xFFFFFFFFL), (int) (key >> 32));
-                }
+        int radius = resendRadius(player);
+        int pcx = loc.getBlockX() >> 4;
+        int pcz = loc.getBlockZ() >> 4;
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dz = -radius; dz <= radius; dz++) {
+                resender.resend(player, pcx + dx, pcz + dz);
             }
         }
     }
 
-    private int revealRadiusChunks(Player player, AfConfig cfg) {
-        boolean elytra = player.isGliding();
-        int distBlocks = elytra ? cfg.lazyDistanceElytra : cfg.lazyDistance;
-        int radius = Math.max(cfg.scanRadiusChunks, (int) Math.ceil(distBlocks / 16.0));
-        // Never ask for more than the client can render.
-        int view = player.getViewDistance() + 1;
-        return Math.min(radius, Math.max(cfg.scanRadiusChunks, view));
+    private int resendRadius(Player player) {
+        int view;
+        try {
+            view = player.getViewDistance();
+        } catch (Throwable t) {
+            view = Bukkit.getViewDistance();
+        }
+        if (view < 4) {
+            view = 8;
+        }
+        return Math.min(view, 12);
     }
 }

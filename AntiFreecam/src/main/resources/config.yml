@@ -7,9 +7,10 @@
 #   * A "surface" player (Y >= revealBelowYWhenUnder) is sent STONE for every
 #     block below `hideBelowY`. A freecam/ESP camera flying underground from
 #     the surface therefore sees nothing but stone.
-#   * When the player themselves goes underground, the chunks around them are
-#     re-sent UN-masked so the game looks completely normal while mining.
-#   * When they climb back to the surface, those chunks are re-masked.
+#   * The moment the player's OWN body goes below revealBelowYWhenUnder (walked,
+#     fell, or teleported to a base) nothing is masked for them, so the area
+#     looks completely normal.
+#   * When they climb back to the surface, the area is masked again.
 #
 # ----------------------------------------------------------------------------
 
@@ -39,16 +40,7 @@ maskBlock: STONE
 # false = mask everything to STONE (safest against cave-edge ESP).
 skipMaskIfAlreadyAir: false
 
-# ---- Lazy unmask (progressive reveal while underground) --------------------
-# distance: how far (in blocks) around an underground player is revealed.
-# Set it close to your server view-distance * 16 for a fully vanilla feel
-# (e.g. view-distance 10 chunks -> 160). Larger = more chunks re-sent per move.
-lazyUnmask:
-  distance: 256
-  distanceElytra: 256
-  rescanBlocks: 1        # blocks the player must move before we recompute
-
-# Re-mask previously revealed chunks when the player returns to the surface.
+# Re-mask the area again when the player returns to the surface.
 remaskOnReturn: true
 
 # Hide entities that are below hideBelowY from surface players (anti entity-ESP).

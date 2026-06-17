@@ -38,7 +38,7 @@ public final class AntiFreecamPlugin extends JavaPlugin {
         registerPacketListener(new BrandDetectionListener(this, maskService));
 
         getServer().getPluginManager().registerEvents(
-                new PlayerTracker(maskService, resender), this);
+                new PlayerTracker(this, maskService, resender), this);
 
         AfCommand cmd = new AfCommand(this, maskService);
         getCommand("antifreecam").setExecutor(cmd);

@@ -42,20 +42,20 @@ public final class MaskService {
     }
 
     /**
-     * @return true if blocks below hideBelowY in chunk (cx,cz) must be masked
-     *         to STONE for this player.
+     * @return true if blocks below hideBelowY must be masked to STONE for this
+     *         player.
+     *
+     * <p>Masking is tied to the player's OWN body position: only players who are
+     * on the surface get the area below them hidden. The moment a player's body
+     * is underground (walked, fell, or teleported to a base) nothing is masked,
+     * so their base looks completely normal. A freecam camera flies while the
+     * body stays on the surface, so the cheater still only ever sees stone.
      */
     public boolean shouldMaskChunk(UUID uuid, int cx, int cz) {
         PlayerMaskData data = players.get(uuid);
         if (data == null || data.bypass || !data.worldActive) {
             return false;
         }
-        // Surface player: hide everything below the threshold.
-        if (!data.underground) {
-            return true;
-        }
-        // Underground: reveal the player's neighbourhood, mask the rest so a
-        // freecam camera that flies away from the body still hits stone.
-        return !data.revealedChunks.contains(PlayerMaskData.chunkKey(cx, cz));
+        return !data.underground;
     }
 }
