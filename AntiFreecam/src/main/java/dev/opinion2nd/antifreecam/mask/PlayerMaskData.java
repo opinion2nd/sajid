@@ -14,4 +14,8 @@ public final class PlayerMaskData {
 
     /** True while the player's current world is an enabled masking world. */
     public volatile boolean worldActive = false;
+
+    /** Chunk the underground reveal "bubble" is centred on (the player's chunk). */
+    public volatile int centerChunkX = 0;
+    public volatile int centerChunkZ = 0;
 }

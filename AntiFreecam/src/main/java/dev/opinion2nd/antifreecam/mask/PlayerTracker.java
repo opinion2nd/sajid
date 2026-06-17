@@ -14,13 +14,9 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 
 /**
- * Keeps every player's surface/underground state in sync on the main thread.
- *
- * <p>Because masking is decided purely from the player's body position, the only
- * thing we must handle is the transition across the {@code revealBelowYWhenUnder}
- * line: chunks that were already sent in the old state need re-sending so the new
- * decision reaches the client. Fresh chunks (e.g. those loaded right after a
- * teleport to a far base) are handled automatically by the packet listener.
+ * Keeps every player's surface/underground state and reveal-bubble centre in
+ * sync on the main thread, re-sending only the chunks whose mask decision
+ * actually changes.
  */
 public final class PlayerTracker implements Listener {
 
@@ -39,7 +35,7 @@ public final class PlayerTracker implements Listener {
         Player player = event.getPlayer();
         PlayerMaskData data = service.getOrCreate(player);
         data.bypass = player.hasPermission("antifreecam.bypass");
-        applyState(player, data, player.getLocation());
+        applyState(data, player.getLocation());
         // Chunks are sent fresh after join, so no re-send is needed here.
     }
 
@@ -56,16 +52,41 @@ public final class PlayerTracker implements Listener {
         }
         Player player = event.getPlayer();
         PlayerMaskData data = service.getOrCreate(player);
-
         AfConfig cfg = service.config();
-        boolean nowUnder = to.getY() < cfg.revealBelowYWhenUnder;
 
-        // Only act when the player actually crosses the surface/underground line.
-        if (nowUnder == data.underground && data.worldActive == cfg.isWorldActive(to.getWorld())) {
+        boolean oldUnder = data.underground;
+        boolean oldActive = data.worldActive;
+        int oldCX = data.centerChunkX;
+        int oldCZ = data.centerChunkZ;
+
+        boolean newUnder = to.getY() < cfg.revealBelowYWhenUnder;
+        boolean newActive = cfg.isWorldActive(to.getWorld());
+        int newCX = to.getBlockX() >> 4;
+        int newCZ = to.getBlockZ() >> 4;
+
+        boolean stateChanged = newUnder != oldUnder || newActive != oldActive;
+        boolean chunkChanged = newCX != oldCX || newCZ != oldCZ;
+        if (!stateChanged && !chunkChanged) {
             return;
         }
-        applyState(player, data, to);
-        resendAround(player, to);
+
+        data.underground = newUnder;
+        data.worldActive = newActive;
+        data.centerChunkX = newCX;
+        data.centerChunkZ = newCZ;
+
+        if (resender.isBroken() || !newActive && !oldActive) {
+            return;
+        }
+
+        if (stateChanged) {
+            // surface<->underground (or world toggled): refresh the whole view area
+            resendArea(player, newCX, newCZ);
+        } else if (newUnder) {
+            // still underground, just walked into a new chunk: shift the bubble,
+            // re-sending only the chunks that entered or left it
+            resendBubbleShift(player, oldCX, oldCZ, newCX, newCZ, cfg.undergroundRevealRadius);
+        }
     }
 
     @EventHandler
@@ -76,35 +97,51 @@ public final class PlayerTracker implements Listener {
         }
         Player player = event.getPlayer();
         PlayerMaskData data = service.getOrCreate(player);
-        // Use the DESTINATION (event fires before the teleport happens) so a TP
-        // straight into an underground base is treated as underground at once.
-        applyState(player, data, to);
-        // Re-send a moment later, once the teleport has completed and the new
-        // chunks exist, to catch any that were already loaded around the target.
+        // Use the DESTINATION (event fires before the teleport) so a TP straight
+        // into an underground base is treated as underground immediately.
+        applyState(data, to);
         Bukkit.getScheduler().runTask(plugin, () -> {
             if (player.isOnline()) {
-                resendAround(player, player.getLocation());
+                Location loc = player.getLocation();
+                resendArea(player, loc.getBlockX() >> 4, loc.getBlockZ() >> 4);
             }
         });
     }
 
-    private void applyState(Player player, PlayerMaskData data, Location loc) {
+    private void applyState(PlayerMaskData data, Location loc) {
         AfConfig cfg = service.config();
         data.worldActive = cfg.isWorldActive(loc.getWorld());
         data.underground = loc.getY() < cfg.revealBelowYWhenUnder;
+        data.centerChunkX = loc.getBlockX() >> 4;
+        data.centerChunkZ = loc.getBlockZ() >> 4;
     }
 
-    /** Re-send the loaded chunks around the player so the new mask state applies. */
-    private void resendAround(Player player, Location loc) {
+    /** Re-send every loaded chunk in view range so a state change reaches the client. */
+    private void resendArea(Player player, int pcx, int pcz) {
         if (resender.isBroken()) {
-            return; // masking still works on fresh chunks; only in-place refresh is lost
+            return;
         }
-        int radius = resendRadius(player);
-        int pcx = loc.getBlockX() >> 4;
-        int pcz = loc.getBlockZ() >> 4;
-        for (int dx = -radius; dx <= radius; dx++) {
-            for (int dz = -radius; dz <= radius; dz++) {
+        int r = resendRadius(player);
+        for (int dx = -r; dx <= r; dx++) {
+            for (int dz = -r; dz <= r; dz++) {
                 resender.resend(player, pcx + dx, pcz + dz);
+            }
+        }
+    }
+
+    /** Re-send only the chunks whose in/out-of-bubble status changed as it moved. */
+    private void resendBubbleShift(Player player, int oldCX, int oldCZ, int newCX, int newCZ, int r) {
+        int minX = Math.min(oldCX, newCX) - r;
+        int maxX = Math.max(oldCX, newCX) + r;
+        int minZ = Math.min(oldCZ, newCZ) - r;
+        int maxZ = Math.max(oldCZ, newCZ) + r;
+        for (int cx = minX; cx <= maxX; cx++) {
+            for (int cz = minZ; cz <= maxZ; cz++) {
+                boolean wasMasked = Math.max(Math.abs(cx - oldCX), Math.abs(cz - oldCZ)) > r;
+                boolean nowMasked = Math.max(Math.abs(cx - newCX), Math.abs(cz - newCZ)) > r;
+                if (wasMasked != nowMasked) {
+                    resender.resend(player, cx, cz);
+                }
             }
         }
     }

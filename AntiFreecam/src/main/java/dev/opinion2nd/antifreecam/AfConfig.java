@@ -29,6 +29,9 @@ public final class AfConfig {
     public final int rescanBlocks;
     public final boolean remaskOnReturn;
 
+    /** How many chunks around an underground player stay visible (the rest is masked). */
+    public final int undergroundRevealRadius;
+
     public final boolean maskEntities;
 
     public final boolean modDetectionEnabled;
@@ -58,6 +61,7 @@ public final class AfConfig {
         this.lazyDistanceElytra = Math.max(16, c.getInt("lazyUnmask.distanceElytra", 256));
         this.rescanBlocks = Math.max(1, c.getInt("lazyUnmask.rescanBlocks", 1));
         this.remaskOnReturn = c.getBoolean("remaskOnReturn", true);
+        this.undergroundRevealRadius = Math.max(1, c.getInt("undergroundRevealRadius", 5));
 
         this.maskEntities = c.getBoolean("maskEntities", true);
 
