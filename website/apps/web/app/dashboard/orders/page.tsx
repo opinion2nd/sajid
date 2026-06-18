@@ -1,5 +1,6 @@
 import prisma from "@brothercraft/db";
 import { requireUser } from "@/lib/session";
+import { openDispute } from "@/lib/actions";
 import { formatPrice, timeAgo } from "@/lib/utils";
 import { StatusPill, EmptyState } from "@/components/ui";
 
@@ -7,7 +8,7 @@ export default async function OrdersPage() {
   const user = await requireUser();
   const orders = await prisma.order.findMany({
     where: { buyerId: user.id },
-    include: { items: { include: { product: true } } },
+    include: { items: { include: { product: true } }, dispute: true },
     orderBy: { createdAt: "desc" },
   });
 
@@ -41,6 +42,29 @@ export default async function OrdersPage() {
               <span>Total</span>
               <span>{formatPrice(o.totalCents)}</span>
             </div>
+
+            {/* Dispute / refund */}
+            {o.dispute ? (
+              <p className="mt-3 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-300">
+                Dispute {o.dispute.status.toLowerCase()}
+                {o.dispute.resolution ? ` — ${o.dispute.resolution}` : ""}
+              </p>
+            ) : (
+              o.status === "COMPLETED" && (
+                <form
+                  action={openDispute}
+                  className="mt-3 flex flex-col gap-2 border-t border-border pt-3 sm:flex-row"
+                >
+                  <input type="hidden" name="orderId" value={o.id} />
+                  <input
+                    name="reason"
+                    placeholder="Describe the problem to request a refund…"
+                    className="input flex-1"
+                  />
+                  <button className="btn-ghost">Report a problem</button>
+                </form>
+              )
+            )}
           </div>
         ))}
       </div>

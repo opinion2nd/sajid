@@ -13,11 +13,13 @@ export const metadata: Metadata = {
   },
   description:
     "Buy and sell Minecraft plugins, configs, builds and services. License-gated downloads, escrow-protected payments via bKash & Nagad.",
+  icons: { icon: "/logo.jpg", apple: "/logo.jpg" },
   openGraph: {
     title: "Brother Craft — Minecraft Marketplace",
     description:
       "Buy and sell Minecraft plugins, configs, builds and services.",
     type: "website",
+    images: ["/logo.jpg"],
   },
 };
 

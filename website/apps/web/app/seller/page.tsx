@@ -52,9 +52,14 @@ export default async function SellerDashboard() {
             </Link>
           </div>
         </div>
-        <Link href="/seller/new" className="btn-primary">
-          <Plus className="h-4 w-4" /> New product
-        </Link>
+        <div className="flex gap-2">
+          <Link href="/seller/payouts" className="btn-ghost">
+            <Wallet className="h-4 w-4" /> Payouts
+          </Link>
+          <Link href="/seller/new" className="btn-primary">
+            <Plus className="h-4 w-4" /> New product
+          </Link>
+        </div>
       </div>
 
       {seller.status === "PENDING" && (

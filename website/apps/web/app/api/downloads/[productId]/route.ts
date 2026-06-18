@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@brothercraft/db";
+import { getStorage } from "@brothercraft/storage";
 import { getCurrentUser } from "@/lib/session";
 import { hasPurchased } from "@/lib/orders";
 
@@ -39,15 +40,26 @@ export async function GET(
 
   const version = product.versions[0];
 
-  // If a real file asset exists and storage is configured, redirect to a signed URL.
-  if (version?.file && process.env.STORAGE_DRIVER === "s3") {
-    // Placeholder for S3/R2 signed-URL issuance.
-    return NextResponse.redirect(
-      `${process.env.STORAGE_ENDPOINT}/${version.file.storageKey}`
-    );
+  // Real uploaded file: serve via storage driver.
+  if (version?.file) {
+    const storage = getStorage();
+    // S3/R2 → short-lived signed URL (60s).
+    const signed = await storage.signedUrl(version.file.storageKey, 60);
+    if (signed) return NextResponse.redirect(signed);
+    // Local driver → stream the bytes through this entitlement-checked route.
+    const bytes = await storage.read(version.file.storageKey);
+    if (bytes) {
+      const name = version.file.storageKey.split("/").pop() ?? "download";
+      return new NextResponse(new Uint8Array(bytes), {
+        headers: {
+          "Content-Type": version.file.contentType,
+          "Content-Disposition": `attachment; filename="${name}"`,
+        },
+      });
+    }
   }
 
-  // Demo artifact.
+  // Demo artifact (no file uploaded).
   const license = await prisma.license.findFirst({
     where: { productId, buyerId: user.id },
     select: { key: true },

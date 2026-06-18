@@ -80,6 +80,16 @@ model DiscordLink {
   @@map("discord_links")
 }
 
+// One-time codes for linking a Discord account to a marketplace user.
+model DiscordLinkCode {
+  code      String   @id
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@map("discord_link_codes")
+}
+
 // ── Catalog ───────────────────────────────────────────
 
 model Category {

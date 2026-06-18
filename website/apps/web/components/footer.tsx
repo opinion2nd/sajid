@@ -1,19 +1,12 @@
 import Link from "next/link";
-import { Blocks } from "lucide-react";
+import { Logo } from "./logo";
 
 export function Footer() {
   return (
     <footer className="mt-16 border-t border-border bg-surface">
       <div className="container-page grid gap-8 py-10 sm:grid-cols-2 md:grid-cols-4">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-accent text-accent-fg">
-              <Blocks className="h-4 w-4" />
-            </span>
-            <span className="font-bold">
-              Brother<span className="text-accent">Craft</span>
-            </span>
-          </div>
+          <Logo size={32} />
           <p className="mt-3 text-sm text-muted">
             The Minecraft marketplace for plugins, configs, builds and services.
           </p>

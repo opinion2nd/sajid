@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
-  Blocks,
   Menu,
   X,
   ShoppingCart,
@@ -15,6 +14,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { useCart } from "./cart";
+import { Logo } from "./logo";
 import { cn } from "@/lib/utils";
 
 type SessionInfo = {
@@ -36,14 +36,7 @@ export function Navbar({ session }: { session: SessionInfo }) {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-bg/80 backdrop-blur">
       <nav className="container-page flex h-16 items-center justify-between gap-4">
-        <Link href="/" className="flex shrink-0 items-center gap-2">
-          <span className="grid h-9 w-9 place-items-center rounded-lg bg-accent text-accent-fg">
-            <Blocks className="h-5 w-5" />
-          </span>
-          <span className="text-lg font-bold tracking-tight">
-            Brother<span className="text-accent">Craft</span>
-          </span>
-        </Link>
+        <Logo size={36} />
 
         {/* Desktop links */}
         <div className="hidden items-center gap-1 md:flex">

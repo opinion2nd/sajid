@@ -280,6 +280,34 @@ async function main() {
         sellerReply: "Thank you! Glad it's working well for your server.",
       },
     });
+
+    // Seller money: one released payout-ready balance + one still in escrow,
+    // so the payouts page has something to show.
+    const net = Math.round(pillars.priceCents * 0.9);
+    const sellerWallet = await prisma.wallet.upsert({
+      where: { userId: sellerUser.id },
+      update: { balanceCents: net },
+      create: { userId: sellerUser.id, balanceCents: net },
+    });
+    await prisma.walletEntry.create({
+      data: {
+        walletId: sellerWallet.id,
+        type: "RELEASE",
+        amountCents: net,
+        refType: "order",
+        refId: order.id,
+        balanceAfter: net,
+      },
+    });
+    await prisma.escrowHold.create({
+      data: {
+        orderId: order.id,
+        sellerId: seller.id,
+        amountCents: net,
+        state: "HELD",
+        holdUntil: new Date(Date.now() + 72 * 3600 * 1000),
+      },
+    });
   }
 
   console.log("Seed complete:");

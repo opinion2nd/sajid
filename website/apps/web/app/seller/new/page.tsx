@@ -58,6 +58,18 @@ export default async function NewProductPage() {
           <label className="label">Tags (comma separated)</label>
           <input name="tags" className="input" placeholder="anticheat, paper, 1.21" />
         </div>
+        <div>
+          <label className="label">Product file (optional)</label>
+          <input
+            name="file"
+            type="file"
+            className="input file:mr-3 file:rounded file:border-0 file:bg-accent file:px-3 file:py-1 file:text-accent-fg"
+          />
+          <p className="mt-1 text-xs text-muted">
+            The .jar / .zip / .schem buyers download. Stored privately and served
+            via a signed, entitlement-checked link.
+          </p>
+        </div>
         <label className="flex items-center gap-2 text-sm">
           <input name="licenseGated" type="checkbox" className="h-4 w-4" />
           License-gate this product (mint a key per purchase)

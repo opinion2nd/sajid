@@ -3,7 +3,19 @@ import prisma from "@brothercraft/db";
 import { requireUser } from "@/lib/session";
 import { formatPrice } from "@/lib/utils";
 import { StatusPill } from "@/components/ui";
-import { approveSeller, setProductStatus } from "@/lib/actions";
+import { timeAgo } from "@/lib/utils";
+import {
+  approveSeller,
+  setProductStatus,
+  processPayout,
+  resolveDispute,
+  releaseDueEscrow,
+} from "@/lib/actions";
+
+async function releaseEscrowAction() {
+  "use server";
+  await releaseDueEscrow();
+}
 
 export const metadata = { title: "Admin" };
 
@@ -11,25 +23,36 @@ export default async function AdminPage() {
   const user = await requireUser();
   if (user.role !== "ADMIN") redirect("/dashboard");
 
-  const [pendingSellers, pendingProducts, totals] = await Promise.all([
-    prisma.sellerProfile.findMany({
-      where: { status: "PENDING" },
-      include: { user: { select: { email: true } } },
-    }),
-    prisma.product.findMany({
-      where: { status: "PENDING_REVIEW" },
-      include: { seller: { select: { displayName: true } } },
-    }),
-    Promise.all([
-      prisma.user.count(),
-      prisma.product.count({ where: { status: "PUBLISHED" } }),
-      prisma.order.aggregate({
-        where: { status: "COMPLETED" },
-        _sum: { totalCents: true },
-        _count: true,
+  const [pendingSellers, pendingProducts, pendingPayouts, openDisputes, totals] =
+    await Promise.all([
+      prisma.sellerProfile.findMany({
+        where: { status: "PENDING" },
+        include: { user: { select: { email: true } } },
       }),
-    ]),
-  ]);
+      prisma.product.findMany({
+        where: { status: "PENDING_REVIEW" },
+        include: { seller: { select: { displayName: true } } },
+      }),
+      prisma.payout.findMany({
+        where: { status: "REQUESTED" },
+        include: { seller: { select: { displayName: true } } },
+        orderBy: { requestedAt: "desc" },
+      }),
+      prisma.dispute.findMany({
+        where: { status: "OPEN" },
+        include: { order: { select: { id: true, totalCents: true } } },
+        orderBy: { createdAt: "desc" },
+      }),
+      Promise.all([
+        prisma.user.count(),
+        prisma.product.count({ where: { status: "PUBLISHED" } }),
+        prisma.order.aggregate({
+          where: { status: "COMPLETED" },
+          _sum: { totalCents: true },
+          _count: true,
+        }),
+      ]),
+    ]);
   const [userCount, productCount, orderAgg] = totals;
 
   return (
@@ -88,6 +111,69 @@ export default async function AdminPage() {
                     Publish
                   </button>
                   <button name="status" value="REJECTED" className="btn-ghost">
+                    Reject
+                  </button>
+                </form>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Payouts */}
+      <section className="mt-8">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-bold">
+            Payout requests ({pendingPayouts.length})
+          </h2>
+          <form action={releaseEscrowAction}>
+            <button className="btn-ghost text-sm">Release due escrow</button>
+          </form>
+        </div>
+        <div className="mt-3 space-y-2">
+          {pendingPayouts.length === 0 && (
+            <p className="text-sm text-muted">No payout requests.</p>
+          )}
+          {pendingPayouts.map((p) => (
+            <div key={p.id} className="card flex items-center justify-between p-4">
+              <div>
+                <p className="font-medium">{formatPrice(p.amountCents)}</p>
+                <p className="text-sm text-muted">
+                  {p.seller.displayName} · {p.method} · {timeAgo(p.requestedAt)}
+                </p>
+              </div>
+              <form action={processPayout}>
+                <input type="hidden" name="id" value={p.id} />
+                <button className="btn-primary">Mark paid</button>
+              </form>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Disputes */}
+      <section className="mt-8">
+        <h2 className="text-lg font-bold">Open disputes ({openDisputes.length})</h2>
+        <div className="mt-3 space-y-2">
+          {openDisputes.length === 0 && (
+            <p className="text-sm text-muted">No open disputes.</p>
+          )}
+          {openDisputes.map((d) => (
+            <div key={d.id} className="card p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="font-medium">
+                    Order #{d.order.id.slice(0, 8)} ·{" "}
+                    {formatPrice(d.order.totalCents)}
+                  </p>
+                  <p className="text-sm text-muted">{d.reason}</p>
+                </div>
+                <form action={resolveDispute} className="flex gap-2">
+                  <input type="hidden" name="id" value={d.id} />
+                  <button name="decision" value="refund" className="btn-primary">
+                    Refund buyer
+                  </button>
+                  <button name="decision" value="reject" className="btn-ghost">
                     Reject
                   </button>
                 </form>

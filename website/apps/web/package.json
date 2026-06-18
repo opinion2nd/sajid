@@ -14,6 +14,7 @@
     "@brothercraft/db": "workspace:*",
     "@brothercraft/license-core": "workspace:*",
     "@brothercraft/payments": "workspace:*",
+    "@brothercraft/storage": "workspace:*",
     "bcryptjs": "^2.4.3",
     "clsx": "^2.1.1",
     "lucide-react": "^0.469.0",

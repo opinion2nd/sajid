@@ -17,6 +17,11 @@ build/
 packages/db/prisma/*.db
 packages/db/prisma/*.db-journal
 
+# uploaded product files (local storage driver) — runtime dirs only,
+# NOT the packages/storage source package
+/storage/
+apps/web/storage/
+
 # turbo
 .turbo/
 

@@ -5,6 +5,7 @@ const items: NavItem[] = [
   { href: "/dashboard", label: "Overview" },
   { href: "/dashboard/orders", label: "Orders" },
   { href: "/dashboard/downloads", label: "Downloads & Licenses" },
+  { href: "/dashboard/discord", label: "Discord" },
   { href: "/seller", label: "Seller area" },
 ];
 
