@@ -3,7 +3,9 @@
 
 FROM node:20-slim AS base
 RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
-RUN corepack enable
+# Pin pnpm to match packageManager so corepack doesn't need to download at build.
+RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
+ENV NEXT_TELEMETRY_DISABLED=1
 WORKDIR /app
 
 # ── Build ─────────────────────────────────────────────
