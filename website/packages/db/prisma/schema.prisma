@@ -1,0 +1,430 @@
+// Brother Craft — unified marketplace schema (Postgres).
+// The License / AuditLog models are ported from anti-freecam/license-server
+// and generalized: a License now belongs to a Product/Order/Buyer and supports
+// multiple server activations (LicenseActivation) instead of a single serverId.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Identity & roles ──────────────────────────────────
+
+enum Role {
+  BUYER
+  SELLER
+  ADMIN
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  handle        String         @unique
+  passwordHash  String?
+  avatarUrl     String?
+  role          Role           @default(BUYER)
+  emailVerified DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  seller   SellerProfile?
+  wallet   Wallet?
+  discord  DiscordLink?
+  orders   Order[]
+  reviews  Review[]
+  licenses License[]
+
+  @@map("users")
+}
+
+model SellerProfile {
+  id          String       @id @default(cuid())
+  userId      String       @unique
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName String
+  slug        String       @unique
+  bio         String?
+  banner      String?
+  verified    Boolean      @default(false)
+  status      SellerStatus @default(PENDING)
+  payoutInfo  Json?
+  ratingAvg   Float        @default(0)
+  salesCount  Int          @default(0)
+  createdAt   DateTime     @default(now())
+
+  products Product[]
+  payouts  Payout[]
+
+  @@map("seller_profiles")
+}
+
+enum SellerStatus {
+  PENDING
+  APPROVED
+  SUSPENDED
+}
+
+model DiscordLink {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  discordId       String   @unique
+  discordUsername String
+  rolesSynced     Boolean  @default(false)
+  linkedAt        DateTime @default(now())
+
+  @@map("discord_links")
+}
+
+// One-time codes for linking a Discord account to a marketplace user.
+model DiscordLinkCode {
+  code      String   @id
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@map("discord_link_codes")
+}
+
+// ── Catalog ───────────────────────────────────────────
+
+model Category {
+  id       String     @id @default(cuid())
+  name     String
+  slug     String     @unique
+  parentId String?
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryTree")
+  products Product[]
+
+  @@map("categories")
+}
+
+enum ProductType {
+  DIGITAL
+  SERVICE
+}
+
+enum ProductStatus {
+  DRAFT
+  PENDING_REVIEW
+  PUBLISHED
+  REJECTED
+  DELISTED
+}
+
+model Product {
+  id             String        @id @default(cuid())
+  sellerId       String
+  seller         SellerProfile @relation(fields: [sellerId], references: [id])
+  categoryId     String
+  category       Category      @relation(fields: [categoryId], references: [id])
+  title          String
+  slug           String        @unique
+  summary        String
+  description    String // markdown
+  priceCents     Int
+  currency       String        @default("BDT")
+  type           ProductType   @default(DIGITAL)
+  status         ProductStatus @default(DRAFT)
+  licenseGated   Boolean       @default(false)
+  licensePrefix  String        @default("BC") // per-product license key prefix
+  maxActivations Int           @default(1)
+  coverImage     String?
+  gallery        String[]
+  tags           String[]
+  downloadsCount Int           @default(0)
+  ratingAvg      Float         @default(0)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  versions   Version[]
+  reviews    Review[]
+  orderItems OrderItem[]
+  licenses   License[]
+
+  @@index([status, categoryId])
+  @@map("products")
+}
+
+model Version {
+  id        String        @id @default(cuid())
+  productId String
+  product   Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  semver    String
+  changelog String?
+  status    ProductStatus @default(DRAFT)
+  fileId    String?       @unique
+  file      FileAsset?    @relation(fields: [fileId], references: [id])
+  createdAt DateTime      @default(now())
+
+  @@unique([productId, semver])
+  @@map("versions")
+}
+
+model FileAsset {
+  id              String   @id @default(cuid())
+  storageKey      String   @unique
+  sizeBytes       Int
+  checksumSha256  String
+  contentType     String
+  virusScanStatus String   @default("PENDING")
+  createdAt       DateTime @default(now())
+
+  version Version?
+
+  @@map("file_assets")
+}
+
+// ── Orders, payments, money ───────────────────────────
+
+enum OrderStatus {
+  PENDING
+  PAID
+  ESCROW_HELD
+  COMPLETED
+  REFUNDED
+  DISPUTED
+  CANCELLED
+}
+
+model Order {
+  id           String      @id @default(cuid())
+  buyerId      String
+  buyer        User        @relation(fields: [buyerId], references: [id])
+  status       OrderStatus @default(PENDING)
+  subtotalCents Int
+  feeCents     Int         @default(0)
+  totalCents   Int
+  currency     String      @default("BDT")
+  createdAt    DateTime    @default(now())
+  paidAt       DateTime?
+
+  items       OrderItem[]
+  transaction Transaction?
+  licenses    License[]
+  escrowHolds EscrowHold[]
+  dispute     Dispute?
+
+  @@index([buyerId, status])
+  @@map("orders")
+}
+
+model OrderItem {
+  id             String  @id @default(cuid())
+  orderId        String
+  order          Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId      String
+  product        Product @relation(fields: [productId], references: [id])
+  versionId      String?
+  sellerId       String
+  unitPriceCents Int
+
+  @@map("order_items")
+}
+
+enum PaymentProvider {
+  SSLCOMMERZ
+  AAMARPAY
+  WALLET
+}
+
+enum TransactionStatus {
+  PENDING
+  VERIFIED
+  FAILED
+  REFUNDED
+}
+
+model Transaction {
+  id          String            @id @default(cuid())
+  orderId     String            @unique
+  order       Order             @relation(fields: [orderId], references: [id])
+  provider    PaymentProvider
+  providerRef String?
+  amountCents Int
+  status      TransactionStatus @default(PENDING)
+  rawPayload  Json?
+  verifiedAt  DateTime?
+  createdAt   DateTime          @default(now())
+
+  @@map("transactions")
+}
+
+// Idempotency guard for payment IPNs / webhooks.
+model WebhookEvent {
+  id          String   @id @default(cuid())
+  provider    String
+  providerRef String   @unique
+  payload     Json
+  processedAt DateTime @default(now())
+
+  @@map("webhook_events")
+}
+
+model Wallet {
+  id          String        @id @default(cuid())
+  userId      String        @unique
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balanceCents Int          @default(0)
+  currency    String        @default("BDT")
+  entries     WalletEntry[]
+
+  @@map("wallets")
+}
+
+enum WalletEntryType {
+  CREDIT
+  DEBIT
+  HOLD
+  RELEASE
+  PAYOUT
+  REFUND
+}
+
+// Append-only ledger. Never mutate balances directly — append an entry.
+model WalletEntry {
+  id           String          @id @default(cuid())
+  walletId     String
+  wallet       Wallet          @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  type         WalletEntryType
+  amountCents  Int
+  refType      String?
+  refId        String?
+  balanceAfter Int
+  createdAt    DateTime        @default(now())
+
+  @@index([walletId, createdAt])
+  @@map("wallet_entries")
+}
+
+enum EscrowState {
+  HELD
+  RELEASED
+  REFUNDED
+}
+
+model EscrowHold {
+  id          String      @id @default(cuid())
+  orderId     String
+  order       Order       @relation(fields: [orderId], references: [id])
+  sellerId    String
+  amountCents Int
+  state       EscrowState @default(HELD)
+  holdUntil   DateTime
+  releasedAt  DateTime?
+  createdAt   DateTime    @default(now())
+
+  @@map("escrow_holds")
+}
+
+model Payout {
+  id          String        @id @default(cuid())
+  sellerId    String
+  seller      SellerProfile @relation(fields: [sellerId], references: [id])
+  amountCents Int
+  method      String
+  status      String        @default("REQUESTED")
+  providerRef String?
+  requestedAt DateTime      @default(now())
+  processedAt DateTime?
+
+  @@map("payouts")
+}
+
+// ── Reviews & disputes ────────────────────────────────
+
+model Review {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  buyerId   String
+  buyer     User     @relation(fields: [buyerId], references: [id])
+  orderId   String
+  rating    Int // 1..5
+  body      String?
+  sellerReply String?
+  status    String   @default("VISIBLE")
+  createdAt DateTime @default(now())
+
+  @@unique([buyerId, productId])
+  @@map("reviews")
+}
+
+model Dispute {
+  id         String   @id @default(cuid())
+  orderId    String   @unique
+  order      Order    @relation(fields: [orderId], references: [id])
+  openedBy   String
+  reason     String
+  status     String   @default("OPEN")
+  resolution String?
+  createdAt  DateTime @default(now())
+
+  @@map("disputes")
+}
+
+// ── Licensing (ported & generalized from anti-freecam) ─
+
+enum LicenseStatus {
+  ACTIVE
+  REVOKED
+  EXPIRED
+}
+
+model License {
+  id             String        @id @default(cuid())
+  key            String        @unique
+  productId      String
+  product        Product       @relation(fields: [productId], references: [id])
+  orderId        String?
+  order          Order?        @relation(fields: [orderId], references: [id])
+  buyerId        String?
+  buyer          User?         @relation(fields: [buyerId], references: [id])
+  status         LicenseStatus @default(ACTIVE)
+  maxActivations Int           @default(1)
+  pluginVersion  String?
+  expiresAt      DateTime?
+  revokedAt      DateTime?
+  lastValidAt    DateTime?
+  notes          String?
+  createdAt      DateTime      @default(now())
+
+  activations LicenseActivation[]
+  auditLogs   AuditLog[]
+
+  @@index([productId])
+  @@map("licenses")
+}
+
+// Replaces the single serverId column — supports N bound servers (maxActivations).
+model LicenseActivation {
+  id            String   @id @default(cuid())
+  licenseId     String
+  license       License  @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  serverId      String
+  pluginVersion String?
+  ipAddress     String?
+  firstSeenAt   DateTime @default(now())
+  lastValidAt   DateTime @default(now())
+
+  @@unique([licenseId, serverId])
+  @@map("license_activations")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  licenseId String
+  license   License  @relation(fields: [licenseId], references: [id], onDelete: Cascade)
+  event     String
+  serverId  String?
+  ipAddress String?
+  timestamp DateTime @default(now())
+
+  @@index([licenseId, timestamp])
+  @@map("audit_logs")
+}
