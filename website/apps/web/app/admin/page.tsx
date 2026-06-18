@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/session";
 import { formatPrice } from "@/lib/utils";
 import { StatusPill } from "@/components/ui";
 import { timeAgo } from "@/lib/utils";
+import { getPlatformEarnings, getPlatformPayout } from "@/lib/platform";
 import {
   approveSeller,
   setProductStatus,
@@ -54,6 +55,10 @@ export default async function AdminPage() {
       ]),
     ]);
   const [userCount, productCount, orderAgg] = totals;
+  const [platformEarnings, payout] = await Promise.all([
+    getPlatformEarnings(),
+    Promise.resolve(getPlatformPayout()),
+  ]);
 
   return (
     <div className="container-page py-8">
@@ -64,6 +69,23 @@ export default async function AdminPage() {
         <Stat label="Live products" value={productCount} />
         <Stat label="Orders" value={orderAgg._count} />
         <Stat label="GMV" value={formatPrice(orderAgg._sum.totalCents ?? 0)} />
+      </div>
+
+      {/* Platform earnings → owner's bKash/Nagad */}
+      <div className="mt-4 card flex flex-wrap items-center justify-between gap-4 border-accent/30 bg-accent/5 p-5">
+        <div>
+          <p className="text-sm text-muted">
+            Your platform earnings ({payout.feePercent}% of every sale)
+          </p>
+          <p className="text-3xl font-bold text-accent">
+            {formatPrice(platformEarnings)}
+          </p>
+        </div>
+        <div className="text-right text-sm">
+          <p className="text-muted">Payout to</p>
+          <p className="font-mono font-semibold">bKash {payout.bkash}</p>
+          <p className="font-mono font-semibold">Nagad {payout.nagad}</p>
+        </div>
       </div>
 
       {/* Seller approvals */}

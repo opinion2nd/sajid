@@ -16,6 +16,7 @@ const nextConfig = {
     "@brothercraft/license-core",
     "@brothercraft/payments",
     "@brothercraft/storage",
+    "@brothercraft/email",
   ],
 };
 

@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import prisma from "@brothercraft/db";
 import { getStorage } from "@brothercraft/storage";
+import { sendEmail, payoutEmail } from "@brothercraft/email";
 import { requireUser } from "@/lib/session";
+import { formatPrice } from "@/lib/utils";
 
 function slugify(s: string) {
   return s
@@ -245,6 +247,15 @@ export async function requestPayout(formData: FormData) {
       },
     });
   });
+
+  if (user.email) {
+    const { subject, html } = payoutEmail({
+      sellerName: seller.displayName,
+      amountLabel: formatPrice(amountCents),
+      method,
+    });
+    await sendEmail({ to: user.email, subject, html }).catch(() => {});
+  }
   revalidatePath("/seller/payouts");
 }
 
