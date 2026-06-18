@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getPaymentProvider } from "@brothercraft/payments";
 import { getCurrentUser } from "@/lib/session";
-import { createOrder } from "@/lib/orders";
+import { createOrder, fulfillOrder } from "@/lib/orders";
 
 const schema = z.object({
   productIds: z.array(z.string()).min(1),
@@ -29,6 +29,16 @@ export async function POST(req: Request) {
   );
 
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
+
+  // Free order (all items priced at 0) — no payment needed, fulfil directly.
+  if (order.totalCents === 0) {
+    const ref = `free_${order.id}`;
+    await fulfillOrder(order.id, ref);
+    return NextResponse.json({
+      redirectUrl: `${appUrl}/checkout/success?orderId=${order.id}&providerRef=${ref}`,
+    });
+  }
+
   const session = await provider.createSession({
     orderId: order.id,
     amountCents: order.totalCents,

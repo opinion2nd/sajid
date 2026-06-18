@@ -1,7 +1,11 @@
 import prisma from "@brothercraft/db";
 import { mintLicense } from "@brothercraft/license-core";
+import { sendEmail, receiptEmail } from "@brothercraft/email";
+import { formatPrice } from "@/lib/utils";
 
-const PLATFORM_FEE_BPS = 1000; // 10% marketplace fee
+// Marketplace fee in basis points (default 10%). Configurable via env.
+const PLATFORM_FEE_BPS =
+  Math.round(Number(process.env.PLATFORM_FEE_PERCENT ?? 10) * 100) || 1000;
 
 export type CheckoutItem = { productId: string };
 
@@ -50,7 +54,7 @@ export async function createOrder(
  * escrow, and credits the seller wallet ledger (HOLD entry).
  */
 export async function fulfillOrder(orderId: string, providerRef: string) {
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx) => {
     // Idempotency guard.
     const seen = await tx.webhookEvent.findUnique({ where: { providerRef } });
     if (seen) return { alreadyProcessed: true };
@@ -86,9 +90,11 @@ export async function fulfillOrder(orderId: string, providerRef: string) {
         (bySeller.get(item.sellerId) ?? 0) + item.unitPriceCents
       );
     }
+    let platformFeeTotal = 0;
     for (const [sellerId, gross] of bySeller) {
       const fee = Math.round((gross * PLATFORM_FEE_BPS) / 10000);
       const net = gross - fee;
+      platformFeeTotal += fee;
       await tx.escrowHold.create({
         data: {
           orderId,
@@ -125,6 +131,33 @@ export async function fulfillOrder(orderId: string, providerRef: string) {
       }
     }
 
+    // Platform's 10% fee → the marketplace owner's wallet (paid out to the
+    // configured bKash/Nagad number). Tracked as CREDIT entries on the first
+    // ADMIN account so the admin dashboard can total platform earnings.
+    if (platformFeeTotal > 0) {
+      const admin = await tx.user.findFirst({
+        where: { role: "ADMIN" },
+        select: { id: true },
+      });
+      if (admin) {
+        const wallet = await tx.wallet.upsert({
+          where: { userId: admin.id },
+          update: { balanceCents: { increment: platformFeeTotal } },
+          create: { userId: admin.id, balanceCents: platformFeeTotal },
+        });
+        await tx.walletEntry.create({
+          data: {
+            walletId: wallet.id,
+            type: "CREDIT",
+            amountCents: platformFeeTotal,
+            refType: "platform_fee",
+            refId: orderId,
+            balanceAfter: wallet.balanceCents,
+          },
+        });
+      }
+    }
+
     // Mint licenses for license-gated products + bump download counters.
     for (const item of order.items) {
       if (item.product.licenseGated) {
@@ -148,6 +181,39 @@ export async function fulfillOrder(orderId: string, providerRef: string) {
 
     return { alreadyProcessed: false };
   });
+
+  // Send the receipt + license keys after the transaction commits.
+  if (!result.alreadyProcessed) {
+    await sendReceipt(orderId).catch((e) =>
+      console.error("[email] receipt failed", e)
+    );
+  }
+  return result;
+}
+
+async function sendReceipt(orderId: string) {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: {
+      buyer: { select: { email: true, handle: true } },
+      items: { include: { product: { select: { title: true } } } },
+      licenses: { include: { product: { select: { title: true } } } },
+    },
+  });
+  if (!order?.buyer?.email) return;
+  const { subject, html } = receiptEmail({
+    buyerName: order.buyer.handle,
+    items: order.items.map((i) => ({
+      title: i.product.title,
+      priceLabel: formatPrice(i.unitPriceCents),
+    })),
+    totalLabel: formatPrice(order.totalCents),
+    licenses: order.licenses.map((l) => ({
+      title: l.product.title,
+      key: l.key,
+    })),
+  });
+  await sendEmail({ to: order.buyer.email, subject, html });
 }
 
 /** Has this buyer completed an order containing this product? */

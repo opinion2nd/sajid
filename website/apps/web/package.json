@@ -12,6 +12,7 @@
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",
     "@brothercraft/db": "workspace:*",
+    "@brothercraft/email": "workspace:*",
     "@brothercraft/license-core": "workspace:*",
     "@brothercraft/payments": "workspace:*",
     "@brothercraft/storage": "workspace:*",

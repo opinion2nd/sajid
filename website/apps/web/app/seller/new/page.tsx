@@ -52,6 +52,9 @@ export default async function NewProductPage() {
           <div>
             <label className="label">Price (৳ BDT)</label>
             <input name="price" type="number" min="0" step="1" defaultValue={0} className="input" />
+            <p className="mt-1 text-xs text-muted">
+              Set your own price. Enter 0 to give it away for free.
+            </p>
           </div>
         </div>
         <div>
