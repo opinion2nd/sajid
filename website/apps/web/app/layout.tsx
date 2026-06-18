@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { auth } from "@/auth";
+import { CartProvider } from "@/components/cart";
+import { Navbar } from "@/components/navbar";
+import { Footer } from "@/components/footer";
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.APP_URL ?? "http://localhost:3000"),
   title: {
     default: "Brother Craft — Minecraft Marketplace",
     template: "%s · Brother Craft",
@@ -16,14 +21,25 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await auth();
+  const sessionInfo = session?.user
+    ? { handle: session.user.handle, role: session.user.role }
+    : null;
+
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className="flex min-h-screen flex-col">
+        <CartProvider>
+          <Navbar session={sessionInfo} />
+          <main className="flex-1">{children}</main>
+          <Footer />
+        </CartProvider>
+      </body>
     </html>
   );
 }

@@ -28,18 +28,21 @@ packages/
 ## Quick start
 
 ```bash
-# 1. Bring up Postgres + Redis
+# 1. Bring up Postgres + Redis (or use a local Postgres on :5432)
 docker compose up -d
 
 # 2. Install deps
 pnpm install
 
 # 3. Configure env
-cp .env.example .env   # then fill in secrets
+cp .env.example .env          # defaults run in demo mode, no secrets needed
+cp .env apps/web/.env
+cp .env packages/db/.env
 
-# 4. Generate Prisma client + run migrations
+# 4. Generate Prisma client, migrate, and seed demo data
 pnpm db:generate
 pnpm db:migrate
+pnpm --filter @brothercraft/db seed
 
 # 5. Run the web app
 pnpm dev
@@ -48,6 +51,33 @@ pnpm dev
 - App: http://localhost:3000
 - Health: http://localhost:3000/api/health
 - License API: `POST http://localhost:3000/api/v1/license/validate`
+
+### Demo mode
+
+Out of the box the app runs **without any third-party credentials**:
+
+- **Payments** use a `MockProvider` (instant success). Set `PAYMENT_PROVIDER=sslcommerz`
+  + SSLCommerz store credentials to switch to real bKash/Nagad checkout.
+- **Auth** uses email/password. Discord OAuth activates automatically when
+  `AUTH_DISCORD_ID` / `AUTH_DISCORD_SECRET` are set.
+- **Files** are served as demo artifacts. Set `STORAGE_DRIVER=s3` + R2/S3 creds for
+  real signed-URL downloads.
+
+Seeded demo accounts (password `password123`):
+
+| Email | Role |
+| --- | --- |
+| `admin@brothercraft.dev` | ADMIN |
+| `seller@brothercraft.dev` | SELLER (TheWindows Studios) |
+| `buyer@brothercraft.dev` | BUYER (owns one product) |
+
+### Verify (screenshots + E2E)
+
+```bash
+pnpm --filter @brothercraft/web build && pnpm --filter @brothercraft/web start
+node scripts/screenshot.mjs     # captures desktop + mobile screenshots to /tmp/bc-shots
+node scripts/e2e-purchase.mjs   # logs in, buys a product, asserts a license is minted
+```
 
 ## License API contract (unchanged from anti-freecam)
 
