@@ -46,19 +46,26 @@ same SQLite file). See `dashboard/README.md` for setup.
 ## Deploying on a Pterodactyl panel (e.g. NyctoHost)
 
 If your hosting uses a Pterodactyl panel, request a **Node.js egg/server**
-(this bot is Node.js/TypeScript, not Python). Then:
+(this bot is Node.js/TypeScript, not Python).
+
+Some Node.js eggs let you set a free-form **Startup Command** — if so, set it
+to `bash pterodactyl-start.sh` (see that file for what it does).
+
+Many panels' Node.js eggs are fixed instead (they only run
+`node <Main File>` and offer a "Node Packages" field, with no shell access).
+For those, use `launcher.js`:
 
 1. Upload/clone this `discord-bot/` folder as the server's contents.
-2. Under **Startup > Variables**, set `DISCORD_BOT_TOKEN`, `DISCORD_CLIENT_ID`,
-   `DISCORD_CLIENT_SECRET`, `SESSION_SECRET` (and `DISCORD_REDIRECT_URI` if your
-   panel gives a fixed domain, e.g. `http://yourdomain.com:PORT/api/auth/callback` —
-   register that same URL in the Discord Developer Portal's OAuth2 redirects).
-3. Set the **Startup Command** to: `bash pterodactyl-start.sh`
-4. Start the server. This single process starts the bot in the background and
-   runs the **web dashboard** in the foreground on the panel's allocated port —
-   open `http://<your-panel-address>:<port>` in a browser to use it.
-
-See `pterodactyl-start.sh` for what it does and which env vars it expects.
+2. Create `.env` (bot) and `dashboard/.env.local` (dashboard) from their
+   `.env.example` files and fill in the values (see Setup above and
+   `dashboard/README.md`).
+3. Under **Startup**, set the **Main File** variable to `discord-bot/launcher.js`
+   (or `launcher.js` if you uploaded this folder's contents directly to the
+   container root), and clear/empty the **Node Packages** field.
+4. Start the server. `launcher.js` installs dependencies if missing, registers
+   slash commands, runs the bot, builds the dashboard, and serves it on the
+   panel's allocated port (`$SERVER_PORT`) — open
+   `http://<your-panel-address>:<port>` in a browser once it's up.
 
 ## Notes
 
