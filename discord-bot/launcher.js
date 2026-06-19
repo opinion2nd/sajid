@@ -14,13 +14,13 @@ const dashboardDir = path.join(__dirname, "dashboard");
 
 function run(cmd, args, cwd) {
   return new Promise((resolve, reject) => {
-    const proc = spawn(cmd, args, { cwd, stdio: "inherit" });
+    const proc = spawn(cmd, args, { cwd, stdio: "inherit", shell: true });
     proc.on("exit", (code) => (code === 0 ? resolve() : reject(new Error(`${cmd} ${args.join(" ")} exited with ${code}`))));
   });
 }
 
 function spawnLong(cmd, args, cwd) {
-  const proc = spawn(cmd, args, { cwd, stdio: "inherit" });
+  const proc = spawn(cmd, args, { cwd, stdio: "inherit", shell: true });
   proc.on("exit", (code) => console.error(`[launcher] ${cmd} ${args.join(" ")} exited with code ${code}`));
   return proc;
 }
