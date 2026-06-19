@@ -1,0 +1,35 @@
+# Render.com Blueprint — one-click deploy for Brother Craft.
+# Render reads this file from the repo root, auto-creates the web service +
+# PostgreSQL, wires DATABASE_URL, generates AUTH_SECRET, runs migrations + seed,
+# and starts the app. You only connect the repo and click "Apply".
+
+services:
+  - type: web
+    name: brother-craft
+    runtime: node
+    plan: free
+    rootDir: website
+    buildCommand: pnpm install && pnpm --filter @brothercraft/db generate && pnpm --filter @brothercraft/web build
+    startCommand: pnpm --filter @brothercraft/db migrate:deploy && pnpm --filter @brothercraft/db seed && pnpm --filter @brothercraft/web start
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: brother-craft-db
+          property: connectionString
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: NODE_VERSION
+        value: "20"
+      - key: PAYMENT_PROVIDER
+        value: mock
+      - key: STORAGE_DRIVER
+        value: local
+      - key: PLATFORM_BKASH_NUMBER
+        value: "01811799277"
+      - key: PLATFORM_NAGAD_NUMBER
+        value: "01811799277"
+
+databases:
+  - name: brother-craft-db
+    plan: free
