@@ -1,47 +1,57 @@
 # Running Brother Craft on Termux (Android)
 
-Run the whole marketplace on your phone with Termux. This runs it **locally**
-(only your phone can see `localhost:3000`). To share it online, add a free tunnel
-(Cloudflare Tunnel / ngrok) — see the bottom.
+Run the whole marketplace on your phone. This runs it **locally**
+(`localhost:3000`); add a free tunnel to share it online (see the bottom).
 
-> Needs a decent phone (4GB+ RAM) and patience — the first install + build takes
-> a few minutes. Demo mode: no bKash/Discord/cloud accounts required.
+> **Important:** the database engine (Prisma) does **not** run on bare Termux
+> (Android/bionic libc). So we install a small **Debian** inside Termux — that
+> gives a normal Linux where everything works. Needs a decent phone (4GB+ RAM)
+> and patience. Demo mode: no bKash/Discord/cloud accounts required.
 
-## 1. Install Termux
+## 1. Install Termux + storage
 
 Install **Termux** from F-Droid (https://f-droid.org/packages/com.termux/) —
-the Play Store version is outdated.
-
-## 2. Get the project
-
-If you have the ZIP, move it into Termux and unzip:
+the Play Store version is outdated. Then:
 
 ```bash
-pkg install -y unzip
-termux-setup-storage          # allow storage access (tap Allow)
+termux-setup-storage     # tap Allow
+```
+
+(Download the project ZIP from chat — it lands in `/sdcard/Download/`.)
+
+## 2. Install Debian inside Termux
+
+```bash
+pkg update -y && pkg install -y proot-distro
+proot-distro install debian
+proot-distro login debian
+```
+
+You are now **inside Debian** (prompt shows `root@localhost`). Do the rest here.
+
+## 3. Get the project + set everything up
+
+```bash
 cd ~
-unzip /sdcard/Download/brother-craft.zip -d brother-craft
-cd brother-craft/website
+apt-get update && apt-get install -y unzip
+unzip -o /sdcard/Download/brother-craft.zip -d brother-craft
+cd brother-craft
+bash scripts/debian-setup.sh
 ```
 
-(Or clone with git: `pkg install git && git clone <your-repo> && cd sajid/website`)
-
-## 3. One command to set everything up
-
-```bash
-bash scripts/termux-setup.sh
-```
-
-This installs Node + PostgreSQL, creates the database, installs dependencies,
-runs migrations, and seeds demo data.
+`debian-setup.sh` installs Node + PostgreSQL, creates the database, installs
+dependencies, migrates and seeds demo data.
 
 ## 4. Start the site
 
 ```bash
-bash scripts/termux-run.sh
+bash scripts/debian-run.sh
 ```
 
 Open **http://localhost:3000** in your phone's browser. 🎉
+
+> Next time: `proot-distro login debian` → `cd ~/brother-craft` →
+> `bash scripts/debian-run.sh`.
 
 Demo logins (password `password123`):
 `admin@brothercraft.dev` · `seller@brothercraft.dev` · `buyer@brothercraft.dev`
