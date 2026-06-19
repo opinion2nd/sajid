@@ -43,6 +43,23 @@ same SQLite file). See `dashboard/README.md` for setup.
 4. Register slash commands: `npm run deploy-commands`
 5. Start the bot: `npm run dev` (auto-reload) or `npm start`
 
+## Deploying on a Pterodactyl panel (e.g. NyctoHost)
+
+If your hosting uses a Pterodactyl panel, request a **Node.js egg/server**
+(this bot is Node.js/TypeScript, not Python). Then:
+
+1. Upload/clone this `discord-bot/` folder as the server's contents.
+2. Under **Startup > Variables**, set `DISCORD_BOT_TOKEN`, `DISCORD_CLIENT_ID`,
+   `DISCORD_CLIENT_SECRET`, `SESSION_SECRET` (and `DISCORD_REDIRECT_URI` if your
+   panel gives a fixed domain, e.g. `http://yourdomain.com:PORT/api/auth/callback` —
+   register that same URL in the Discord Developer Portal's OAuth2 redirects).
+3. Set the **Startup Command** to: `bash pterodactyl-start.sh`
+4. Start the server. This single process starts the bot in the background and
+   runs the **web dashboard** in the foreground on the panel's allocated port —
+   open `http://<your-panel-address>:<port>` in a browser to use it.
+
+See `pterodactyl-start.sh` for what it does and which env vars it expects.
+
 ## Notes
 
 - Timeouts use Discord's native timeout feature (max 28 days) instead of a custom mute role.
