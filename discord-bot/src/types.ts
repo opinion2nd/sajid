@@ -2,6 +2,7 @@ import type { ChatInputCommandInteraction, Collection } from "discord.js";
 
 export interface CommandData {
   name: string;
+  description: string;
   toJSON(): unknown;
 }
 
@@ -13,5 +14,6 @@ export interface Command {
 declare module "discord.js" {
   interface Client {
     commands: Collection<string, Command>;
+    commandCategories: Collection<string, string[]>;
   }
 }

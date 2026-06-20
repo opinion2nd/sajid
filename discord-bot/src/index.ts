@@ -25,9 +25,12 @@ const client = new Client({
 });
 
 client.commands = new Collection();
+client.commandCategories = new Collection();
 
 async function main() {
-  client.commands = await loadCommands();
+  const { commands, categories } = await loadCommands();
+  client.commands = commands;
+  client.commandCategories = categories;
   await loadEvents(client);
   await client.login(token);
 }
@@ -35,4 +38,12 @@ async function main() {
 main().catch((error) => {
   console.error("Failed to start bot:", error);
   process.exit(1);
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled promise rejection:", reason);
+});
+
+process.on("uncaughtException", (error) => {
+  console.error("Uncaught exception:", error);
 });

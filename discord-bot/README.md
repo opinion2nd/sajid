@@ -19,7 +19,7 @@ No external services required — all data is stored locally in `data/bot.sqlite
 - **Snipe** — `/snipe` shows the last deleted message in a channel (5 min TTL)
 - **Polls & Suggestions** — `/poll` (up to 5 options, live vote-tally buttons), `/suggestion` (upvote/downvote buttons)
 - **Custom embeds** — `/embed` for staff-sent announcements
-- **General** — `/ping`, `/botinfo`, `/serverinfo`, `/userinfo`, `/avatar`
+- **General** — `/ping`, `/botinfo`, `/serverinfo`, `/userinfo`, `/avatar`, `/help` (auto-generated, grouped by category, optional `category:` filter)
 - **Fun** — `/8ball`, `/coinflip`, `/roll`, `/rps`, `/meme`, `/joke`, `/fact`, `/catfact`, `/hug`, `/kiss`, `/slap`, `/dance`, `/compliment`, `/roast`, `/ship` (gif-based commands use the free, keyless [otakugifs.xyz](https://otakugifs.xyz) API; meme/joke/fact commands use other free keyless APIs)
 - **Games** — `/tictactoe`, `/connectfour` (both 1v1, button-driven), `/2048` (solo, button-driven)
 

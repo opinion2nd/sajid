@@ -13,7 +13,7 @@ if (!token || !clientId) {
   process.exit(1);
 }
 
-const commands = await loadCommands();
+const { commands } = await loadCommands();
 const body = commands.map((c) => c.data.toJSON());
 
 const rest = new REST({ version: "10" }).setToken(token);
