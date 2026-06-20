@@ -8,7 +8,8 @@ No external services required — all data is stored locally in `data/bot.sqlite
 - **Moderation** — `/kick`, `/ban`, `/unban`, `/timeout set|remove`, `/warn add|list|clear`, `/purge`
 - **Automod** — `/automod toggle|settings|status` (anti-invite, anti-caps, anti-spam, mention spam limit)
 - **Tickets** — `/ticket panel|close|add|remove`, button-based ticket creation with per-user private channels
-- **Leveling** — automatic XP on messages, `/rank`, `/leaderboard`
+- **Leveling** — automatic XP on messages, image-based level-up cards, `/rank` (image rank card), `/leaderboard`
+- **Economy** — `/balance`, `/daily`, `/work`, `/give`, `/baltop` (per-server coin balances)
 - **Giveaways** — `/giveaway start|end|reroll|list`, button-based entry
 - **Welcome / Leave / Reaction roles** — `/config welcome|leave`, `/role-panel`
 - **Server config** — `/config modlog|welcome|leave|levelup|ticketcategory|ticketlog|ticketrole|suggestions`

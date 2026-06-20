@@ -9,6 +9,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   automod: "🚫 Automod",
   tickets: "🎫 Tickets",
   leveling: "📈 Leveling",
+  economy: "💰 Economy",
   giveaway: "🎉 Giveaways",
   welcome: "👋 Welcome / Leave",
   utility: "🧰 Utility",
