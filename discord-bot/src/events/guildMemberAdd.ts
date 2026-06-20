@@ -1,8 +1,9 @@
-import { Events, type GuildMember } from "discord.js";
+import { Events, AttachmentBuilder, type GuildMember } from "discord.js";
 import { getGuildConfig } from "../db.js";
 import { renderTemplate } from "../util/format.js";
 import { resolveUsedInviteAndCredit } from "../modules/invites.js";
 import { recordJoinAndCheckRaid } from "../modules/antiraid.js";
+import { renderWelcomeCard } from "../modules/welcomeCard.js";
 import { logModAction } from "../modules/modlog.js";
 
 export const name = Events.GuildMemberAdd;
@@ -50,5 +51,19 @@ export async function execute(member: GuildMember) {
     serverName: member.guild.name,
     memberCount: member.guild.memberCount,
   });
-  await channel.send(text).catch(() => {});
+
+  try {
+    const buffer = await renderWelcomeCard({
+      username: member.user.username,
+      avatarURL: member.user.displayAvatarURL({ extension: "png", size: 256 }),
+      serverName: member.guild.name,
+      memberCount: member.guild.memberCount,
+      mode: "welcome",
+    });
+    const file = new AttachmentBuilder(buffer, { name: "welcome.png" });
+    await channel.send({ content: text, files: [file] });
+  } catch {
+    // Fall back to a plain text welcome if card rendering fails.
+    await channel.send(text).catch(() => {});
+  }
 }
