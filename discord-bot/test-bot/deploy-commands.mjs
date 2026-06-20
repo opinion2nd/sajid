@@ -9,6 +9,17 @@ const command = new SlashCommandBuilder()
   .addSubcommand((sc) => sc.setName("nuke-roles").setDescription("Create + rapidly delete roles (tests /security nuke)"))
   .addSubcommand((sc) =>
     sc
+      .setName("nuke-webhooks")
+      .setDescription("Create + rapidly delete webhooks in a channel (tests webhook-nuke detection)")
+      .addChannelOption((o) =>
+        o.setName("channel").setDescription("Channel to create webhooks in").setRequired(true).addChannelTypes(ChannelType.GuildText)
+      )
+  )
+  .addSubcommand((sc) =>
+    sc.setName("nuke-permissions").setDescription("Create temp channels and rapidly lock everyone out of them (tests permission-nuke detection)")
+  )
+  .addSubcommand((sc) =>
+    sc
       .setName("automod-invite")
       .setDescription("Send a fake invite link (tests automod anti_invite)")
       .addChannelOption((o) =>

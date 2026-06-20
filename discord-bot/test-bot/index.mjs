@@ -52,6 +52,43 @@ async function nukeRoles(guild) {
   return lines;
 }
 
+async function nukeWebhooks(channel) {
+  const lines = ["Creating 4 temporary webhooks in this channel..."];
+  const hooks = [];
+  for (let i = 0; i < 4; i++) {
+    const hook = await channel.createWebhook({ name: `nuke-test-hook-${i + 1}` });
+    hooks.push(hook);
+    lines.push(`Created webhook ${hook.name}`);
+  }
+  lines.push("Waiting 2s, then deleting all of them rapidly...");
+  await new Promise((r) => setTimeout(r, 2000));
+  for (const hook of hooks) {
+    await hook.delete("nuke-test").catch((err) => lines.push(`Failed to delete ${hook.name}: ${err.message}`));
+    lines.push(`Deleted webhook ${hook.name}`);
+  }
+  return lines;
+}
+
+async function nukePermissions(guild) {
+  const lines = ["Creating 4 temporary channels to churn permission overwrites on..."];
+  const channels = [];
+  for (let i = 0; i < 4; i++) {
+    const ch = await guild.channels.create({ name: `perm-test-${i + 1}`, type: 0 });
+    channels.push(ch);
+    lines.push(`Created #${ch.name}`);
+  }
+  lines.push("Rapidly denying @everyone's View Channel permission on each...");
+  for (const ch of channels) {
+    await ch.permissionOverwrites.edit(guild.roles.everyone, { ViewChannel: false }, { reason: "nuke-test" });
+    lines.push(`Locked #${ch.name}`);
+  }
+  lines.push("Cleaning up the temporary channels...");
+  for (const ch of channels) {
+    await ch.delete("nuke-test").catch((err) => lines.push(`Failed to delete ${ch.name}: ${err.message}`));
+  }
+  return lines;
+}
+
 async function automodInvite(channel) {
   await channel.send("hey check out my server discord.gg/fake-invite-test");
   return ["Sent a fake invite link. Should get deleted/punished if anti_invite is on."];
@@ -116,6 +153,12 @@ client.on("interactionCreate", async (interaction) => {
         break;
       case "nuke-roles":
         lines = await nukeRoles(guild);
+        break;
+      case "nuke-webhooks":
+        lines = await nukeWebhooks(channel);
+        break;
+      case "nuke-permissions":
+        lines = await nukePermissions(guild);
         break;
       case "automod-invite":
         lines = await automodInvite(channel);

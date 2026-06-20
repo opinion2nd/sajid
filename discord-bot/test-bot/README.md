@@ -30,6 +30,8 @@ In Discord, type `/test` and pick a subcommand:
 
 - `/test nuke-channels` — creates + rapidly deletes 4 channels (tests `/security nuke`)
 - `/test nuke-roles` — creates + rapidly deletes 4 roles (tests `/security nuke`)
+- `/test nuke-webhooks channel:#general` — creates + rapidly deletes 4 webhooks
+- `/test nuke-permissions` — creates temp channels and rapidly locks `@everyone` out of each, then cleans them up
 - `/test automod-invite channel:#general` — sends a fake invite link
 - `/test automod-caps channel:#general` — sends an ALL-CAPS message
 - `/test automod-spam channel:#general` — sends the same message 4x quickly
