@@ -62,8 +62,9 @@ export async function execute(member: GuildMember) {
     });
     const file = new AttachmentBuilder(buffer, { name: "welcome.png" });
     await channel.send({ content: text, files: [file] });
-  } catch {
+  } catch (err) {
     // Fall back to a plain text welcome if card rendering fails.
+    console.error("[welcomeCard] render failed:", err);
     await channel.send(text).catch(() => {});
   }
 }

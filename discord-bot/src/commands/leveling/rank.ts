@@ -38,9 +38,10 @@ const command: Command = {
       });
       const file = new AttachmentBuilder(buffer, { name: "rank.png" });
       await interaction.editReply({ files: [file] });
-    } catch {
+    } catch (err) {
       // If card rendering fails, fall back to a text summary so the
       // deferred reply never hangs on "thinking…".
+      console.error("[rank] card render failed:", err);
       await interaction.editReply({
         embeds: [infoEmbed(`**${target.username}** — Level ${level}${rank ? ` (Rank #${rank.rank})` : ""}, ${currentLevelXp}/${neededXp} XP`)],
       });

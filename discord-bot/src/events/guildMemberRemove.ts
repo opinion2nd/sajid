@@ -46,7 +46,8 @@ export async function execute(member: GuildMember | PartialGuildMember) {
     });
     const file = new AttachmentBuilder(buffer, { name: "goodbye.png" });
     await channel.send({ content: text, files: [file] });
-  } catch {
+  } catch (err) {
+    console.error("[goodbyeCard] render failed:", err);
     await channel.send(text).catch(() => {});
   }
 }

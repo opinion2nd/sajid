@@ -80,8 +80,9 @@ export async function execute(message: Message) {
         });
         const file = new AttachmentBuilder(buffer, { name: "levelup.png" });
         await channel.send({ content: `🎉 ${message.author}`, files: [file] });
-      } catch {
+      } catch (err) {
         // Fall back to a plain text message if card rendering fails.
+        console.error("[levelCard] render failed:", err);
         await channel.send(`🎉 ${message.author} leveled up to **level ${result.newLevel}**!`).catch(() => {});
       }
     }
