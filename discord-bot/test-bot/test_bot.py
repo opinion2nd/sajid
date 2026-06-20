@@ -10,8 +10,9 @@ is Discord's own network latency and rate limits, which no client can skip.
 
 Setup: copy .env.example to .env and fill in TEST_BOT_TOKEN, TEST_GUILD_ID,
 TEST_OWNER_ID. Enable the "Server Members Intent" in the Bot tab for this
-application (needed for automod-mentions/ghostping). Invite it with
-Manage Channels + Manage Roles + Send Messages, then:
+application (needed for automod-mentions/ghostping/nuke-kicks/nuke-bans).
+Invite it with Manage Channels, Manage Roles, Manage Webhooks, Manage
+Emojis and Stickers, Kick Members, Ban Members, and Send Messages, then:
   pip install -r requirements.txt
   python test_bot.py
 Commands sync to TEST_GUILD_ID automatically on startup. Then in Discord:
@@ -20,6 +21,7 @@ Commands sync to TEST_GUILD_ID automatically on startup. Then in Discord:
 
 import asyncio
 import os
+from typing import Optional
 
 import discord
 from discord import app_commands
@@ -83,6 +85,44 @@ async def nuke_permissions(guild: discord.Guild) -> list[str]:
     for ch, result in zip(channels, results):
         if isinstance(result, Exception):
             lines.append(f"Failed to delete #{ch.name}: {result}")
+    return lines
+
+
+async def nuke_emojis(guild: discord.Guild) -> list[str]:
+    lines = ["Creating 4 temporary emojis (using the bot's own avatar) concurrently..."]
+    avatar_bytes = await client.user.display_avatar.read()
+    emojis = await asyncio.gather(*(guild.create_custom_emoji(name=f"nuke_test_{i + 1}", image=avatar_bytes) for i in range(4)))
+    lines.append("Deleting all of them concurrently...")
+    results = await asyncio.gather(*(e.delete(reason="nuke-test") for e in emojis), return_exceptions=True)
+    for emoji, result in zip(emojis, results):
+        lines.append(f"Failed to delete emoji {emoji.name}: {result}" if isinstance(result, Exception) else f"Deleted emoji {emoji.name}")
+    return lines
+
+
+async def nuke_kicks(guild: discord.Guild, targets: list[discord.User]) -> list[str]:
+    if not targets:
+        return ["No target members provided."]
+    lines = [f"Kicking {len(targets)} member(s) concurrently..."]
+    results = await asyncio.gather(*(guild.kick(user, reason="nuke-test") for user in targets), return_exceptions=True)
+    for user, result in zip(targets, results):
+        lines.append(f"Failed to kick {user}: {result}" if isinstance(result, Exception) else f"Kicked {user}")
+    lines.append("Kicks can't be auto-undone -- send them a fresh invite link to rejoin.")
+    return lines
+
+
+async def nuke_bans(guild: discord.Guild, targets: list[discord.User]) -> list[str]:
+    if not targets:
+        return ["No target members provided."]
+    lines = [f"Banning {len(targets)} member(s) concurrently..."]
+    ban_results = await asyncio.gather(*(guild.ban(user, reason="nuke-test") for user in targets), return_exceptions=True)
+    for user, result in zip(targets, ban_results):
+        lines.append(f"Failed to ban {user}: {result}" if isinstance(result, Exception) else f"Banned {user}")
+    lines.append("Unbanning everyone concurrently...")
+    unban_results = await asyncio.gather(*(guild.unban(user, reason="nuke-test cleanup") for user in targets), return_exceptions=True)
+    for user, result in zip(targets, unban_results):
+        if isinstance(result, Exception):
+            lines.append(f"Failed to unban {user}: {result}")
+    lines.append("Unbanned everyone. They'll still need a fresh invite link to rejoin.")
     return lines
 
 
@@ -168,6 +208,43 @@ async def nuke_webhooks_cmd(interaction: discord.Interaction, channel: discord.T
 )
 async def nuke_permissions_cmd(interaction: discord.Interaction):
     await _run(interaction, nuke_permissions(interaction.guild))
+
+
+@test_group.command(name="nuke-emojis", description="Create + rapidly delete emojis (tests emoji-nuke detection)")
+async def nuke_emojis_cmd(interaction: discord.Interaction):
+    await _run(interaction, nuke_emojis(interaction.guild))
+
+
+@test_group.command(
+    name="nuke-kicks",
+    description="Rapidly kick real members at once (tests kick-nuke detection). Only use on consenting accounts.",
+)
+@app_commands.describe(target1="Member to kick", target2="Member to kick", target3="Member to kick", target4="Member to kick")
+async def nuke_kicks_cmd(
+    interaction: discord.Interaction,
+    target1: discord.User,
+    target2: Optional[discord.User] = None,
+    target3: Optional[discord.User] = None,
+    target4: Optional[discord.User] = None,
+):
+    targets = [t for t in (target1, target2, target3, target4) if t is not None]
+    await _run(interaction, nuke_kicks(interaction.guild, targets))
+
+
+@test_group.command(
+    name="nuke-bans",
+    description="Rapidly ban then auto-unban real members at once (tests ban-nuke detection). Only use on consenting accounts.",
+)
+@app_commands.describe(target1="Member to ban", target2="Member to ban", target3="Member to ban", target4="Member to ban")
+async def nuke_bans_cmd(
+    interaction: discord.Interaction,
+    target1: discord.User,
+    target2: Optional[discord.User] = None,
+    target3: Optional[discord.User] = None,
+    target4: Optional[discord.User] = None,
+):
+    targets = [t for t in (target1, target2, target3, target4) if t is not None]
+    await _run(interaction, nuke_bans(interaction.guild, targets))
 
 
 @test_group.command(name="automod-invite", description="Send a fake invite link (tests automod anti_invite)")

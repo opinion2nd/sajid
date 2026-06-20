@@ -3,10 +3,16 @@
 // your main bot -- the main bot is exempt from its own anti-nuke
 // punishment, so it can't usefully test itself.
 //
+// Every create/delete/kick/ban burst below fires concurrently
+// (Promise.all/allSettled) instead of looping with sleeps, so each test
+// runs as fast as Discord's API allows.
+//
 // Setup: copy .env.example to .env and fill in TEST_BOT_TOKEN,
 // TEST_CLIENT_ID, TEST_GUILD_ID. Enable the "Server Members Intent" in the
-// Bot tab for this application (needed for automod-mentions/ghostping).
-// Invite it with Manage Channels + Manage Roles + Send Messages, then:
+// Bot tab for this application (needed for automod-mentions/ghostping/
+// nuke-kicks/nuke-bans). Invite it with Manage Channels, Manage Roles,
+// Manage Webhooks, Manage Emojis and Stickers, Kick Members, Ban Members,
+// and Send Messages, then:
 //   npm install
 //   npm run deploy-commands
 //   npm start
@@ -19,73 +25,75 @@ const client = new Client({
 });
 
 async function nukeChannels(guild) {
-  const lines = ["Creating 4 temporary channels..."];
-  const channels = [];
-  for (let i = 0; i < 4; i++) {
-    const ch = await guild.channels.create({ name: `nuke-test-${i + 1}`, type: 0 });
-    channels.push(ch);
-    lines.push(`Created #${ch.name}`);
-  }
-  lines.push("Waiting 2s, then deleting all of them rapidly...");
-  await new Promise((r) => setTimeout(r, 2000));
-  for (const ch of channels) {
-    await ch.delete("nuke-test").catch((err) => lines.push(`Failed to delete ${ch.name}: ${err.message}`));
-    lines.push(`Deleted #${ch.name}`);
-  }
+  const lines = ["Creating 4 channels concurrently..."];
+  const channels = await Promise.all(Array.from({ length: 4 }, (_, i) => guild.channels.create({ name: `nuke-test-${i + 1}`, type: 0 })));
+  lines.push("Deleting all of them concurrently...");
+  const results = await Promise.allSettled(channels.map((ch) => ch.delete("nuke-test")));
+  results.forEach((r, i) => lines.push(r.status === "fulfilled" ? `Deleted #${channels[i].name}` : `Failed to delete #${channels[i].name}: ${r.reason?.message}`));
   return lines;
 }
 
 async function nukeRoles(guild) {
-  const lines = ["Creating 4 temporary roles..."];
-  const roles = [];
-  for (let i = 0; i < 4; i++) {
-    const role = await guild.roles.create({ name: `nuke-test-role-${i + 1}` });
-    roles.push(role);
-    lines.push(`Created role ${role.name}`);
-  }
-  lines.push("Waiting 2s, then deleting all of them rapidly...");
-  await new Promise((r) => setTimeout(r, 2000));
-  for (const role of roles) {
-    await role.delete("nuke-test").catch((err) => lines.push(`Failed to delete ${role.name}: ${err.message}`));
-    lines.push(`Deleted role ${role.name}`);
-  }
+  const lines = ["Creating 4 roles concurrently..."];
+  const roles = await Promise.all(Array.from({ length: 4 }, (_, i) => guild.roles.create({ name: `nuke-test-role-${i + 1}` })));
+  lines.push("Deleting all of them concurrently...");
+  const results = await Promise.allSettled(roles.map((role) => role.delete("nuke-test")));
+  results.forEach((r, i) => lines.push(r.status === "fulfilled" ? `Deleted role ${roles[i].name}` : `Failed to delete ${roles[i].name}: ${r.reason?.message}`));
   return lines;
 }
 
 async function nukeWebhooks(channel) {
-  const lines = ["Creating 4 temporary webhooks in this channel..."];
-  const hooks = [];
-  for (let i = 0; i < 4; i++) {
-    const hook = await channel.createWebhook({ name: `nuke-test-hook-${i + 1}` });
-    hooks.push(hook);
-    lines.push(`Created webhook ${hook.name}`);
-  }
-  lines.push("Waiting 2s, then deleting all of them rapidly...");
-  await new Promise((r) => setTimeout(r, 2000));
-  for (const hook of hooks) {
-    await hook.delete("nuke-test").catch((err) => lines.push(`Failed to delete ${hook.name}: ${err.message}`));
-    lines.push(`Deleted webhook ${hook.name}`);
-  }
+  const lines = ["Creating 4 webhooks concurrently..."];
+  const hooks = await Promise.all(Array.from({ length: 4 }, (_, i) => channel.createWebhook({ name: `nuke-test-hook-${i + 1}` })));
+  lines.push("Deleting all of them concurrently...");
+  const results = await Promise.allSettled(hooks.map((hook) => hook.delete("nuke-test")));
+  results.forEach((r, i) => lines.push(r.status === "fulfilled" ? `Deleted webhook ${hooks[i].name}` : `Failed to delete webhook ${hooks[i].name}: ${r.reason?.message}`));
   return lines;
 }
 
 async function nukePermissions(guild) {
-  const lines = ["Creating 4 temporary channels to churn permission overwrites on..."];
-  const channels = [];
-  for (let i = 0; i < 4; i++) {
-    const ch = await guild.channels.create({ name: `perm-test-${i + 1}`, type: 0 });
-    channels.push(ch);
-    lines.push(`Created #${ch.name}`);
-  }
-  lines.push("Rapidly denying @everyone's View Channel permission on each...");
-  for (const ch of channels) {
-    await ch.permissionOverwrites.edit(guild.roles.everyone, { ViewChannel: false }, { reason: "nuke-test" });
-    lines.push(`Locked #${ch.name}`);
-  }
-  lines.push("Cleaning up the temporary channels...");
-  for (const ch of channels) {
-    await ch.delete("nuke-test").catch((err) => lines.push(`Failed to delete ${ch.name}: ${err.message}`));
-  }
+  const lines = ["Creating 4 channels concurrently..."];
+  const channels = await Promise.all(Array.from({ length: 4 }, (_, i) => guild.channels.create({ name: `perm-test-${i + 1}`, type: 0 })));
+  lines.push("Denying @everyone's View Channel permission on all of them concurrently...");
+  await Promise.all(channels.map((ch) => ch.permissionOverwrites.edit(guild.roles.everyone, { ViewChannel: false }, { reason: "nuke-test" })));
+  lines.push("Cleaning up the temporary channels concurrently...");
+  const results = await Promise.allSettled(channels.map((ch) => ch.delete("nuke-test")));
+  results.forEach((r, i) => {
+    if (r.status === "rejected") lines.push(`Failed to delete #${channels[i].name}: ${r.reason?.message}`);
+  });
+  return lines;
+}
+
+async function nukeEmojis(guild) {
+  const lines = ["Creating 4 temporary emojis (using the bot's own avatar) concurrently..."];
+  const avatar = client.user.displayAvatarURL({ extension: "png", size: 128 });
+  const emojis = await Promise.all(Array.from({ length: 4 }, (_, i) => guild.emojis.create({ attachment: avatar, name: `nuke_test_${i + 1}` })));
+  lines.push("Deleting all of them concurrently...");
+  const results = await Promise.allSettled(emojis.map((e) => e.delete("nuke-test")));
+  results.forEach((r, i) => lines.push(r.status === "fulfilled" ? `Deleted emoji ${emojis[i].name}` : `Failed to delete emoji ${emojis[i].name}: ${r.reason?.message}`));
+  return lines;
+}
+
+async function nukeKicks(guild, targets) {
+  if (targets.length === 0) return ["No target members provided."];
+  const lines = [`Kicking ${targets.length} member(s) concurrently...`];
+  const results = await Promise.allSettled(targets.map((user) => guild.members.kick(user.id, "nuke-test")));
+  results.forEach((r, i) => lines.push(r.status === "fulfilled" ? `Kicked ${targets[i].tag}` : `Failed to kick ${targets[i].tag}: ${r.reason?.message}`));
+  lines.push("Kicks can't be auto-undone — send them a fresh invite link to rejoin.");
+  return lines;
+}
+
+async function nukeBans(guild, targets) {
+  if (targets.length === 0) return ["No target members provided."];
+  const lines = [`Banning ${targets.length} member(s) concurrently...`];
+  const banResults = await Promise.allSettled(targets.map((user) => guild.bans.create(user.id, { reason: "nuke-test" })));
+  banResults.forEach((r, i) => lines.push(r.status === "fulfilled" ? `Banned ${targets[i].tag}` : `Failed to ban ${targets[i].tag}: ${r.reason?.message}`));
+  lines.push("Unbanning everyone concurrently...");
+  const unbanResults = await Promise.allSettled(targets.map((user) => guild.bans.remove(user.id, "nuke-test cleanup")));
+  unbanResults.forEach((r, i) => {
+    if (r.status === "rejected") lines.push(`Failed to unban ${targets[i].tag}: ${r.reason?.message}`);
+  });
+  lines.push("Unbanned everyone. They'll still need a fresh invite link to rejoin.");
   return lines;
 }
 
@@ -100,14 +108,8 @@ async function automodCaps(channel) {
 }
 
 async function automodSpam(channel) {
-  const lines = [];
-  for (let i = 0; i < 4; i++) {
-    await channel.send("spam test message");
-    lines.push(`Sent copy ${i + 1}/4`);
-    await new Promise((r) => setTimeout(r, 500));
-  }
-  lines.push("Done. The last message should get flagged if anti_spam is on.");
-  return lines;
+  await Promise.all(Array.from({ length: 4 }, () => channel.send("spam test message")));
+  return ["Sent 4 copies of the same message concurrently. Should get flagged if anti_spam is on."];
 }
 
 async function automodMentions(guild, channel) {
@@ -126,7 +128,6 @@ async function ghostping(guild, channel) {
   const target = members.filter((m) => !m.user.bot).first();
   if (!target) return ["No non-bot member found to ghost-ping."];
   const msg = await channel.send(`<@${target.id}>`);
-  await new Promise((r) => setTimeout(r, 1000));
   await msg.delete();
   return [`Pinged ${target.user.tag} then deleted the message. Should get flagged if anti-ghostping is on.`];
 }
@@ -142,6 +143,9 @@ client.on("interactionCreate", async (interaction) => {
   const sub = interaction.options.getSubcommand();
   const guild = interaction.guild;
   const channel = interaction.options.getChannel("channel");
+  const targets = ["target1", "target2", "target3", "target4"]
+    .map((name) => interaction.options.getUser(name))
+    .filter(Boolean);
 
   await interaction.deferReply({ ephemeral: true });
 
@@ -159,6 +163,15 @@ client.on("interactionCreate", async (interaction) => {
         break;
       case "nuke-permissions":
         lines = await nukePermissions(guild);
+        break;
+      case "nuke-emojis":
+        lines = await nukeEmojis(guild);
+        break;
+      case "nuke-kicks":
+        lines = await nukeKicks(guild, targets);
+        break;
+      case "nuke-bans":
+        lines = await nukeBans(guild, targets);
         break;
       case "automod-invite":
         lines = await automodInvite(channel);

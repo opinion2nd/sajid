@@ -12,7 +12,7 @@ No external services required — all data is stored locally in `data/bot.sqlite
 - **Giveaways** — `/giveaway start|end|reroll|list`, button-based entry
 - **Welcome / Leave / Reaction roles** — `/config welcome|leave`, `/role-panel`
 - **Server config** — `/config modlog|welcome|leave|levelup|ticketcategory|ticketlog|ticketrole|suggestions`
-- **Security suite** — `/security raid|nuke|ghostping|status` (anti-raid join-burst kicking, anti-nuke audit-log-based punishment for mass channel/role deletes and bans, ghost-ping detection), `/verify setup|panel` (button-based member verification), `/backup create|list|restore` (additive-only role/channel snapshot restore)
+- **Security suite** — `/security raid|nuke|ghostping|status` (anti-raid join-burst kicking; anti-nuke audit-log-based punishment for mass channel/role create+delete, kicks, bans, webhook creation, permission-overwrite edits, and emoji deletes; ghost-ping detection), `/verify setup|panel` (button-based member verification), `/backup create|list|restore` (additive-only role/channel snapshot restore)
 - **AFK** — `/afk`, auto-clears on your next message, replies when someone mentions an AFK user
 - **Reminders** — `/remind` (DMs you, falls back to channel ping), persists across restarts
 - **Invite tracking** — `/invites`, credits whoever's invite a new member used

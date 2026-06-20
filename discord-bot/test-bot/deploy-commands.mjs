@@ -19,6 +19,27 @@ const command = new SlashCommandBuilder()
     sc.setName("nuke-permissions").setDescription("Create temp channels and rapidly lock everyone out of them (tests permission-nuke detection)")
   )
   .addSubcommand((sc) =>
+    sc.setName("nuke-emojis").setDescription("Create + rapidly delete emojis (tests emoji-nuke detection)")
+  )
+  .addSubcommand((sc) =>
+    sc
+      .setName("nuke-kicks")
+      .setDescription("Rapidly kick real members at once (tests kick-nuke detection). Only use on consenting accounts.")
+      .addUserOption((o) => o.setName("target1").setDescription("Member to kick").setRequired(true))
+      .addUserOption((o) => o.setName("target2").setDescription("Member to kick").setRequired(false))
+      .addUserOption((o) => o.setName("target3").setDescription("Member to kick").setRequired(false))
+      .addUserOption((o) => o.setName("target4").setDescription("Member to kick").setRequired(false))
+  )
+  .addSubcommand((sc) =>
+    sc
+      .setName("nuke-bans")
+      .setDescription("Rapidly ban then auto-unban real members at once (tests ban-nuke detection). Only use on consenting accounts.")
+      .addUserOption((o) => o.setName("target1").setDescription("Member to ban").setRequired(true))
+      .addUserOption((o) => o.setName("target2").setDescription("Member to ban").setRequired(false))
+      .addUserOption((o) => o.setName("target3").setDescription("Member to ban").setRequired(false))
+      .addUserOption((o) => o.setName("target4").setDescription("Member to ban").setRequired(false))
+  )
+  .addSubcommand((sc) =>
     sc
       .setName("automod-invite")
       .setDescription("Send a fake invite link (tests automod anti_invite)")
