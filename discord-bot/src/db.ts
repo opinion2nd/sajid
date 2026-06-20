@@ -134,6 +134,14 @@ db.exec(`
     created_at INTEGER NOT NULL,
     data TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS nuke_whitelist (
+    guild_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    added_by TEXT NOT NULL,
+    added_at INTEGER NOT NULL,
+    PRIMARY KEY (guild_id, user_id)
+  );
 `);
 
 export interface GuildConfig {

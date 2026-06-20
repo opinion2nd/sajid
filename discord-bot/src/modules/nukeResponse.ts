@@ -1,11 +1,16 @@
 import type { Guild } from "discord.js";
-import { resetNukeTracking } from "./antinuke.js";
+import { resetNukeTracking, isNukeWhitelisted } from "./antinuke.js";
 import { logModAction } from "./modlog.js";
 
-/** Strips roles from (or bans) the suspected nuke executor and logs the action. Owner is never touched. */
+/** Strips roles from (or bans) the suspected nuke executor and logs the action. Owner & whitelisted users are never touched. */
 export async function punishNukeExecutor(guild: Guild, executorId: string, reason: string) {
   resetNukeTracking(guild.id, executorId);
-  if (executorId === guild.ownerId || executorId === guild.client.user.id) return;
+  if (
+    executorId === guild.ownerId ||
+    executorId === guild.client.user.id ||
+    isNukeWhitelisted(guild.id, executorId)
+  )
+    return;
 
   const member = await guild.members.fetch(executorId).catch(() => null);
   let actionTaken = "Could not reach the member to act (may have left).";

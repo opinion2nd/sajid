@@ -2,6 +2,7 @@ import { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, type ChatInputC
 import type { Command } from "../../types.js";
 import { successEmbed } from "../../util/embeds.js";
 import { getGuildConfig, updateGuildConfig } from "../../db.js";
+import { addNukeWhitelist, removeNukeWhitelist, listNukeWhitelist } from "../../modules/antinuke.js";
 
 const command: Command = {
   data: new SlashCommandBuilder()
@@ -42,6 +43,24 @@ const command: Command = {
             .addIntegerOption((o) => o.setName("threshold").setDescription("Destructive actions within the window that trigger punishment").setMinValue(2).setMaxValue(50))
             .addIntegerOption((o) => o.setName("window_seconds").setDescription("Time window in seconds").setMinValue(5).setMaxValue(600))
         )
+    )
+    .addSubcommandGroup((g) =>
+      g
+        .setName("whitelist")
+        .setDescription("Trusted users that anti-nuke will never punish")
+        .addSubcommand((sc) =>
+          sc
+            .setName("add")
+            .setDescription("Add a trusted user to the anti-nuke whitelist")
+            .addUserOption((o) => o.setName("user").setDescription("User to trust").setRequired(true))
+        )
+        .addSubcommand((sc) =>
+          sc
+            .setName("remove")
+            .setDescription("Remove a user from the anti-nuke whitelist")
+            .addUserOption((o) => o.setName("user").setDescription("User to remove").setRequired(true))
+        )
+        .addSubcommand((sc) => sc.setName("list").setDescription("List whitelisted users"))
     )
     .addSubcommand((sc) =>
       sc
@@ -94,6 +113,30 @@ const command: Command = {
       return;
     }
 
+    if (group === "whitelist" && sub === "add") {
+      const user = interaction.options.getUser("user", true);
+      addNukeWhitelist(guildId, user.id, interaction.user.id);
+      await interaction.reply({ embeds: [successEmbed(`${user} is now whitelisted — anti-nuke will never punish them.`)] });
+      return;
+    }
+
+    if (group === "whitelist" && sub === "remove") {
+      const user = interaction.options.getUser("user", true);
+      const removed = removeNukeWhitelist(guildId, user.id);
+      await interaction.reply({
+        embeds: [successEmbed(removed ? `${user} was removed from the anti-nuke whitelist.` : `${user} was not on the whitelist.`)],
+      });
+      return;
+    }
+
+    if (group === "whitelist" && sub === "list") {
+      const ids = listNukeWhitelist(guildId);
+      const value = ids.length ? ids.map((id) => `<@${id}>`).join("\n") : "_No users are whitelisted._";
+      const embed = new EmbedBuilder().setTitle("Anti-Nuke Whitelist").setColor(0x5865f2).setDescription(value);
+      await interaction.reply({ embeds: [embed], ephemeral: true });
+      return;
+    }
+
     if (sub === "ghostping") {
       const enabled = interaction.options.getBoolean("enabled", true);
       updateGuildConfig(guildId, { anti_ghostping_enabled: enabled ? 1 : 0 });
@@ -111,6 +154,7 @@ const command: Command = {
         { name: "Raid Account Age", value: `< ${config.raid_account_age_days}d gets kicked`, inline: true },
         { name: "Anti-Nuke", value: config.anti_nuke_enabled ? "Enabled" : "Disabled", inline: true },
         { name: "Nuke Threshold", value: `${config.nuke_threshold} actions / ${config.nuke_window_seconds}s`, inline: true },
+        { name: "Nuke Whitelist", value: `${listNukeWhitelist(guildId).length} trusted user(s)`, inline: true },
         { name: "Ghost-Ping Detection", value: config.anti_ghostping_enabled ? "Enabled" : "Disabled", inline: true }
       );
     await interaction.reply({ embeds: [embed], ephemeral: true });
