@@ -97,6 +97,11 @@ async function ghostping(guild, channel) {
 client.on("interactionCreate", async (interaction) => {
   if (!interaction.isChatInputCommand() || interaction.commandName !== "test") return;
 
+  if (interaction.user.id !== process.env.TEST_OWNER_ID) {
+    await interaction.reply({ content: "You're not allowed to use this command.", ephemeral: true });
+    return;
+  }
+
   const sub = interaction.options.getSubcommand();
   const guild = interaction.guild;
   const channel = interaction.options.getChannel("channel");

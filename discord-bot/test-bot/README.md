@@ -18,7 +18,9 @@ itself.
    permissions: Manage Channels, Manage Roles, Send Messages.
 4. `cd test-bot && npm install`
 5. Copy `.env.example` to `.env` and fill in `TEST_BOT_TOKEN`,
-   `TEST_CLIENT_ID`, `TEST_GUILD_ID`.
+   `TEST_CLIENT_ID`, `TEST_GUILD_ID`, and `TEST_OWNER_ID` (your own Discord
+   user ID — `/test` only responds to this user, even though the command
+   is visible to Administrators in the UI).
 6. `npm run deploy-commands`
 7. `npm start`
 

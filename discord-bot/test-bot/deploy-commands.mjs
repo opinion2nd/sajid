@@ -1,9 +1,10 @@
 import "dotenv/config";
-import { REST, Routes, SlashCommandBuilder, ChannelType } from "discord.js";
+import { REST, Routes, SlashCommandBuilder, ChannelType, PermissionFlagsBits } from "discord.js";
 
 const command = new SlashCommandBuilder()
   .setName("test")
   .setDescription("Run a defensive-feature test against this server (anti-nuke / automod / ghost-ping)")
+  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
   .addSubcommand((sc) => sc.setName("nuke-channels").setDescription("Create + rapidly delete channels (tests /security nuke)"))
   .addSubcommand((sc) => sc.setName("nuke-roles").setDescription("Create + rapidly delete roles (tests /security nuke)"))
   .addSubcommand((sc) =>
