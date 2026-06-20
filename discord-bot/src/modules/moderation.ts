@@ -30,7 +30,7 @@ export function clearWarnings(guildId: string, userId: string): number {
 const INVITE_REGEX = /(discord\.gg|discord(?:app)?\.com\/invite)\/[a-z0-9-]+/i;
 const SPAM_WINDOW_MS = 8000;
 const SPAM_MAX_REPEATS = 4;
-const FLOOD_WINDOW_MS = 5000;
+const FLOOD_WINDOW_MS = 3000;
 const FLOOD_MAX_MESSAGES = 5;
 
 const recentMessages = new Map<string, { content: string; timestamps: number[] }>();
