@@ -25,19 +25,26 @@ const command: Command = {
     const { level, currentLevelXp, neededXp } = xpProgress(totalXp);
     const rank = getRank(guildId, target.id);
 
-    const buffer = await renderLevelCard({
-      username: target.username,
-      avatarURL: target.displayAvatarURL({ extension: "png", size: 256 }),
-      level,
-      rank: rank?.rank,
-      currentXp: currentLevelXp,
-      neededXp,
-      totalXp,
-      mode: "rank",
-    });
-
-    const file = new AttachmentBuilder(buffer, { name: "rank.png" });
-    await interaction.editReply({ files: [file] });
+    try {
+      const buffer = await renderLevelCard({
+        username: target.username,
+        avatarURL: target.displayAvatarURL({ extension: "png", size: 256 }),
+        level,
+        rank: rank?.rank,
+        currentXp: currentLevelXp,
+        neededXp,
+        totalXp,
+        mode: "rank",
+      });
+      const file = new AttachmentBuilder(buffer, { name: "rank.png" });
+      await interaction.editReply({ files: [file] });
+    } catch {
+      // If card rendering fails, fall back to a text summary so the
+      // deferred reply never hangs on "thinking…".
+      await interaction.editReply({
+        embeds: [infoEmbed(`**${target.username}** — Level ${level}${rank ? ` (Rank #${rank.rank})` : ""}, ${currentLevelXp}/${neededXp} XP`)],
+      });
+    }
   },
 };
 
