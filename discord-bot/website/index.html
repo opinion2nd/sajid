@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Brother Craft — All-in-One Discord Bot</title>
+<meta name="description" content="Brother Craft is a powerful all-in-one Discord bot: moderation, anti-nuke security, leveling, economy, tickets, giveaways, and more." />
+<style>
+  :root {
+    --brand: #5865f2;
+    --brand-2: #8b5cf6;
+    --bg: #0f1018;
+    --panel: #181a26;
+    --text: #e7e9f0;
+    --muted: #9aa0b5;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+  }
+  a { color: inherit; text-decoration: none; }
+  .container { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 0;
+  }
+  .logo { font-weight: 800; font-size: 1.3rem; }
+  .logo span { color: var(--brand); }
+  nav a { margin-left: 22px; color: var(--muted); font-size: .95rem; }
+  nav a:hover { color: var(--text); }
+
+  .hero {
+    text-align: center;
+    padding: 90px 0 70px;
+    background: radial-gradient(1200px 400px at 50% -10%, rgba(88,101,242,.25), transparent);
+  }
+  .hero h1 { font-size: 3rem; line-height: 1.15; margin-bottom: 18px; }
+  .hero h1 span { background: linear-gradient(90deg, var(--brand), var(--brand-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hero p { color: var(--muted); font-size: 1.2rem; max-width: 640px; margin: 0 auto 34px; }
+  .btn {
+    display: inline-block; padding: 14px 30px; border-radius: 12px;
+    font-weight: 700; transition: transform .1s ease, box-shadow .2s ease;
+  }
+  .btn-primary { background: var(--brand); color: #fff; box-shadow: 0 8px 24px rgba(88,101,242,.4); }
+  .btn-primary:hover { transform: translateY(-2px); }
+  .btn-ghost { border: 1px solid #2c2f44; color: var(--text); margin-left: 12px; }
+
+  .grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px; padding: 40px 0 80px;
+  }
+  .card {
+    background: var(--panel); border: 1px solid #232638; border-radius: 16px;
+    padding: 26px;
+  }
+  .card .icon { font-size: 1.8rem; }
+  .card h3 { margin: 12px 0 8px; font-size: 1.15rem; }
+  .card p { color: var(--muted); font-size: .95rem; }
+
+  .section-title { text-align: center; font-size: 2rem; margin: 30px 0 6px; }
+  .section-sub { text-align: center; color: var(--muted); margin-bottom: 10px; }
+
+  footer { border-top: 1px solid #1e2030; padding: 30px 0; color: var(--muted); }
+  footer .container { display: flex; flex-wrap: wrap; gap: 14px; justify-content: space-between; }
+  footer a { color: var(--muted); margin-right: 18px; }
+  footer a:hover { color: var(--text); }
+
+  @media (max-width: 560px) { .hero h1 { font-size: 2.1rem; } .btn-ghost { margin: 12px 0 0; } }
+</style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">Brother<span>Craft</span></div>
+      <nav>
+        <a href="#features">Features</a>
+        <a href="terms.html">Terms</a>
+        <a href="privacy.html">Privacy</a>
+        <a href="#invite">Invite</a>
+      </nav>
+    </header>
+  </div>
+
+  <section class="hero">
+    <div class="container">
+      <h1>The all-in-one bot your<br /><span>Discord server</span> deserves</h1>
+      <p>Moderation, military-grade anti-nuke protection, leveling with image cards, economy, tickets, giveaways and dozens more features — all in one free bot.</p>
+      <div id="invite">
+        <!-- Replace YOUR_CLIENT_ID with your application's client ID -->
+        <a class="btn btn-primary" href="https://discord.com/oauth2/authorize?client_id=YOUR_CLIENT_ID&permissions=8&scope=bot%20applications.commands">Add to Discord</a>
+        <a class="btn btn-ghost" href="#features">See features</a>
+      </div>
+    </div>
+  </section>
+
+  <div class="container" id="features">
+    <h2 class="section-title">Everything in one place</h2>
+    <p class="section-sub">No more juggling five different bots.</p>
+    <div class="grid">
+      <div class="card"><div class="icon">🛡️</div><h3>Moderation</h3><p>Kick, ban, timeout, warn, purge — plus a full automod (anti-invite, anti-caps, anti-spam, mention limits).</p></div>
+      <div class="card"><div class="icon">🔒</div><h3>Anti-Nuke Security</h3><p>Audit-log-based protection against mass channel/role deletes, bans, kicks, webhooks and more — with a trusted-user whitelist.</p></div>
+      <div class="card"><div class="icon">📈</div><h3>Leveling</h3><p>Automatic XP with beautiful image-based level-up and rank cards.</p></div>
+      <div class="card"><div class="icon">💰</div><h3>Economy</h3><p>Per-server coins with daily rewards, work, transfers and a richest-members leaderboard.</p></div>
+      <div class="card"><div class="icon">🎫</div><h3>Tickets</h3><p>Button-based support tickets with private channels and transcripts.</p></div>
+      <div class="card"><div class="icon">🎉</div><h3>Giveaways</h3><p>Run fair, button-entry giveaways with reroll and multi-winner support.</p></div>
+      <div class="card"><div class="icon">👋</div><h3>Welcome & Roles</h3><p>Welcome/leave messages, reaction-role panels and member verification.</p></div>
+      <div class="card"><div class="icon">🎮</div><h3>Fun & Games</h3><p>Tic-tac-toe, Connect Four, 2048, 8ball, memes, and lots more.</p></div>
+    </div>
+  </div>
+
+  <footer>
+    <div class="container">
+      <div>© <span id="year"></span> Brother Craft. Not affiliated with Discord Inc.</div>
+      <div>
+        <a href="terms.html">Terms of Service</a>
+        <a href="privacy.html">Privacy Policy</a>
+      </div>
+    </div>
+  </footer>
+  <script>document.getElementById("year").textContent = new Date().getFullYear();</script>
+</body>
+</html>
