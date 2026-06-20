@@ -30,8 +30,11 @@ export function clearWarnings(guildId: string, userId: string): number {
 const INVITE_REGEX = /(discord\.gg|discord(?:app)?\.com\/invite)\/[a-z0-9-]+/i;
 const SPAM_WINDOW_MS = 8000;
 const SPAM_MAX_REPEATS = 4;
+const FLOOD_WINDOW_MS = 5000;
+const FLOOD_MAX_MESSAGES = 5;
 
 const recentMessages = new Map<string, { content: string; timestamps: number[] }>();
+const messageRate = new Map<string, number[]>();
 
 export interface AutomodConfig {
   anti_invite: boolean;
@@ -71,6 +74,17 @@ export function checkAutomod(
   if (config.anti_spam) {
     const key = `${guildId}:${userId}`;
     const now = Date.now();
+
+    // Flood check: too many messages in a row, regardless of content.
+    const rate = (messageRate.get(key) ?? []).filter((t) => now - t < FLOOD_WINDOW_MS);
+    rate.push(now);
+    messageRate.set(key, rate);
+    if (rate.length >= FLOOD_MAX_MESSAGES) {
+      messageRate.set(key, []);
+      return { type: "spam", reason: `Sending messages too quickly (${FLOOD_MAX_MESSAGES}+ in ${FLOOD_WINDOW_MS / 1000}s).` };
+    }
+
+    // Duplicate-content check: same exact message repeated.
     const entry = recentMessages.get(key);
     if (entry && entry.content === content) {
       entry.timestamps = entry.timestamps.filter((t) => now - t < SPAM_WINDOW_MS);
