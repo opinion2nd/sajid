@@ -1,6 +1,7 @@
-import { SlashCommandBuilder, EmbedBuilder, type ChatInputCommandInteraction } from "discord.js";
+import { SlashCommandBuilder, AttachmentBuilder, type ChatInputCommandInteraction } from "discord.js";
 import type { Command } from "../../types.js";
 import { getUserXp, getRank, xpProgress } from "../../modules/leveling.js";
+import { renderLevelCard } from "../../modules/levelCard.js";
 import { infoEmbed } from "../../util/embeds.js";
 
 const command: Command = {
@@ -19,19 +20,24 @@ const command: Command = {
       return;
     }
 
+    await interaction.deferReply();
+
     const { level, currentLevelXp, neededXp } = xpProgress(totalXp);
     const rank = getRank(guildId, target.id);
 
-    const embed = new EmbedBuilder()
-      .setTitle(`${target.username}'s Rank`)
-      .setThumbnail(target.displayAvatarURL())
-      .setColor(0x5865f2)
-      .addFields(
-        { name: "Level", value: String(level), inline: true },
-        { name: "Rank", value: rank ? `#${rank.rank} / ${rank.total}` : "—", inline: true },
-        { name: "XP", value: `${currentLevelXp} / ${neededXp}`, inline: true }
-      );
-    await interaction.reply({ embeds: [embed] });
+    const buffer = await renderLevelCard({
+      username: target.username,
+      avatarURL: target.displayAvatarURL({ extension: "png", size: 256 }),
+      level,
+      rank: rank?.rank,
+      currentXp: currentLevelXp,
+      neededXp,
+      totalXp,
+      mode: "rank",
+    });
+
+    const file = new AttachmentBuilder(buffer, { name: "rank.png" });
+    await interaction.editReply({ files: [file] });
   },
 };
 

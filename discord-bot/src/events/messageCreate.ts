@@ -1,7 +1,8 @@
-import { Events, PermissionFlagsBits, type Message } from "discord.js";
+import { Events, PermissionFlagsBits, AttachmentBuilder, type Message } from "discord.js";
 import { getGuildConfig } from "../db.js";
 import { checkAutomod } from "../modules/moderation.js";
-import { maybeAddXp } from "../modules/leveling.js";
+import { maybeAddXp, getUserXp, getRank, xpProgress } from "../modules/leveling.js";
+import { renderLevelCard } from "../modules/levelCard.js";
 import { logModAction } from "../modules/modlog.js";
 import { getAfk, clearAfk } from "../modules/afk.js";
 
@@ -63,7 +64,26 @@ export async function execute(message: Message) {
     const channelId = config.levelup_channel || message.channel.id;
     const channel = message.guild.channels.cache.get(channelId);
     if (channel?.isTextBased()) {
-      await channel.send(`🎉 ${message.author} leveled up to **level ${result.newLevel}**!`).catch(() => {});
+      try {
+        const totalXp = getUserXp(message.guild.id, message.author.id);
+        const { level, currentLevelXp, neededXp } = xpProgress(totalXp);
+        const rank = getRank(message.guild.id, message.author.id);
+        const buffer = await renderLevelCard({
+          username: message.author.username,
+          avatarURL: message.author.displayAvatarURL({ extension: "png", size: 256 }),
+          level,
+          rank: rank?.rank,
+          currentXp: currentLevelXp,
+          neededXp,
+          totalXp,
+          mode: "levelup",
+        });
+        const file = new AttachmentBuilder(buffer, { name: "levelup.png" });
+        await channel.send({ content: `🎉 ${message.author}`, files: [file] });
+      } catch {
+        // Fall back to a plain text message if card rendering fails.
+        await channel.send(`🎉 ${message.author} leveled up to **level ${result.newLevel}**!`).catch(() => {});
+      }
     }
   }
 }
