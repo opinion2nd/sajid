@@ -7,7 +7,16 @@ import {
 } from "discord.js";
 import type { Command } from "../../types.js";
 import { successEmbed, errorEmbed } from "../../util/embeds.js";
-import { getTicketByChannel, closeTicket, addUserToTicket, removeUserFromTicket } from "../../modules/tickets.js";
+import {
+  getTicketByChannel,
+  closeTicket,
+  addUserToTicket,
+  removeUserFromTicket,
+  getOpenTicketCount,
+  ticketPanelFooter,
+  registerTicketPanel,
+  refreshTicketPanel,
+} from "../../modules/tickets.js";
 import { getGuildConfig } from "../../db.js";
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from "discord.js";
 
@@ -50,7 +59,11 @@ const command: Command = {
       const description =
         interaction.options.getString("description") ?? "Click the button below to open a private support ticket.";
 
-      const embed = new EmbedBuilder().setTitle(title).setDescription(description).setColor(0x5865f2);
+      const embed = new EmbedBuilder()
+        .setTitle(`🎫 ${title}`)
+        .setDescription(description)
+        .setColor(0x5865f2)
+        .setFooter({ text: ticketPanelFooter(getOpenTicketCount(guild.id)) });
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder().setCustomId("ticket_open").setLabel("📩 Open Ticket").setStyle(ButtonStyle.Primary)
       );
@@ -60,7 +73,8 @@ const command: Command = {
         await interaction.reply({ embeds: [errorEmbed("That channel can't receive messages.")], ephemeral: true });
         return;
       }
-      await target.send({ embeds: [embed], components: [row] });
+      const panelMessage = await target.send({ embeds: [embed], components: [row] });
+      registerTicketPanel(guild.id, target.id, panelMessage.id);
       await interaction.reply({ embeds: [successEmbed(`Ticket panel posted in ${channel}.`)], ephemeral: true });
       return;
     }
@@ -76,6 +90,7 @@ const command: Command = {
       }
       await interaction.reply({ embeds: [successEmbed("🔒 Closing this ticket in 5 seconds...")] });
       closeTicket(interaction.channelId);
+      await refreshTicketPanel(guild);
       setTimeout(() => {
         interaction.channel?.delete().catch(() => {});
       }, 5000);

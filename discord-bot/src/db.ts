@@ -151,7 +151,57 @@ db.exec(`
     last_work INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (guild_id, user_id)
   );
+
+  CREATE TABLE IF NOT EXISTS shop_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    price INTEGER NOT NULL,
+    role_id TEXT,
+    description TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS inventory (
+    guild_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    item_id INTEGER NOT NULL,
+    qty INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (guild_id, user_id, item_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS starboard (
+    guild_id TEXT NOT NULL,
+    original_message_id TEXT NOT NULL,
+    star_message_id TEXT NOT NULL,
+    PRIMARY KEY (guild_id, original_message_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS reaction_roles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id TEXT NOT NULL,
+    channel_id TEXT NOT NULL,
+    message_id TEXT NOT NULL,
+    emoji TEXT NOT NULL,
+    role_id TEXT NOT NULL
+  );
 `);
+
+// ── Migrations: add columns introduced after the initial schema ────────────
+// CREATE TABLE IF NOT EXISTS never alters an existing table, so new
+// guild_config columns must be added explicitly for already-deployed DBs.
+function ensureColumn(table: string, column: string, definition: string) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+  if (!cols.some((c) => c.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
+}
+
+ensureColumn("guild_config", "member_count_channel", "TEXT");
+ensureColumn("guild_config", "starboard_channel", "TEXT");
+ensureColumn("guild_config", "starboard_threshold", "INTEGER NOT NULL DEFAULT 3");
+ensureColumn("guild_config", "autorole_id", "TEXT");
+ensureColumn("guild_config", "ticket_panel_channel", "TEXT");
+ensureColumn("guild_config", "ticket_panel_message", "TEXT");
 
 export interface GuildConfig {
   guild_id: string;
@@ -180,6 +230,12 @@ export interface GuildConfig {
   nuke_threshold: number;
   nuke_window_seconds: number;
   anti_ghostping_enabled: number;
+  member_count_channel: string | null;
+  starboard_channel: string | null;
+  starboard_threshold: number;
+  autorole_id: string | null;
+  ticket_panel_channel: string | null;
+  ticket_panel_message: string | null;
 }
 
 export function getGuildConfig(guildId: string): GuildConfig {

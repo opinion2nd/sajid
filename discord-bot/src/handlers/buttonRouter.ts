@@ -2,10 +2,11 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  EmbedBuilder,
   type ButtonInteraction,
 } from "discord.js";
 import { db, getGuildConfig } from "../db.js";
-import { createTicketChannel, getTicketByChannel, closeTicket } from "../modules/tickets.js";
+import { createTicketChannel, getTicketByChannel, closeTicket, refreshTicketPanel } from "../modules/tickets.js";
 import { castVote, buildPollEmbed } from "../modules/polls.js";
 import { castSuggestionVote, buildSuggestionEmbed } from "../modules/suggestions.js";
 import { playTicTacToeMove, getTicTacToeGame, buildTicTacToeEmbed, buildTicTacToeRows } from "../modules/games/tictactoe.js";
@@ -73,6 +74,7 @@ async function handleTicketOpen(interaction: ButtonInteraction) {
     content: `${interaction.user} Welcome! Staff will be with you shortly. Describe your issue below.`,
     components: [ticketCloseRow()],
   });
+  await refreshTicketPanel(interaction.guild!);
   await interaction.editReply({ embeds: [successEmbed(`Ticket created: ${result.channel}`)] });
 }
 
@@ -87,6 +89,7 @@ async function handleTicketClose(interaction: ButtonInteraction) {
   closeTicket(interaction.channelId);
 
   const guild = interaction.guild!;
+  await refreshTicketPanel(guild);
   const config = getGuildConfig(guild.id);
   if (config.ticket_log_channel) {
     const logChannel = guild.channels.cache.get(config.ticket_log_channel);
@@ -189,7 +192,18 @@ async function handleVerify(interaction: ButtonInteraction) {
       return;
     }
     await member.roles.add(role);
-    await interaction.reply({ embeds: [successEmbed("You're verified! Welcome to the server.")], ephemeral: true });
+
+    // Refresh the panel footer with the new verified-member count.
+    const sourceEmbed = interaction.message.embeds[0];
+    if (sourceEmbed) {
+      const refreshed = EmbedBuilder.from(sourceEmbed).setFooter({
+        text: `✔️ Verified members: ${role.members.size}`,
+      });
+      await interaction.update({ embeds: [refreshed] });
+      await interaction.followUp({ embeds: [successEmbed("You're verified! Welcome to the server.")], ephemeral: true });
+    } else {
+      await interaction.reply({ embeds: [successEmbed("You're verified! Welcome to the server.")], ephemeral: true });
+    }
   } catch {
     await interaction.reply({
       embeds: [errorEmbed("I couldn't assign the verification role (check my permissions and role hierarchy).")],

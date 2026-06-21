@@ -1,5 +1,5 @@
-import { ChannelType, PermissionFlagsBits, type Guild, type TextChannel } from "discord.js";
-import { db, getGuildConfig } from "../db.js";
+import { ChannelType, PermissionFlagsBits, EmbedBuilder, type Guild, type TextChannel } from "discord.js";
+import { db, getGuildConfig, updateGuildConfig } from "../db.js";
 
 export interface Ticket {
   id: number;
@@ -83,4 +83,34 @@ export async function removeUserFromTicket(guild: Guild, channelId: string, user
   if (!channel || channel.type !== ChannelType.GuildText) return false;
   await channel.permissionOverwrites.delete(userId);
   return true;
+}
+
+export function getOpenTicketCount(guildId: string): number {
+  const row = db.prepare("SELECT COUNT(*) AS n FROM tickets WHERE guild_id = ? AND status = 'open'").get(guildId) as {
+    n: number;
+  };
+  return row.n;
+}
+
+export function ticketPanelFooter(openCount: number): string {
+  return `🎟️ Open tickets: ${openCount}`;
+}
+
+/**
+ * Re-edits the stored ticket panel message so its footer shows the current
+ * open-ticket count. No-ops if no panel is registered or it was deleted.
+ */
+export async function refreshTicketPanel(guild: Guild) {
+  const config = getGuildConfig(guild.id);
+  if (!config.ticket_panel_channel || !config.ticket_panel_message) return;
+  const channel = guild.channels.cache.get(config.ticket_panel_channel);
+  if (!channel?.isTextBased()) return;
+  const message = await channel.messages.fetch(config.ticket_panel_message).catch(() => null);
+  if (!message || !message.embeds[0]) return;
+  const embed = EmbedBuilder.from(message.embeds[0]).setFooter({ text: ticketPanelFooter(getOpenTicketCount(guild.id)) });
+  await message.edit({ embeds: [embed] }).catch(() => {});
+}
+
+export function registerTicketPanel(guildId: string, channelId: string, messageId: string) {
+  updateGuildConfig(guildId, { ticket_panel_channel: channelId, ticket_panel_message: messageId });
 }

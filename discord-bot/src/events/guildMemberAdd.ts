@@ -5,6 +5,7 @@ import { resolveUsedInviteAndCredit } from "../modules/invites.js";
 import { recordJoinAndCheckRaid } from "../modules/antiraid.js";
 import { renderWelcomeCard } from "../modules/welcomeCard.js";
 import { logModAction } from "../modules/modlog.js";
+import { updateMemberCountChannel } from "../modules/serverstats.js";
 
 export const name = Events.GuildMemberAdd;
 
@@ -39,6 +40,14 @@ export async function execute(member: GuildMember) {
       return;
     }
   }
+
+  // Auto-role: hand new members a starter role if one is configured.
+  if (config.autorole_id) {
+    const role = member.guild.roles.cache.get(config.autorole_id);
+    if (role) await member.roles.add(role).catch(() => {});
+  }
+
+  await updateMemberCountChannel(member.guild);
 
   if (!config.welcome_channel) return;
   const channel = member.guild.channels.cache.get(config.welcome_channel);

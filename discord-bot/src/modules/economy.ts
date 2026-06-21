@@ -83,6 +83,59 @@ export function getEconomyLeaderboard(guildId: string, limit = 10) {
     .all(guildId, limit) as { user_id: string; balance: number }[];
 }
 
+/** Removes `amount` from a user only if they can afford it. Returns the new balance, or null. */
+export function spend(guildId: string, userId: string, amount: number): number | null {
+  const row = getRow(guildId, userId);
+  if (row.balance < amount) return null;
+  return addBalance(guildId, userId, -amount);
+}
+
+// ── Shop & inventory ───────────────────────────────────────────────────────
+export interface ShopItem {
+  id: number;
+  guild_id: string;
+  name: string;
+  price: number;
+  role_id: string | null;
+  description: string | null;
+}
+
+export function addShopItem(guildId: string, name: string, price: number, roleId: string | null, description: string | null): number {
+  const result = db
+    .prepare("INSERT INTO shop_items (guild_id, name, price, role_id, description) VALUES (?, ?, ?, ?, ?)")
+    .run(guildId, name, price, roleId, description);
+  return Number(result.lastInsertRowid);
+}
+
+export function removeShopItem(guildId: string, itemId: number) {
+  return db.prepare("DELETE FROM shop_items WHERE guild_id = ? AND id = ?").run(guildId, itemId);
+}
+
+export function getShopItems(guildId: string): ShopItem[] {
+  return db.prepare("SELECT * FROM shop_items WHERE guild_id = ? ORDER BY price ASC").all(guildId) as ShopItem[];
+}
+
+export function getShopItem(guildId: string, itemId: number): ShopItem | undefined {
+  return db.prepare("SELECT * FROM shop_items WHERE guild_id = ? AND id = ?").get(guildId, itemId) as ShopItem | undefined;
+}
+
+export function addToInventory(guildId: string, userId: string, itemId: number) {
+  db.prepare(
+    `INSERT INTO inventory (guild_id, user_id, item_id, qty) VALUES (?, ?, ?, 1)
+     ON CONFLICT(guild_id, user_id, item_id) DO UPDATE SET qty = qty + 1`
+  ).run(guildId, userId, itemId);
+}
+
+export function getInventory(guildId: string, userId: string) {
+  return db
+    .prepare(
+      `SELECT inv.item_id AS id, inv.qty AS qty, s.name AS name, s.price AS price
+       FROM inventory inv JOIN shop_items s ON s.id = inv.item_id
+       WHERE inv.guild_id = ? AND inv.user_id = ? ORDER BY s.name ASC`
+    )
+    .all(guildId, userId) as { id: number; qty: number; name: string; price: number }[];
+}
+
 /** Formats a ms duration as a short "2h 5m" style string. */
 export function formatDuration(ms: number): string {
   const totalMinutes = Math.ceil(ms / 60000);

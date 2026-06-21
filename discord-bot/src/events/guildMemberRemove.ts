@@ -4,6 +4,7 @@ import { renderTemplate } from "../util/format.js";
 import { recordActionAndCheckNuke } from "../modules/antinuke.js";
 import { punishNukeExecutor } from "../modules/nukeResponse.js";
 import { renderWelcomeCard } from "../modules/welcomeCard.js";
+import { updateMemberCountChannel } from "../modules/serverstats.js";
 
 export const name = Events.GuildMemberRemove;
 
@@ -23,6 +24,8 @@ export async function execute(member: GuildMember | PartialGuildMember) {
       }
     }
   }
+
+  await updateMemberCountChannel(guild);
 
   if (!config.leave_channel) return;
   const channel = guild.channels.cache.get(config.leave_channel);

@@ -58,10 +58,13 @@ const command: Command = {
 
     updateGuildConfig(guildId, { verify_channel: channel.id });
 
+    await interaction.guild!.members.fetch().catch(() => {});
+    const verifiedCount = interaction.guild!.roles.cache.get(config.verify_role)?.members.size ?? 0;
     const embed = new EmbedBuilder()
       .setTitle("✅ Member Verification")
       .setDescription("Click the button below to verify yourself and gain access to the server.")
-      .setColor(0x5865f2);
+      .setColor(0x5865f2)
+      .setFooter({ text: `✔️ Verified members: ${verifiedCount}` });
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder().setCustomId("verify_member").setLabel("Verify").setStyle(ButtonStyle.Success)
     );

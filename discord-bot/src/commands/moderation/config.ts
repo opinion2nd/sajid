@@ -2,6 +2,7 @@ import { SlashCommandBuilder, PermissionFlagsBits, ChannelType, type ChatInputCo
 import type { Command } from "../../types.js";
 import { successEmbed } from "../../util/embeds.js";
 import { updateGuildConfig } from "../../db.js";
+import { createMemberCountChannel } from "../../modules/serverstats.js";
 
 const command: Command = {
   data: new SlashCommandBuilder()
@@ -75,6 +76,24 @@ const command: Command = {
         .addChannelOption((o) =>
           o.setName("channel").setDescription("Channel for suggestions").setRequired(true).addChannelTypes(ChannelType.GuildText)
         )
+    )
+    .addSubcommand((sc) =>
+      sc.setName("membercount").setDescription("Create a live member-count voice channel")
+    )
+    .addSubcommand((sc) =>
+      sc
+        .setName("starboard")
+        .setDescription("Set the starboard channel and star threshold")
+        .addChannelOption((o) =>
+          o.setName("channel").setDescription("Channel for starred messages").setRequired(true).addChannelTypes(ChannelType.GuildText)
+        )
+        .addIntegerOption((o) => o.setName("threshold").setDescription("Stars needed (default 3)").setMinValue(1).setMaxValue(50))
+    )
+    .addSubcommand((sc) =>
+      sc
+        .setName("autorole")
+        .setDescription("Set a role automatically given to new members")
+        .addRoleOption((o) => o.setName("role").setDescription("Role to auto-assign on join").setRequired(true))
     ),
 
   async execute(interaction: ChatInputCommandInteraction) {
@@ -130,6 +149,25 @@ const command: Command = {
         const channel = interaction.options.getChannel("channel", true);
         updateGuildConfig(guildId, { suggestion_channel: channel.id });
         await interaction.reply({ embeds: [successEmbed(`Suggestion channel set to ${channel}.`)] });
+        return;
+      }
+      case "membercount": {
+        const channel = await createMemberCountChannel(interaction.guild!);
+        updateGuildConfig(guildId, { member_count_channel: channel.id });
+        await interaction.reply({ embeds: [successEmbed(`Created live member-count channel ${channel}. It updates on every join/leave.`)] });
+        return;
+      }
+      case "starboard": {
+        const channel = interaction.options.getChannel("channel", true);
+        const threshold = interaction.options.getInteger("threshold") ?? 3;
+        updateGuildConfig(guildId, { starboard_channel: channel.id, starboard_threshold: threshold });
+        await interaction.reply({ embeds: [successEmbed(`Starboard set to ${channel} with a ${threshold}⭐ threshold.`)] });
+        return;
+      }
+      case "autorole": {
+        const role = interaction.options.getRole("role", true);
+        updateGuildConfig(guildId, { autorole_id: role.id });
+        await interaction.reply({ embeds: [successEmbed(`New members will automatically receive **${role.name}**.`)] });
         return;
       }
     }
