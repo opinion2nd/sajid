@@ -22,11 +22,20 @@ export interface Giveaway {
 
 export function buildGiveawayEmbed(prize: string, winnerCount: number, endAt: number, hostId: string, entryCount: number) {
   return new EmbedBuilder()
-    .setTitle("🎉 Giveaway 🎉")
+    .setTitle(`🎉  ${prize}`)
     .setDescription(
-      `**Prize:** ${prize}\n**Winners:** ${winnerCount}\n**Ends:** <t:${Math.floor(endAt / 1000)}:R>\n**Hosted by:** <@${hostId}>\n**Entries:** ${entryCount}`
+      [
+        `Click the **🎉 Enter** button below to join!`,
+        ``,
+        `🏆 **Winners:** ${winnerCount}`,
+        `⏰ **Ends:** <t:${Math.floor(endAt / 1000)}:R>`,
+        `👑 **Hosted by:** <@${hostId}>`,
+        `🎟️ **Entries:** ${entryCount}`,
+      ].join("\n")
     )
-    .setColor(0x5865f2);
+    .setColor(0x5865f2)
+    .setFooter({ text: "Good luck! 🍀" })
+    .setTimestamp(endAt);
 }
 
 export function buildGiveawayButtonRow(giveawayId: number, disabled = false) {

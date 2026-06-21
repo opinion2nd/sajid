@@ -1,15 +1,12 @@
 import {
   SlashCommandBuilder,
   PermissionFlagsBits,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  EmbedBuilder,
   ChannelType,
   type ChatInputCommandInteraction,
 } from "discord.js";
 import type { Command } from "../../types.js";
 import { successEmbed, errorEmbed } from "../../util/embeds.js";
+import { buildRolePanelEmbed, buildRolePanelRows, type PanelRole } from "../../modules/rolepanel.js";
 
 const command: Command = {
   data: new SlashCommandBuilder()
@@ -31,22 +28,23 @@ const command: Command = {
     const title = interaction.options.getString("title", true);
     const description = interaction.options.getString("description") ?? "Click a button below to add or remove a role.";
 
-    const roles = [1, 2, 3, 4]
+    const roles: PanelRole[] = [1, 2, 3, 4]
       .map((n) => interaction.options.getRole(`role${n}`))
-      .filter((r): r is NonNullable<typeof r> => Boolean(r));
+      .filter((r): r is NonNullable<typeof r> => Boolean(r))
+      .map((r) => ({ id: r.id, name: r.name }));
 
-    const target = interaction.guild!.channels.cache.get(channel.id);
+    const guild = interaction.guild!;
+    const target = guild.channels.cache.get(channel.id);
     if (!target?.isTextBased()) {
       await interaction.reply({ embeds: [errorEmbed("That channel can't receive messages.")], ephemeral: true });
       return;
     }
 
-    const embed = new EmbedBuilder().setTitle(title).setDescription(description).setColor(0x5865f2);
-    const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      roles.map((role) => new ButtonBuilder().setCustomId(`rolepanel_${role.id}`).setLabel(role.name).setStyle(ButtonStyle.Secondary))
-    );
+    // Warm the member cache so the initial counts are accurate.
+    await guild.members.fetch().catch(() => {});
 
-    await target.send({ embeds: [embed], components: [row] });
+    const embed = buildRolePanelEmbed(title, description, roles, guild);
+    await target.send({ embeds: [embed], components: buildRolePanelRows(roles) });
     await interaction.reply({ embeds: [successEmbed(`Role panel posted in ${channel}.`)], ephemeral: true });
   },
 };

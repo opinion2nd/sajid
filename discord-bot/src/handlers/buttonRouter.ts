@@ -11,6 +11,8 @@ import { castSuggestionVote, buildSuggestionEmbed } from "../modules/suggestions
 import { playTicTacToeMove, getTicTacToeGame, buildTicTacToeEmbed, buildTicTacToeRows } from "../modules/games/tictactoe.js";
 import { playConnectFourMove, getConnectFourGame, buildConnectFourEmbed, buildConnectFourRow } from "../modules/games/connectfour.js";
 import { move2048, getGame2048, buildGame2048Embed, buildGame2048Rows, type Direction } from "../modules/games/twentyfortyeight.js";
+import { buildGiveawayEmbed, buildGiveawayButtonRow, type Giveaway } from "../modules/giveaways.js";
+import { buildRolePanelEmbed, buildRolePanelRows, rolesFromMessageComponents } from "../modules/rolepanel.js";
 import { errorEmbed, successEmbed, infoEmbed } from "../util/embeds.js";
 
 export function ticketCloseRow() {
@@ -100,9 +102,7 @@ async function handleTicketClose(interaction: ButtonInteraction) {
 }
 
 async function handleGiveawayEntry(interaction: ButtonInteraction, giveawayId: number) {
-  const giveaway = db.prepare("SELECT * FROM giveaways WHERE id = ?").get(giveawayId) as
-    | { ended: number; entries: string }
-    | undefined;
+  const giveaway = db.prepare("SELECT * FROM giveaways WHERE id = ?").get(giveawayId) as Giveaway | undefined;
   if (!giveaway || giveaway.ended) {
     await interaction.reply({ embeds: [errorEmbed("This giveaway has ended.")], ephemeral: true });
     return;
@@ -110,15 +110,20 @@ async function handleGiveawayEntry(interaction: ButtonInteraction, giveawayId: n
 
   const entries: string[] = JSON.parse(giveaway.entries);
   const idx = entries.indexOf(interaction.user.id);
+  let replyEmbed;
   if (idx === -1) {
     entries.push(interaction.user.id);
-    db.prepare("UPDATE giveaways SET entries = ? WHERE id = ?").run(JSON.stringify(entries), giveawayId);
-    await interaction.reply({ embeds: [successEmbed("You're entered into the giveaway! Good luck 🍀")], ephemeral: true });
+    replyEmbed = successEmbed("You're entered into the giveaway! Good luck 🍀");
   } else {
     entries.splice(idx, 1);
-    db.prepare("UPDATE giveaways SET entries = ? WHERE id = ?").run(JSON.stringify(entries), giveawayId);
-    await interaction.reply({ embeds: [infoEmbed("You left the giveaway.")], ephemeral: true });
+    replyEmbed = infoEmbed("You left the giveaway.");
   }
+  db.prepare("UPDATE giveaways SET entries = ? WHERE id = ?").run(JSON.stringify(entries), giveawayId);
+
+  // Live-update the public giveaway message so the entry count reflects reality.
+  const refreshed = buildGiveawayEmbed(giveaway.prize, giveaway.winner_count, giveaway.end_at, giveaway.host_id, entries.length);
+  await interaction.update({ embeds: [refreshed], components: [buildGiveawayButtonRow(giveawayId)] });
+  await interaction.followUp({ embeds: [replyEmbed], ephemeral: true });
 }
 
 async function handleRolePanel(interaction: ButtonInteraction, roleId: string) {
@@ -135,18 +140,29 @@ async function handleRolePanel(interaction: ButtonInteraction, roleId: string) {
   try {
     const guildMember = await guild.members.fetch(member.user.id);
     const hasRole = guildMember.roles.cache.has(roleId);
+    let replyEmbed;
     if (hasRole) {
       await guildMember.roles.remove(role);
-      await interaction.reply({ embeds: [infoEmbed(`Removed role **${role.name}**.`)], ephemeral: true });
+      replyEmbed = infoEmbed(`Removed role **${role.name}**.`);
     } else {
       await guildMember.roles.add(role);
-      await interaction.reply({ embeds: [successEmbed(`Added role **${role.name}**.`)], ephemeral: true });
+      replyEmbed = successEmbed(`Added role **${role.name}**.`);
     }
+
+    // Re-render the panel embed so the live member counts stay accurate.
+    const sourceEmbed = interaction.message.embeds[0];
+    const rawTitle = sourceEmbed?.title ?? "Role Panel";
+    const title = rawTitle.replace(/^🎭\s*/, "");
+    const description = (sourceEmbed?.description ?? "").split("\n\n")[0];
+    const roles = rolesFromMessageComponents(interaction.message.components as never, guild);
+    const refreshed = buildRolePanelEmbed(title, description, roles, guild);
+    await interaction.update({ embeds: [refreshed], components: buildRolePanelRows(roles) });
+    await interaction.followUp({ embeds: [replyEmbed], ephemeral: true });
   } catch {
     await interaction.reply({
       embeds: [errorEmbed("I don't have permission to manage that role (check role hierarchy).")],
       ephemeral: true,
-    });
+    }).catch(() => {});
   }
 }
 
