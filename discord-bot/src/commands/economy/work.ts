@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from "discord.js";
 import type { Command } from "../../types.js";
 import { doWork, formatDuration, CURRENCY } from "../../modules/economy.js";
+import { refreshBaltopPanel } from "../../modules/ecoleaderboardpanel.js";
 import { successEmbed, errorEmbed } from "../../util/embeds.js";
 
 const command: Command = {
@@ -18,6 +19,7 @@ const command: Command = {
     await interaction.reply({
       embeds: [successEmbed(`${result.line} **${result.amount}** ${CURRENCY}! New balance: **${result.balance.toLocaleString()}**.`)],
     });
+    await refreshBaltopPanel(interaction.guild!);
   },
 };
 

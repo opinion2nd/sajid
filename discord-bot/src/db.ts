@@ -202,6 +202,12 @@ ensureColumn("guild_config", "starboard_threshold", "INTEGER NOT NULL DEFAULT 3"
 ensureColumn("guild_config", "autorole_id", "TEXT");
 ensureColumn("guild_config", "ticket_panel_channel", "TEXT");
 ensureColumn("guild_config", "ticket_panel_message", "TEXT");
+ensureColumn("guild_config", "leaderboard_channel", "TEXT");
+ensureColumn("guild_config", "leaderboard_message", "TEXT");
+ensureColumn("guild_config", "baltop_channel", "TEXT");
+ensureColumn("guild_config", "baltop_message", "TEXT");
+ensureColumn("guild_config", "invites_channel", "TEXT");
+ensureColumn("guild_config", "invites_message", "TEXT");
 
 export interface GuildConfig {
   guild_id: string;
@@ -236,6 +242,12 @@ export interface GuildConfig {
   autorole_id: string | null;
   ticket_panel_channel: string | null;
   ticket_panel_message: string | null;
+  leaderboard_channel: string | null;
+  leaderboard_message: string | null;
+  baltop_channel: string | null;
+  baltop_message: string | null;
+  invites_channel: string | null;
+  invites_message: string | null;
 }
 
 export function getGuildConfig(guildId: string): GuildConfig {

@@ -10,6 +10,7 @@ import {
   addToInventory,
   CURRENCY,
 } from "../../modules/economy.js";
+import { refreshBaltopPanel } from "../../modules/ecoleaderboardpanel.js";
 
 const command: Command = {
   data: new SlashCommandBuilder()
@@ -80,6 +81,7 @@ const command: Command = {
         }
       }
       await interaction.reply({ embeds: [successEmbed(`You bought **${item.name}** for ${item.price.toLocaleString()} ${CURRENCY}.${roleNote}`)] });
+      await refreshBaltopPanel(interaction.guild!);
       return;
     }
 

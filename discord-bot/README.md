@@ -8,15 +8,15 @@ No external services required — all data is stored locally in `data/bot.sqlite
 - **Moderation** — `/kick`, `/ban`, `/unban`, `/timeout set|remove`, `/warn add|list|clear`, `/purge`, `/lock`, `/unlock`, `/slowmode`, `/nick`, `/role add|remove`
 - **Automod** — `/automod toggle|settings|status` (anti-invite, anti-caps, anti-spam, mention spam limit)
 - **Tickets** — `/ticket panel|close|add|remove`, button-based ticket creation with per-user private channels; the panel shows a live open-ticket count
-- **Leveling** — automatic XP on messages, image-based level-up cards, `/rank` (image rank card), `/leaderboard`
-- **Economy** — `/balance`, `/daily`, `/work`, `/give`, `/baltop`, `/shop view|buy|additem|removeitem`, `/inventory`, `/gamble`, `/slots`, `/rob` (per-server coin balances, role-reward shop, gambling)
+- **Leveling** — automatic XP on messages, image-based level-up cards, `/rank` (image rank card), `/leaderboard` (also available as a live auto-updating panel via `/config leaderboard`)
+- **Economy** — `/balance`, `/daily`, `/work`, `/give`, `/baltop` (also available as a live auto-updating panel via `/config baltop`), `/shop view|buy|additem|removeitem`, `/inventory`, `/gamble`, `/slots`, `/rob` (per-server coin balances, role-reward shop, gambling)
 - **Giveaways** — `/giveaway start|end|reroll|list`, button-based entry with a live entry count on the message
 - **Engagement** — Starboard (⭐ react to feature a message), auto-role on join, emoji reaction-roles (`/reactionrole add|remove`), self-role panels (`/role-panel`) with live member counts
-- **Server config** — `/config modlog|welcome|leave|levelup|ticketcategory|ticketlog|ticketrole|suggestions|membercount|starboard|autorole` (membercount creates a live-updating voice channel)
+- **Server config** — `/config modlog|welcome|leave|levelup|ticketcategory|ticketlog|ticketrole|suggestions|membercount|starboard|autorole|leaderboard|baltop|invites` (membercount creates a live-updating voice channel; leaderboard/baltop/invites each post a message that keeps re-editing itself with the current top 10 as XP, balances, or invites change)
 - **Security suite** — `/security raid|nuke|ghostping|status` (anti-raid join-burst kicking; anti-nuke audit-log-based punishment for mass channel/role create+delete, kicks, bans, webhook creation, permission-overwrite edits, and emoji deletes; ghost-ping detection), `/verify setup|panel` (button-based member verification), `/backup create|list|restore` (additive-only role/channel snapshot restore)
 - **AFK** — `/afk`, auto-clears on your next message, replies when someone mentions an AFK user
 - **Reminders** — `/remind` (DMs you, falls back to channel ping), persists across restarts
-- **Invite tracking** — `/invites`, credits whoever's invite a new member used
+- **Invite tracking** — `/invites`, credits whoever's invite a new member used (also available as a live auto-updating leaderboard panel via `/config invites`)
 - **Snipe** — `/snipe` shows the last deleted message in a channel (5 min TTL)
 - **Polls & Suggestions** — `/poll` (up to 5 options, live vote-tally buttons), `/suggestion` (upvote/downvote buttons)
 - **Custom embeds** — `/embed` for staff-sent announcements

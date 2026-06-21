@@ -46,3 +46,9 @@ export function getInviteCount(guildId: string, userId: string): number {
     | undefined;
   return row?.uses ?? 0;
 }
+
+export function getInviteLeaderboard(guildId: string, limit = 10) {
+  return db
+    .prepare("SELECT inviter_id, uses FROM invites WHERE guild_id = ? ORDER BY uses DESC LIMIT ?")
+    .all(guildId, limit) as { inviter_id: string; uses: number }[];
+}

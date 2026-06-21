@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from "discord.js";
 import type { Command } from "../../types.js";
 import { spend, addBalance, getBalance, CURRENCY } from "../../modules/economy.js";
+import { refreshBaltopPanel } from "../../modules/ecoleaderboardpanel.js";
 import { errorEmbed, brandEmbed } from "../../util/embeds.js";
 
 const SYMBOLS = ["🍒", "🍋", "🍇", "🔔", "💎", "7️⃣"];
@@ -49,6 +50,7 @@ const command: Command = {
           ),
       ],
     });
+    await refreshBaltopPanel(interaction.guild!);
   },
 };
 

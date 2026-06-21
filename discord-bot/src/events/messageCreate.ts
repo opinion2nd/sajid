@@ -3,6 +3,7 @@ import { getGuildConfig } from "../db.js";
 import { checkAutomod } from "../modules/moderation.js";
 import { maybeAddXp, getUserXp, getRank, xpProgress } from "../modules/leveling.js";
 import { renderLevelCard } from "../modules/levelCard.js";
+import { refreshLeaderboardPanel } from "../modules/leaderboardpanel.js";
 import { logModAction } from "../modules/modlog.js";
 import { getAfk, clearAfk } from "../modules/afk.js";
 
@@ -60,6 +61,7 @@ export async function execute(message: Message) {
   }
 
   const result = maybeAddXp(message.guild.id, message.author.id);
+  if (result) await refreshLeaderboardPanel(message.guild);
   if (result?.leveledUp) {
     const channelId = config.levelup_channel || message.channel.id;
     const channel = message.guild.channels.cache.get(channelId);

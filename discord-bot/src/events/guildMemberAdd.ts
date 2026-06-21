@@ -6,6 +6,7 @@ import { recordJoinAndCheckRaid } from "../modules/antiraid.js";
 import { renderWelcomeCard } from "../modules/welcomeCard.js";
 import { logModAction } from "../modules/modlog.js";
 import { updateMemberCountChannel } from "../modules/serverstats.js";
+import { refreshInviteLeaderboardPanel } from "../modules/inviteleaderboardpanel.js";
 
 export const name = Events.GuildMemberAdd;
 
@@ -15,6 +16,7 @@ export async function execute(member: GuildMember) {
   const config = getGuildConfig(member.guild.id);
 
   await resolveUsedInviteAndCredit(member.guild).catch(() => null);
+  await refreshInviteLeaderboardPanel(member.guild).catch(() => {});
 
   if (config.anti_raid_enabled) {
     const isRaid = recordJoinAndCheckRaid(member.guild.id, config.raid_join_threshold, config.raid_window_seconds);

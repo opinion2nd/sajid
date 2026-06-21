@@ -3,6 +3,9 @@ import type { Command } from "../../types.js";
 import { successEmbed } from "../../util/embeds.js";
 import { updateGuildConfig } from "../../db.js";
 import { createMemberCountChannel } from "../../modules/serverstats.js";
+import { buildLeaderboardEmbed, registerLeaderboardPanel } from "../../modules/leaderboardpanel.js";
+import { buildBaltopEmbed, registerBaltopPanel } from "../../modules/ecoleaderboardpanel.js";
+import { buildInviteLeaderboardEmbed, registerInviteLeaderboardPanel } from "../../modules/inviteleaderboardpanel.js";
 
 const command: Command = {
   data: new SlashCommandBuilder()
@@ -94,6 +97,30 @@ const command: Command = {
         .setName("autorole")
         .setDescription("Set a role automatically given to new members")
         .addRoleOption((o) => o.setName("role").setDescription("Role to auto-assign on join").setRequired(true))
+    )
+    .addSubcommand((sc) =>
+      sc
+        .setName("leaderboard")
+        .setDescription("Post a live, auto-updating XP leaderboard in a channel")
+        .addChannelOption((o) =>
+          o.setName("channel").setDescription("Channel for the live leaderboard").setRequired(true).addChannelTypes(ChannelType.GuildText)
+        )
+    )
+    .addSubcommand((sc) =>
+      sc
+        .setName("baltop")
+        .setDescription("Post a live, auto-updating richest-members leaderboard in a channel")
+        .addChannelOption((o) =>
+          o.setName("channel").setDescription("Channel for the live baltop board").setRequired(true).addChannelTypes(ChannelType.GuildText)
+        )
+    )
+    .addSubcommand((sc) =>
+      sc
+        .setName("invites")
+        .setDescription("Post a live, auto-updating invite leaderboard in a channel")
+        .addChannelOption((o) =>
+          o.setName("channel").setDescription("Channel for the live invite leaderboard").setRequired(true).addChannelTypes(ChannelType.GuildText)
+        )
     ),
 
   async execute(interaction: ChatInputCommandInteraction) {
@@ -168,6 +195,33 @@ const command: Command = {
         const role = interaction.options.getRole("role", true);
         updateGuildConfig(guildId, { autorole_id: role.id });
         await interaction.reply({ embeds: [successEmbed(`New members will automatically receive **${role.name}**.`)] });
+        return;
+      }
+      case "leaderboard": {
+        const channel = interaction.options.getChannel("channel", true);
+        const target = interaction.guild!.channels.cache.get(channel.id);
+        if (!target?.isTextBased()) return;
+        const message = await target.send({ embeds: [buildLeaderboardEmbed(guildId)] });
+        registerLeaderboardPanel(guildId, channel.id, message.id);
+        await interaction.reply({ embeds: [successEmbed(`Live XP leaderboard posted in ${channel}. It updates automatically as members chat.`)] });
+        return;
+      }
+      case "baltop": {
+        const channel = interaction.options.getChannel("channel", true);
+        const target = interaction.guild!.channels.cache.get(channel.id);
+        if (!target?.isTextBased()) return;
+        const message = await target.send({ embeds: [buildBaltopEmbed(guildId)] });
+        registerBaltopPanel(guildId, channel.id, message.id);
+        await interaction.reply({ embeds: [successEmbed(`Live baltop board posted in ${channel}. It updates automatically as balances change.`)] });
+        return;
+      }
+      case "invites": {
+        const channel = interaction.options.getChannel("channel", true);
+        const target = interaction.guild!.channels.cache.get(channel.id);
+        if (!target?.isTextBased()) return;
+        const message = await target.send({ embeds: [buildInviteLeaderboardEmbed(guildId)] });
+        registerInviteLeaderboardPanel(guildId, channel.id, message.id);
+        await interaction.reply({ embeds: [successEmbed(`Live invite leaderboard posted in ${channel}. It updates automatically as members join.`)] });
         return;
       }
     }
