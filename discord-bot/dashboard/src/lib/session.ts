@@ -58,7 +58,11 @@ export async function setSessionCookie(data: SessionData) {
   const store = await cookies();
   store.set(COOKIE_NAME, encodeSession(data), {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    // A Secure cookie is silently dropped by the browser over a plain http://
+    // connection, so base this on the configured redirect URI's protocol
+    // instead of NODE_ENV (which is "production" for `next start` regardless
+    // of whether TLS is actually in front of it).
+    secure: (process.env.DISCORD_REDIRECT_URI ?? "").startsWith("https://"),
     sameSite: "lax",
     maxAge: MAX_AGE_SECONDS,
     path: "/",
