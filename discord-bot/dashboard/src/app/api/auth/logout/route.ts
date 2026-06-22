@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { clearSessionCookie } from "@/lib/session";
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   await clearSessionCookie();
-  return NextResponse.redirect(new URL("/", request.url));
+  const origin = new URL(process.env.DISCORD_REDIRECT_URI!).origin;
+  return NextResponse.redirect(new URL("/", origin));
 }

@@ -2,10 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { exchangeCodeForToken, fetchDiscordUser, getManageableGuilds } from "@/lib/discord";
 import { setSessionCookie } from "@/lib/session";
 
+// Use the configured redirect URI's origin (not request.url) so the post-login
+// redirect lands on the public hostname even when the server sees a different
+// Host header than the client (e.g. behind certain panel network setups).
+function siteOrigin(): string {
+  return new URL(process.env.DISCORD_REDIRECT_URI!).origin;
+}
+
 export async function GET(request: NextRequest) {
   const code = request.nextUrl.searchParams.get("code");
   if (!code) {
-    return NextResponse.redirect(new URL("/?error=missing_code", request.url));
+    return NextResponse.redirect(new URL("/?error=missing_code", siteOrigin()));
   }
 
   try {
@@ -20,9 +27,9 @@ export async function GET(request: NextRequest) {
       expiresAt: Date.now() + 1000 * 60 * 60 * 24 * 7,
     });
 
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(new URL("/dashboard", siteOrigin()));
   } catch (error) {
     console.error("OAuth callback failed:", error);
-    return NextResponse.redirect(new URL("/?error=auth_failed", request.url));
+    return NextResponse.redirect(new URL("/?error=auth_failed", siteOrigin()));
   }
 }
