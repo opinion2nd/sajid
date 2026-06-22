@@ -9,3 +9,5 @@ data/
 .next/
 *.tsbuildinfo
 __pycache__/
+dist/
+sell-package/

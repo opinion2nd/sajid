@@ -44,6 +44,24 @@ same SQLite file). See `dashboard/README.md` for setup.
 4. Register slash commands: `npm run deploy-commands`
 5. Start the bot: `npm run dev` (auto-reload) or `npm start`
 
+## Building a sale package (compiled + obfuscated)
+
+To produce a buyer-facing build with no editable TypeScript source (per the
+BuiltByBit license terms — 1 server per purchase, obfuscated source):
+
+```
+npm run build:sell
+```
+
+This compiles `src/` to JS (`tsc -p tsconfig.build.json`), obfuscates it
+(`javascript-obfuscator`, config in `obfuscator.config.json`), and assembles
+a ready-to-zip folder at `sell-package/`: obfuscated bot code, a trimmed
+`package.json` (`npm start` → `node index.js`, no TypeScript devDependencies),
+`.env.example`, a buyer README, and `launcher.js`/`pterodactyl-start.sh`
+variants. The dashboard ships as plain Next.js source (not obfuscated —
+its production build is already minified with source maps off). Zip the
+contents of `sell-package/` for the BBB upload.
+
 ## Deploying on a Pterodactyl panel (e.g. NyctoHost)
 
 If your hosting uses a Pterodactyl panel, request a **Node.js egg/server**

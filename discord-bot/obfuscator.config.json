@@ -1,0 +1,20 @@
+{
+  "compact": true,
+  "controlFlowFlattening": true,
+  "controlFlowFlatteningThreshold": 0.4,
+  "deadCodeInjection": true,
+  "deadCodeInjectionThreshold": 0.2,
+  "identifierNamesGenerator": "hexadecimal",
+  "renameGlobals": false,
+  "selfDefending": true,
+  "stringArray": true,
+  "stringArrayEncoding": ["base64"],
+  "stringArrayThreshold": 0.8,
+  "splitStrings": true,
+  "splitStringsChunkLength": 10,
+  "numbersToExpressions": true,
+  "simplify": true,
+  "transformObjectKeys": true,
+  "target": "node",
+  "ignoreImports": true
+}
