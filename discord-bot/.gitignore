@@ -10,4 +10,5 @@ data/
 *.tsbuildinfo
 __pycache__/
 dist/
+dist-obf/
 sell-package/
