@@ -1,5 +1,6 @@
-import { createCanvas } from "@napi-rs/canvas";
-import { roundedRect, loadAvatar } from "../util/canvas.js";
+import fs from "node:fs";
+import { createCanvas, loadImage } from "@napi-rs/canvas";
+import { roundedRect, loadAvatar, drawImageCover } from "../util/canvas.js";
 
 export interface WelcomeCardData {
   username: string;
@@ -10,6 +11,8 @@ export interface WelcomeCardData {
   mode: "welcome" | "goodbye";
   /** Accent color as a hex string, e.g. "#5865f2". */
   accent?: string;
+  /** Local path to a member-supplied background image; falls back to the gradient if unset or unreadable. */
+  backgroundImagePath?: string | null;
 }
 
 const WIDTH = 934;
@@ -27,12 +30,24 @@ export async function renderWelcomeCard(data: WelcomeCardData): Promise<Buffer> 
   const canvas = createCanvas(WIDTH, HEIGHT);
   const ctx = canvas.getContext("2d");
 
-  // ── Background: dark gradient ───────────────────────────────────────────
-  const bg = ctx.createLinearGradient(0, 0, WIDTH, HEIGHT);
-  bg.addColorStop(0, "#15121f");
-  bg.addColorStop(1, "#231a33");
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  // ── Background: custom image if provided, else dark gradient ───────────
+  let customBackgroundDrawn = false;
+  if (data.backgroundImagePath) {
+    try {
+      const img = await loadImage(fs.readFileSync(data.backgroundImagePath));
+      drawImageCover(ctx, img, 0, 0, WIDTH, HEIGHT);
+      customBackgroundDrawn = true;
+    } catch {
+      // Fall through to the gradient background below.
+    }
+  }
+  if (!customBackgroundDrawn) {
+    const bg = ctx.createLinearGradient(0, 0, WIDTH, HEIGHT);
+    bg.addColorStop(0, "#15121f");
+    bg.addColorStop(1, "#231a33");
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  }
 
   // Glow behind the avatar.
   const glow = ctx.createRadialGradient(WIDTH / 2, 110, 10, WIDTH / 2, 110, 220);

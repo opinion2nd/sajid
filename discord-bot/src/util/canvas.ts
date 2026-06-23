@@ -24,3 +24,38 @@ export async function loadAvatar(url: string) {
   const buffer = Buffer.from(await res.arrayBuffer());
   return loadImage(buffer);
 }
+
+/** Draws an image scaled+cropped to fill a w x h box (like CSS `object-fit: cover`). */
+export function drawImageCover(
+  ctx: SKRSContext2D,
+  img: { width: number; height: number },
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+) {
+  const imgRatio = img.width / img.height;
+  const boxRatio = w / h;
+  let drawWidth: number, drawHeight: number, offsetX: number, offsetY: number;
+
+  if (imgRatio > boxRatio) {
+    drawHeight = h;
+    drawWidth = h * imgRatio;
+    offsetX = x - (drawWidth - w) / 2;
+    offsetY = y;
+  } else {
+    drawWidth = w;
+    drawHeight = w / imgRatio;
+    offsetX = x;
+    offsetY = y - (drawHeight - h) / 2;
+  }
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x, y, w, h);
+  ctx.clip();
+  // @napi-rs/canvas's drawImage typing wants its own Image type; this helper is generic over
+  // anything with width/height so it also accepts the result of loadImage() at call sites.
+  ctx.drawImage(img as any, offsetX, offsetY, drawWidth, drawHeight);
+  ctx.restore();
+}
