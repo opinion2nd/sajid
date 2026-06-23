@@ -35,6 +35,8 @@ const sellPkg = {
 writeFileSync(path.join(out, "package.json"), JSON.stringify(sellPkg, null, 2) + "\n");
 
 cpSync(path.join(root, ".env.example"), path.join(out, ".env.example"));
+// Blank template, not the real .env — buyer fills in their own values.
+cpSync(path.join(root, ".env.example"), path.join(out, ".env"));
 mkdirSync(path.join(out, "data"), { recursive: true });
 writeFileSync(path.join(out, "data", ".gitkeep"), "");
 
@@ -113,10 +115,16 @@ writeFileSync(path.join(out, "launcher.js"), launcher);
 
 cpSync(path.join(root, "pterodactyl-start.sh"), path.join(out, "pterodactyl-start.sh"));
 
+// Exclude the real .env/.env.local — those hold the seller's own live secrets and must
+// never ship to a buyer. A blank template is written separately below.
 cpSync(path.join(root, "dashboard"), path.join(out, "dashboard"), {
   recursive: true,
-  filter: (src) => !["node_modules", ".next", "tsconfig.tsbuildinfo"].includes(path.basename(src)),
+  filter: (src) =>
+    !["node_modules", ".next", "tsconfig.tsbuildinfo", ".env", ".env.local"].includes(path.basename(src)),
 });
+
+// Blank template, not the real dashboard/.env.local — buyer fills in their own values.
+cpSync(path.join(root, "dashboard", ".env.example"), path.join(out, "dashboard", ".env.local"));
 
 writeFileSync(
   path.join(out, "README.md"),
@@ -129,7 +137,7 @@ this license covers usage on **1 Discord server**.
 ## Setup
 
 1. \`npm install\`
-2. Copy \`.env.example\` to \`.env\` and fill in \`DISCORD_BOT_TOKEN\` and \`DISCORD_CLIENT_ID\`
+2. Open \`.env\` and fill in \`DISCORD_BOT_TOKEN\` and \`DISCORD_CLIENT_ID\`
    (from the [Discord Developer Portal](https://discord.com/developers/applications)).
 3. Register slash commands: \`npm run deploy-commands\`
 4. Start the bot: \`npm start\`
