@@ -49,6 +49,65 @@ export async function renderWelcomeCard(data: WelcomeCardData): Promise<Buffer> 
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
   }
 
+  const sub =
+    data.mode === "welcome"
+      ? `You're the ${ordinal(data.memberCount)} member of ${data.serverName}!`
+      : `${data.serverName} now has ${data.memberCount} members.`;
+
+  if (customBackgroundDrawn) {
+    // The custom artwork already carries its own branding/title, so this layout
+    // only adds a slim bottom bar with the avatar + username + member count —
+    // no redundant "WELCOME"/"GOODBYE" title drawn over the user's design.
+    const barH = 92;
+    const barY = HEIGHT - barH;
+    ctx.fillStyle = "rgba(0,0,0,0.55)";
+    ctx.fillRect(0, barY, WIDTH, barH);
+
+    const avR = 32;
+    const avX = 64;
+    const avY = barY + barH / 2;
+
+    ctx.beginPath();
+    ctx.arc(avX, avY, avR + 4, 0, Math.PI * 2);
+    ctx.fillStyle = accent;
+    ctx.fill();
+
+    try {
+      const avatar = await loadAvatar(data.avatarURL);
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(avX, avY, avR, 0, Math.PI * 2);
+      ctx.closePath();
+      ctx.clip();
+      ctx.drawImage(avatar, avX - avR, avY - avR, avR * 2, avR * 2);
+      ctx.restore();
+    } catch {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(avX, avY, avR, 0, Math.PI * 2);
+      ctx.fillStyle = "#23272a";
+      ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 28px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText((data.username[0] ?? "?").toUpperCase(), avX, avY);
+      ctx.restore();
+    }
+
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 26px sans-serif";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText(data.username, avX + avR + 22, avY - 4);
+
+    ctx.fillStyle = "#d6d9e6";
+    ctx.font = "18px sans-serif";
+    ctx.fillText(sub, avX + avR + 22, avY + 24);
+
+    return canvas.toBuffer("image/png");
+  }
+
   // Glow behind the avatar.
   const glow = ctx.createRadialGradient(WIDTH / 2, 110, 10, WIDTH / 2, 110, 220);
   glow.addColorStop(0, accent + "55");
@@ -108,10 +167,6 @@ export async function renderWelcomeCard(data: WelcomeCardData): Promise<Buffer> 
 
   ctx.fillStyle = "#9aa0b5";
   ctx.font = "24px sans-serif";
-  const sub =
-    data.mode === "welcome"
-      ? `You're the ${ordinal(data.memberCount)} member of ${data.serverName}!`
-      : `${data.serverName} now has ${data.memberCount} members.`;
   ctx.fillText(sub, cx, 300);
 
   return canvas.toBuffer("image/png");
