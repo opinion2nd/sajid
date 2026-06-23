@@ -208,6 +208,8 @@ ensureColumn("guild_config", "baltop_channel", "TEXT");
 ensureColumn("guild_config", "baltop_message", "TEXT");
 ensureColumn("guild_config", "invites_channel", "TEXT");
 ensureColumn("guild_config", "invites_message", "TEXT");
+ensureColumn("guild_config", "welcome_banner_path", "TEXT");
+ensureColumn("guild_config", "leave_banner_path", "TEXT");
 
 export interface GuildConfig {
   guild_id: string;
@@ -248,6 +250,8 @@ export interface GuildConfig {
   baltop_message: string | null;
   invites_channel: string | null;
   invites_message: string | null;
+  welcome_banner_path: string | null;
+  leave_banner_path: string | null;
 }
 
 export function getGuildConfig(guildId: string): GuildConfig {

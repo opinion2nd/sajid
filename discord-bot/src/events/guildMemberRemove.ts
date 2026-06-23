@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { AuditLogEvent, Events, AttachmentBuilder, type GuildMember, type PartialGuildMember } from "discord.js";
 import { getGuildConfig } from "../db.js";
 import { renderTemplate } from "../util/format.js";
@@ -40,6 +42,11 @@ export async function execute(member: GuildMember | PartialGuildMember) {
   });
 
   try {
+    if (config.leave_banner_path && fs.existsSync(config.leave_banner_path)) {
+      const file = new AttachmentBuilder(config.leave_banner_path, { name: path.basename(config.leave_banner_path) });
+      await channel.send({ content: text, files: [file] });
+      return;
+    }
     const buffer = await renderWelcomeCard({
       username: member.user.username,
       avatarURL: member.user.displayAvatarURL({ extension: "png", size: 256 }),

@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import path from "node:path";
 import { Events, AttachmentBuilder, type GuildMember } from "discord.js";
 import { getGuildConfig } from "../db.js";
 import { renderTemplate } from "../util/format.js";
@@ -64,6 +66,11 @@ export async function execute(member: GuildMember) {
   });
 
   try {
+    if (config.welcome_banner_path && fs.existsSync(config.welcome_banner_path)) {
+      const file = new AttachmentBuilder(config.welcome_banner_path, { name: path.basename(config.welcome_banner_path) });
+      await channel.send({ content: text, files: [file] });
+      return;
+    }
     const buffer = await renderWelcomeCard({
       username: member.user.username,
       avatarURL: member.user.displayAvatarURL({ extension: "png", size: 256 }),

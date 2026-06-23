@@ -6,6 +6,7 @@ import { createMemberCountChannel } from "../../modules/serverstats.js";
 import { buildLeaderboardEmbed, registerLeaderboardPanel } from "../../modules/leaderboardpanel.js";
 import { buildBaltopEmbed, registerBaltopPanel } from "../../modules/ecoleaderboardpanel.js";
 import { buildInviteLeaderboardEmbed, registerInviteLeaderboardPanel } from "../../modules/inviteleaderboardpanel.js";
+import { saveCustomBanner } from "../../modules/customBanner.js";
 
 const command: Command = {
   data: new SlashCommandBuilder()
@@ -23,23 +24,29 @@ const command: Command = {
     .addSubcommand((sc) =>
       sc
         .setName("welcome")
-        .setDescription("Set the welcome channel and message")
+        .setDescription("Set the welcome channel, message, and optional custom banner")
         .addChannelOption((o) =>
           o.setName("channel").setDescription("Channel for welcome messages").setRequired(true).addChannelTypes(ChannelType.GuildText)
         )
         .addStringOption((o) =>
           o.setName("message").setDescription("Use {user}, {username}, {server}, {memberCount}")
         )
+        .addAttachmentOption((o) =>
+          o.setName("banner").setDescription("Custom welcome banner image (replaces the auto-generated card)")
+        )
     )
     .addSubcommand((sc) =>
       sc
         .setName("leave")
-        .setDescription("Set the leave channel and message")
+        .setDescription("Set the leave channel, message, and optional custom banner")
         .addChannelOption((o) =>
           o.setName("channel").setDescription("Channel for leave messages").setRequired(true).addChannelTypes(ChannelType.GuildText)
         )
         .addStringOption((o) =>
           o.setName("message").setDescription("Use {user}, {username}, {server}, {memberCount}")
+        )
+        .addAttachmentOption((o) =>
+          o.setName("banner").setDescription("Custom leave banner image (replaces the auto-generated card)")
         )
     )
     .addSubcommand((sc) =>
@@ -137,15 +144,31 @@ const command: Command = {
       case "welcome": {
         const channel = interaction.options.getChannel("channel", true);
         const message = interaction.options.getString("message");
-        updateGuildConfig(guildId, { welcome_channel: channel.id, ...(message ? { welcome_message: message } : {}) });
-        await interaction.reply({ embeds: [successEmbed(`Welcome channel set to ${channel}.`)] });
+        const banner = interaction.options.getAttachment("banner");
+        const bannerPath = banner ? await saveCustomBanner(guildId, "welcome", banner.url) : null;
+        updateGuildConfig(guildId, {
+          welcome_channel: channel.id,
+          ...(message ? { welcome_message: message } : {}),
+          ...(bannerPath ? { welcome_banner_path: bannerPath } : {}),
+        });
+        await interaction.reply({
+          embeds: [successEmbed(`Welcome channel set to ${channel}.${bannerPath ? " Custom banner saved." : ""}`)],
+        });
         return;
       }
       case "leave": {
         const channel = interaction.options.getChannel("channel", true);
         const message = interaction.options.getString("message");
-        updateGuildConfig(guildId, { leave_channel: channel.id, ...(message ? { leave_message: message } : {}) });
-        await interaction.reply({ embeds: [successEmbed(`Leave channel set to ${channel}.`)] });
+        const banner = interaction.options.getAttachment("banner");
+        const bannerPath = banner ? await saveCustomBanner(guildId, "leave", banner.url) : null;
+        updateGuildConfig(guildId, {
+          leave_channel: channel.id,
+          ...(message ? { leave_message: message } : {}),
+          ...(bannerPath ? { leave_banner_path: bannerPath } : {}),
+        });
+        await interaction.reply({
+          embeds: [successEmbed(`Leave channel set to ${channel}.${bannerPath ? " Custom banner saved." : ""}`)],
+        });
         return;
       }
       case "levelup": {
