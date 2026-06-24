@@ -38,7 +38,7 @@ public class NeoForgeLicenseBootstrap {
         }
 
         LicenseValidator validator = new LicenseValidator(apiUrl);
-        LicenseResult result = validator.validate(licenseKey, serverId, "1.0.0");
+        LicenseResult result = validator.validate(licenseKey, "antifreecam", serverId, "1.0.0");
 
         switch (result.status()) {
             case VALID -> System.out.println("[AntiFreeam] License validated.");

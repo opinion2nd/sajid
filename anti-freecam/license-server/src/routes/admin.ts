@@ -8,10 +8,10 @@ export async function adminRoute(fastify: FastifyInstance) {
 
   // Generate a new license key
   fastify.post<{
-    Body: { notes?: string; expiresAt?: string };
+    Body: { product?: string; notes?: string; expiresAt?: string };
   }>('/generate', async (request, reply) => {
-    const { notes, expiresAt } = request.body ?? {};
-    const key = await LicenseService.generate(notes, expiresAt);
+    const { product, notes, expiresAt } = request.body ?? {};
+    const key = await LicenseService.generate(product ?? 'antifreecam', notes, expiresAt);
     return reply.code(201).send({ key });
   });
 
@@ -29,9 +29,18 @@ export async function adminRoute(fastify: FastifyInstance) {
     return reply.code(200).send({ ok: true });
   });
 
-  // List all licenses
-  fastify.get('/licenses', async (_request, reply) => {
-    const licenses = await LicenseService.listAll();
+  // List licenses, optionally filtered by product
+  fastify.get<{ Querystring: { product?: string } }>('/licenses', async (request, reply) => {
+    const licenses = await LicenseService.listAll(request.query?.product);
     return reply.code(200).send(licenses);
+  });
+
+  // Look up a single license by key
+  fastify.get<{ Params: { key: string } }>('/licenses/:key', async (request, reply) => {
+    const license = await LicenseService.findByKey(request.params.key);
+    if (!license) {
+      return reply.code(404).send({ error: 'License not found' });
+    }
+    return reply.code(200).send(license);
   });
 }

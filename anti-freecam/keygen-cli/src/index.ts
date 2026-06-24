@@ -4,10 +4,10 @@
  * Usage: afc-keygen <command> [options]
  *
  * Commands:
- *   generate  [--count N] [--notes "text"] [--expires YYYY-MM-DD]
+ *   generate  [--product slug] [--count N] [--notes "text"] [--expires YYYY-MM-DD]
  *   revoke    --key AFC-XXXX-XXXX-XXXX-XXXX
  *   unbind    --key AFC-XXXX-XXXX-XXXX-XXXX
- *   list
+ *   list      [--product slug]
  *
  * Environment:
  *   LICENSE_SERVER_URL   e.g. http://localhost:3000
@@ -56,13 +56,15 @@ function parseArgs(args: string[]): Record<string, string> {
 }
 
 async function cmdGenerate(opts: Record<string, string>) {
+  const product = opts['product'] ?? 'antifreecam';
   const count = parseInt(opts['count'] ?? '1', 10);
   const notes = opts['notes'];
   const expiresAt = opts['expires'];
 
-  console.log(`Generating ${count} license key(s)...`);
+  console.log(`Generating ${count} license key(s) for product "${product}"...`);
   for (let i = 0; i < count; i++) {
     const data = await apiCall('POST', '/api/v1/admin/generate', {
+      product,
       notes: notes ?? `Generated on ${new Date().toISOString()}`,
       expiresAt: expiresAt ?? null
     }) as { key: string };
@@ -84,8 +86,10 @@ async function cmdUnbind(opts: Record<string, string>) {
   console.log(`Unbound: ${key}`);
 }
 
-async function cmdList() {
-  const data = await apiCall('GET', '/api/v1/admin/licenses') as object[];
+async function cmdList(opts: Record<string, string>) {
+  const product = opts['product'];
+  const query = product ? `?product=${encodeURIComponent(product)}` : '';
+  const data = await apiCall('GET', `/api/v1/admin/licenses${query}`) as object[];
   if (!Array.isArray(data) || data.length === 0) {
     console.log('No licenses found.');
     return;
@@ -95,7 +99,7 @@ async function cmdList() {
   for (const lic of data as Array<Record<string,string|null>>) {
     const status = lic['revokedAt'] ? 'REVOKED' :
                    (lic['expiresAt'] && new Date(lic['expiresAt']) < new Date()) ? 'EXPIRED' : 'ACTIVE';
-    console.log(`${lic['key']}  [${status}]`);
+    console.log(`${lic['key']}  [${lic['product']}] [${status}]`);
     console.log(`  Server: ${lic['serverId'] ?? 'unbound'}  Notes: ${lic['notes'] ?? '-'}`);
     console.log(`  Created: ${lic['createdAt']}  Expires: ${lic['expiresAt'] ?? 'never'}`);
     console.log('');
@@ -110,17 +114,17 @@ async function main() {
     case 'generate': await cmdGenerate(opts); break;
     case 'revoke':   await cmdRevoke(opts); break;
     case 'unbind':   await cmdUnbind(opts); break;
-    case 'list':     await cmdList(); break;
+    case 'list':     await cmdList(opts); break;
     default:
       console.log('AntiFreeam Key Generator CLI');
       console.log('');
       console.log('Usage: afc-keygen <command> [options]');
       console.log('');
       console.log('Commands:');
-      console.log('  generate [--count N] [--notes "text"] [--expires YYYY-MM-DD]');
+      console.log('  generate [--product slug] [--count N] [--notes "text"] [--expires YYYY-MM-DD]');
       console.log('  revoke   --key AFC-XXXX-XXXX-XXXX-XXXX');
       console.log('  unbind   --key AFC-XXXX-XXXX-XXXX-XXXX');
-      console.log('  list');
+      console.log('  list     [--product slug]');
       console.log('');
       console.log('Environment:');
       console.log('  LICENSE_SERVER_URL   Base URL of the license server');
