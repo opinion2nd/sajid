@@ -47,12 +47,20 @@ jobs:
       - name: Build Fabric jar
         id: fabric
         continue-on-error: true
-        run: ./gradlew :fabric:build --no-daemon --stacktrace
+        run: ./gradlew :fabric:build --no-daemon --stacktrace 2>&1 | tee /tmp/fabric.log
 
       - name: Build NeoForge jar
         id: neoforge
         continue-on-error: true
-        run: ./gradlew :neoforge:build --no-daemon --stacktrace
+        run: ./gradlew :neoforge:build --no-daemon --stacktrace 2>&1 | tee /tmp/neoforge.log
+
+      - name: Show Fabric / NeoForge build error tails
+        if: always()
+        run: |
+          echo "==================== FABRIC ===================="
+          grep -nE "error:|: error|FAILED|What went wrong|Caused by|cannot find symbol|does not|incompatible types" /tmp/fabric.log | tail -80 || true
+          echo "==================== NEOFORGE ===================="
+          grep -nE "error:|: error|FAILED|What went wrong|Caused by|cannot find symbol|does not|incompatible types" /tmp/neoforge.log | tail -80 || true
 
       - name: List built artifacts
         run: find . -name '*.jar' -path '*/build/libs/*' -not -name '*-sources.jar'
