@@ -14,6 +14,9 @@ import dev.opinion2nd.antiespguard.paper.util.Schedulers;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
+import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.plugin.Plugin;
 
 import java.nio.charset.StandardCharsets;
@@ -33,7 +36,7 @@ import java.util.UUID;
  * means this is a strong signal, not proof — matches are deduplicated per
  * player so staff aren't spammed.</p>
  */
-public final class ModDetectionListener extends PacketListenerAbstract {
+public final class ModDetectionListener extends PacketListenerAbstract implements Listener {
 
     private static final String BRAND_CHANNEL = "minecraft:brand";
     private static final String REGISTER_CHANNEL = "minecraft:register";
@@ -86,8 +89,9 @@ public final class ModDetectionListener extends PacketListenerAbstract {
         }
     }
 
-    public void clear(UUID uuid) {
-        flagged.remove(uuid);
+    @EventHandler
+    public void onQuit(PlayerQuitEvent event) {
+        flagged.remove(event.getPlayer().getUniqueId());
     }
 
     private void flag(Player player, String mod, PaperConfig cfg) {

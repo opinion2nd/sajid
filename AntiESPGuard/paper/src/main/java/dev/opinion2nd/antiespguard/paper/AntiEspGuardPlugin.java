@@ -56,6 +56,7 @@ public final class AntiEspGuardPlugin extends JavaPlugin {
         // ---- Bukkit listeners ------------------------------------------------
         getServer().getPluginManager().registerEvents(
                 new PlayerTracker(maskService, resender), this);
+        getServer().getPluginManager().registerEvents(modDetection, this);
 
         if (config.raw().updateChecker.enabled) {
             UpdateChecker updateChecker =

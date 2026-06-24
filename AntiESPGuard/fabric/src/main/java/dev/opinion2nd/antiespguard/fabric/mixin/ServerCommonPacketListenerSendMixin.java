@@ -42,7 +42,7 @@ public abstract class ServerCommonPacketListenerSendMixin {
         if (!(packet instanceof ClientboundLevelChunkWithLightPacket chunkPacket)) {
             return packet;
         }
-        ServerPlayer player = game.player;
+        ServerPlayer player = ((ServerGamePlayerAccessor) game).antiespguard$getPlayer();
         ServerMaskRuntime rt = ServerMaskRuntime.get();
         if (rt.shouldMaskChunk(player, chunkPacket.getX(), chunkPacket.getZ())) {
             return ChunkMasking.maskedPacket(player, chunkPacket);
@@ -65,7 +65,7 @@ public abstract class ServerCommonPacketListenerSendMixin {
         if (!cfg.maskEntities && !cfg.maskUndergroundPlayers) {
             return;
         }
-        ServerPlayer viewer = game.player;
+        ServerPlayer viewer = ((ServerGamePlayerAccessor) game).antiespguard$getPlayer();
         PlayerMaskState data = rt.state(viewer.getUUID());
         if (data == null || data.bypass || !data.worldActive || data.underground) {
             return; // only surface viewers are protected

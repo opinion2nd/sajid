@@ -6,7 +6,8 @@
   "refmap": "antiespguard.refmap.json",
   "mixins": [
     "ServerCommonPacketListenerSendMixin",
-    "ServerGameCustomPayloadMixin"
+    "ServerGameCustomPayloadMixin",
+    "ServerGamePlayerAccessor"
   ],
   "injectors": {
     "defaultRequire": 1
