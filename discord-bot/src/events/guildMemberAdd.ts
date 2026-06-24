@@ -4,6 +4,7 @@ import { renderTemplate } from "../util/format.js";
 import { resolveUsedInviteAndCredit } from "../modules/invites.js";
 import { recordJoinAndCheckRaid } from "../modules/antiraid.js";
 import { logModAction } from "../modules/modlog.js";
+import { restoreLicenseRoles } from "../modules/licenses.js";
 
 export const name = Events.GuildMemberAdd;
 
@@ -13,6 +14,7 @@ export async function execute(member: GuildMember) {
   const config = getGuildConfig(member.guild.id);
 
   await resolveUsedInviteAndCredit(member.guild).catch(() => null);
+  await restoreLicenseRoles(member).catch(() => {});
 
   if (config.anti_raid_enabled) {
     const isRaid = recordJoinAndCheckRaid(member.guild.id, config.raid_join_threshold, config.raid_window_seconds);

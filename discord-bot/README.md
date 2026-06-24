@@ -22,9 +22,46 @@ No external services required — all data is stored locally in `data/bot.sqlite
 - **General** — `/ping`, `/botinfo`, `/serverinfo`, `/userinfo`, `/avatar`
 - **Fun** — `/8ball`, `/coinflip`, `/roll`, `/rps`, `/meme`, `/joke`, `/fact`, `/catfact`, `/hug`, `/kiss`, `/slap`, `/dance`, `/compliment`, `/roast`, `/ship` (gif-based commands use the free, keyless [otakugifs.xyz](https://otakugifs.xyz) API; meme/joke/fact commands use other free keyless APIs)
 - **Games** — `/tictactoe`, `/connectfour` (both 1v1, button-driven), `/2048` (solo, button-driven)
+- **Licenses** — `/product create|delete|list`, `/license create|delete|list|get|cleardata`, `/getlicense` (self-service), `/apikey create|list|revoke` — see [License System](#license-system) below.
 
 Music and an AI assistant are **not** included — see the conversation for
 the scoped roadmap.
+
+## License System
+
+A self-hosted license-key manager for selling scripts/plugins/software, in the same spirit as
+commercial "license bot" products but fully under your control: no obfuscation, no hidden
+bypass flags, and no telemetry.
+
+- **Products** (`/product`) define a name, an optional Discord role to auto-grant license
+  holders, and default IP/HWID caps.
+- **Licenses** (`/license create`) generate a random key (unambiguous 32-character charset — no
+  `0`/`O`/`1`/`I` mix-ups), DM it to the buyer, optionally grant the product's customer role, and
+  support an expiry duration (`30d`, `12h`, …). A background sweep (every 60s) removes expired
+  licenses and their granted role automatically — unless the user holds another active license
+  that grants the same role.
+- **Self-service** (`/getlicense`) lets users view their own keys without needing staff.
+- **Rejoin protection** — if a license holder leaves and rejoins the server, their customer
+  role(s) are restored automatically for any license that hasn't expired.
+- **REST API** (`src/api/server.ts`) lets your sold software verify licenses at runtime over
+  HTTP, independent of Discord. Manage keys with `/apikey` (Administrator-only):
+  - Each key is scoped to **one guild** — a leaked key can only touch that server's data.
+  - Permissions are scoped per key (`licenses:read`, `licenses:create`, `auth`, `*`, etc.) —
+    create read-only keys for dashboards and write-scoped keys for backend integrations.
+  - Keys are shown **once** at creation and stored only as a SHA-256 hash — the plaintext is
+    never persisted, so a database leak doesn't leak usable keys.
+  - Per-key rate limiting (requests/minute, configurable per key).
+
+  Example verification call from your software:
+  ```bash
+  curl -X POST http://localhost:3000/api/auth/verify \
+    -H "Authorization: <api-key>" \
+    -H "Content-Type: application/json" \
+    -d '{"licenseKey":"AB3F-XXXX-XXXX-XXXX","product":"MyPlugin","hwid":"<machine-id>"}'
+  ```
+  Other endpoints: `GET/POST /api/licenses`, `GET/DELETE /api/licenses/:key`,
+  `POST /api/licenses/:key/clear-ip|clear-hwid`, `GET/POST/DELETE /api/products[/:name]`,
+  `GET /api/stats`.
 
 ## Web Dashboard
 

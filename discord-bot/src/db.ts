@@ -134,6 +134,62 @@ db.exec(`
     created_at INTEGER NOT NULL,
     data TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS products (
+    guild_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    customer_role_id TEXT,
+    default_ip_cap INTEGER NOT NULL DEFAULT 1,
+    default_hwid_cap INTEGER NOT NULL DEFAULT 1,
+    created_by TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (guild_id, name)
+  );
+
+  CREATE TABLE IF NOT EXISTS licenses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id TEXT NOT NULL,
+    license_key TEXT NOT NULL UNIQUE,
+    product_name TEXT NOT NULL,
+    discord_user_id TEXT NOT NULL,
+    builtbybit_user_id TEXT,
+    created_by TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    expires_at INTEGER,
+    ip_cap INTEGER NOT NULL DEFAULT 1,
+    hwid_cap INTEGER NOT NULL DEFAULT 1,
+    total_requests INTEGER NOT NULL DEFAULT 0,
+    latest_ip TEXT,
+    latest_hwid TEXT,
+    latest_request_at INTEGER
+  );
+  CREATE INDEX IF NOT EXISTS idx_licenses_guild_user_product ON licenses (guild_id, discord_user_id, product_name);
+
+  CREATE TABLE IF NOT EXISTS license_ips (
+    license_key TEXT NOT NULL,
+    ip TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (license_key, ip)
+  );
+
+  CREATE TABLE IF NOT EXISTS license_hwids (
+    license_key TEXT NOT NULL,
+    hwid TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (license_key, hwid)
+  );
+
+  CREATE TABLE IF NOT EXISTS api_keys (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    guild_id TEXT NOT NULL,
+    name TEXT NOT NULL,
+    key_hash TEXT NOT NULL UNIQUE,
+    permissions TEXT NOT NULL,
+    rate_limit INTEGER NOT NULL DEFAULT 60,
+    created_by TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    UNIQUE (guild_id, name)
+  );
 `);
 
 export interface GuildConfig {
