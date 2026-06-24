@@ -1,0 +1,30 @@
+modLoader = "javafml"
+loaderVersion = "[4,)"
+license = "MIT"
+
+[[mods]]
+modId = "antiespguard"
+version = "${version}"
+displayName = "AntiESPGuard"
+authors = "opinion2nd"
+description = '''
+Hides blocks/entities below a Y level from surface players to defeat Freecam / ESP cheats.
+Server-side. Anti-xray intentionally omitted.
+'''
+
+[[mixins]]
+config = "antiespguard.mixins.json"
+
+[[dependencies.antiespguard]]
+modId = "neoforge"
+type = "required"
+versionRange = "[21.1,)"
+ordering = "NONE"
+side = "SERVER"
+
+[[dependencies.antiespguard]]
+modId = "minecraft"
+type = "required"
+versionRange = "[1.21.1,1.22)"
+ordering = "NONE"
+side = "SERVER"

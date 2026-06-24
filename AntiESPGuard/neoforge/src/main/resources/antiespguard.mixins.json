@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "dev.opinion2nd.antiespguard.neoforge.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "refmap": "antiespguard.refmap.json",
+  "mixins": [
+    "ServerCommonPacketListenerSendMixin",
+    "ServerGameCustomPayloadMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

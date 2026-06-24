@@ -1,0 +1,24 @@
+name: AntiESPGuard
+main: dev.opinion2nd.antiespguard.paper.AntiEspGuardPlugin
+version: ${version}
+api-version: '1.21'
+author: opinion2nd
+description: Hides blocks/entities below a Y level from surface players to defeat Freecam / ESP cheats. Multi-platform; Paper implementation.
+depend: [packetevents]
+folia-supported: true
+commands:
+  antiespguard:
+    description: AntiESPGuard admin commands
+    usage: /antiespguard <reload|bypass [player]>
+    aliases: [aeg, antiesp]
+    permission: antiespguard.reload
+permissions:
+  antiespguard.reload:
+    description: Allows reloading AntiESPGuard configuration
+    default: op
+  antiespguard.bypass:
+    description: Allows toggling the masking bypass for self or other players
+    default: op
+  antiespguard.notify:
+    description: Receives cheat-mod / brand detection notifications
+    default: op
