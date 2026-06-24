@@ -7,6 +7,15 @@ import dev.thewindows.antifreecam.common.util.JsonUtil;
 import java.io.IOException;
 import java.time.Instant;
 
+/**
+ * Validates license keys against the license-server's {@code /api/v1/validate} endpoint.
+ *
+ * <p>This class and the rest of the {@code common.util}/{@code common.license} package are
+ * product-agnostic — {@code product} is just a string the caller supplies. Future plugins can
+ * either depend on this {@code common} Gradle module directly and call {@link #validate} with
+ * their own product slug, or copy this file plus {@link HttpClient} and {@link JsonUtil}
+ * verbatim into a standalone codebase that has no Gradle dependency on this module.
+ */
 public class LicenseValidator {
 
     private final HttpClient httpClient;
@@ -17,9 +26,10 @@ public class LicenseValidator {
         this.httpClient = new HttpClient(10);
     }
 
-    public LicenseResult validate(String licenseKey, String serverId, String pluginVersion) {
+    public LicenseResult validate(String licenseKey, String product, String serverId, String pluginVersion) {
         JsonObject body = new JsonObject();
         body.addProperty("key", licenseKey);
+        body.addProperty("product", product);
         body.addProperty("serverId", serverId);
         body.addProperty("pluginVersion", pluginVersion);
 

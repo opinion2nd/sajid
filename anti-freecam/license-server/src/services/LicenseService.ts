@@ -34,12 +34,17 @@ export type ValidateResult = {
 };
 
 export const LicenseService = {
-  async validate(key: string, serverId: string, pluginVersion: string, ipAddress: string): Promise<ValidateResult> {
+  async validate(key: string, product: string, serverId: string, pluginVersion: string, ipAddress: string): Promise<ValidateResult> {
     const license = await prisma.license.findUnique({ where: { key } });
 
     if (!license) {
       await logAudit(null, 'VALIDATE_FAIL_NOT_FOUND', serverId, ipAddress);
       return { status: 'INVALID', message: 'License key not found', expiresAt: null, boundServerId: null };
+    }
+
+    if (license.product !== product) {
+      await logAudit(license.id, 'VALIDATE_FAIL_PRODUCT_MISMATCH', serverId, ipAddress);
+      return { status: 'INVALID', message: 'License key is not valid for this product', expiresAt: null, boundServerId: null };
     }
 
     if (license.revokedAt) {
@@ -72,11 +77,12 @@ export const LicenseService = {
     return { status: 'VALID', message: 'License valid', expiresAt: license.expiresAt?.toISOString() ?? null, boundServerId: license.serverId };
   },
 
-  async generate(notes?: string, expiresAt?: string): Promise<string> {
+  async generate(product: string, notes?: string, expiresAt?: string): Promise<string> {
     const key = generateKey();
     await prisma.license.create({
       data: {
         key,
+        product,
         notes: notes ?? null,
         expiresAt: expiresAt ? new Date(expiresAt) : null
       }
@@ -84,16 +90,25 @@ export const LicenseService = {
     return key;
   },
 
-  async revoke(key: string): Promise<void> {
-    await prisma.license.update({ where: { key }, data: { revokedAt: new Date() } });
+  async revoke(key: string): Promise<boolean> {
+    const result = await prisma.license.updateMany({ where: { key }, data: { revokedAt: new Date() } });
+    return result.count > 0;
   },
 
-  async unbind(key: string): Promise<void> {
-    await prisma.license.update({ where: { key }, data: { serverId: null } });
+  async unbind(key: string): Promise<boolean> {
+    const result = await prisma.license.updateMany({ where: { key }, data: { serverId: null } });
+    return result.count > 0;
   },
 
-  async listAll() {
-    return prisma.license.findMany({ orderBy: { createdAt: 'desc' } });
+  async listAll(product?: string) {
+    return prisma.license.findMany({
+      where: product ? { product } : undefined,
+      orderBy: { createdAt: 'desc' }
+    });
+  },
+
+  async findByKey(key: string) {
+    return prisma.license.findUnique({ where: { key } });
   }
 };
 

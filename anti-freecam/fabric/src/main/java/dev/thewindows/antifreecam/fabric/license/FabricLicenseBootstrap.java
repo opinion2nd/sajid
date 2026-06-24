@@ -40,7 +40,7 @@ public class FabricLicenseBootstrap {
         }
 
         LicenseValidator validator = new LicenseValidator(apiUrl);
-        LicenseResult result = validator.validate(licenseKey, serverId, "1.0.0");
+        LicenseResult result = validator.validate(licenseKey, "antifreecam", serverId, "1.0.0");
         handleResult(result, failBehavior);
     }
 

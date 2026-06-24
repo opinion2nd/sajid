@@ -56,7 +56,7 @@ public class PaperLicenseBootstrap {
             throw new LicenseException("Failed to read/create server identity: " + e.getMessage());
         }
 
-        LicenseResult result = validator.validate(licenseKey, serverId, pluginVersion);
+        LicenseResult result = validator.validate(licenseKey, "antifreecam", serverId, pluginVersion);
         handleResult(result, failBehavior);
 
         // Schedule periodic re-validation
@@ -71,7 +71,7 @@ public class PaperLicenseBootstrap {
     private void periodicRevalidate(String failBehavior) {
         try {
             String serverId = serverIdentity.getOrCreate();
-            LicenseResult result = validator.validate(licenseKey, serverId, pluginVersion);
+            LicenseResult result = validator.validate(licenseKey, "antifreecam", serverId, pluginVersion);
             if (result.status() != LicenseStatus.VALID) {
                 plugin.getLogger().severe("[AntiFreeam] License re-validation failed: " + result.message());
                 if (failBehavior.equalsIgnoreCase("CLOSE")) {
