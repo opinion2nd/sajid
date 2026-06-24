@@ -31,9 +31,9 @@ tasks.shadowJar {
     archiveBaseName.set("AntiESPGuard-Paper")
 
     // Bundle :common + snakeyaml; relocate snakeyaml to avoid clashing with the
-    // server's own bundled copy.
+    // server's own bundled copy. (No minimize(): Shadow 8.1.1's minimizer uses an
+    // ASM that cannot read Java 21 bytecode.)
     relocate("org.yaml.snakeyaml", "dev.opinion2nd.antiespguard.libs.snakeyaml")
-    minimize()
 }
 
 tasks.build {
