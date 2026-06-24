@@ -31,8 +31,8 @@ public final class AntiEspConfig {
     public int revealBelowYWhenUnder = 30;
     /** Max chunks processed per tick for Y-threshold transitions. */
     public int maxChunksPerTick = 128;
-    /** Block shown when masking. STONE = solid/indistinguishable (recommended). */
-    public String maskBlock = "STONE";
+    /** What hidden blocks read as. AIR = empty/void (freecam sees nothing). */
+    public String maskBlock = "AIR";
     /** If true, blocks that are already air are left as air instead of masked. */
     public boolean skipMaskIfAlreadyAir = false;
     /** Re-mask previously revealed chunks when a player returns to the surface. */

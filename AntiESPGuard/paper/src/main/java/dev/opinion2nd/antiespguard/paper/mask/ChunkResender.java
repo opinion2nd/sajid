@@ -69,8 +69,10 @@ public final class ChunkResender {
         packetCtor = chooseChunkPacketCtor(packetClass, levelChunk, lightEngine);
 
         Object connection = connectionField.get(serverPlayer);
-        send = findMethod(connection.getClass(), "send",
-                Class.forName("net.minecraft.network.protocol.Packet"));
+        Class<?> packetType = Class.forName("net.minecraft.network.protocol.Packet");
+        // Newer versions add overloads like send(Packet, PacketSendListener);
+        // match any "send" whose first parameter is a Packet and default the rest.
+        send = findSendMethod(connection.getClass(), packetType);
         send.setAccessible(true);
 
         plugin.getLogger().info("Progressive reveal ready (chunk re-send via "
@@ -92,9 +94,10 @@ public final class ChunkResender {
                 return;
             }
             Object light = getLightEngine.invoke(level);
-            Object packet = packetCtor.newInstance(buildPacketArgs(packetCtor, chunk, light));
+            Object packet = packetCtor.newInstance(
+                    buildArgsWithLead(packetCtor.getParameterTypes(), chunk, light));
             Object connection = connectionField.get(serverPlayer);
-            send.invoke(connection, packet);
+            send.invoke(connection, buildArgsWithLead(send.getParameterTypes(), packet));
         } catch (Throwable t) {
             broken = true;
             plugin.getLogger().log(Level.WARNING,
@@ -133,14 +136,34 @@ public final class ChunkResender {
         return best;
     }
 
-    /** chunk + light first, then a sensible default for every trailing parameter. */
-    private static Object[] buildPacketArgs(Constructor<?> ctor, Object chunk, Object light) {
-        Class<?>[] types = ctor.getParameterTypes();
+    /**
+     * Pick a {@code send} method whose first parameter is a Packet (newer
+     * versions add overloads with extra trailing parameters), preferring the
+     * shortest signature.
+     */
+    private static Method findSendMethod(Class<?> type, Class<?> packetType) throws NoSuchMethodException {
+        Method best = null;
+        for (Class<?> c = type; c != null; c = c.getSuperclass()) {
+            for (Method m : c.getDeclaredMethods()) {
+                Class<?>[] p = m.getParameterTypes();
+                if (m.getName().equals("send") && p.length >= 1 && p[0].isAssignableFrom(packetType)) {
+                    if (best == null || p.length < best.getParameterCount()) {
+                        best = m;
+                    }
+                }
+            }
+        }
+        if (best == null) {
+            throw new NoSuchMethodException("No send(Packet, …) method on " + type);
+        }
+        return best;
+    }
+
+    /** Fill the leading parameters with {@code lead}, then default the rest. */
+    private static Object[] buildArgsWithLead(Class<?>[] types, Object... lead) {
         Object[] args = new Object[types.length];
-        args[0] = chunk;
-        args[1] = light;
-        for (int i = 2; i < types.length; i++) {
-            args[i] = defaultValue(types[i]);
+        for (int i = 0; i < types.length; i++) {
+            args[i] = i < lead.length ? lead[i] : defaultValue(types[i]);
         }
         return args;
     }

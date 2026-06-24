@@ -29,8 +29,10 @@ maxChunksPerTick: 128
 # Re-mask previously revealed chunks when a player returns to the surface.
 remaskOnReturn: true
 
-# Block shown when masking. STONE = solid/indistinguishable (recommended).
-maskBlock: STONE
+# What hidden blocks are shown as. AIR = the area reads as empty/void (like
+# open sky) so a freecam camera flown below sees nothing — recommended.
+# Use STONE instead if you prefer a solid look.
+maskBlock: AIR
 skipMaskIfAlreadyAir: false
 
 # Hide entities below hideBelowY from surface players (anti entity-radar).
