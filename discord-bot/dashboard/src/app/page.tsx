@@ -7,7 +7,7 @@ export default async function HomePage() {
 
   return (
     <div className="container" style={{ textAlign: "center", paddingTop: 80 }}>
-      <h1>Brother Craft Bot Dashboard</h1>
+      <h1>Flaming Bot Dashboard</h1>
       <p style={{ color: "#b5bac1" }}>Sign in with Discord to manage your server's settings, tickets, and stats.</p>
       <a className="btn" href="/api/auth/login">
         Login with Discord

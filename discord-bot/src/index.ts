@@ -3,7 +3,7 @@ import { Client, Collection, GatewayIntentBits, Partials } from "discord.js";
 import { loadCommands } from "./handlers/loadCommands.js";
 import { loadEvents } from "./handlers/loadEvents.js";
 
-// Brother Craft Bot: multi-purpose Discord bot — Moderation, Automod, Tickets,
+// Flaming Bot: multi-purpose Discord bot — Moderation, Automod, Tickets,
 // Leveling, Giveaways, Welcome/Leave messages, and Reaction-Role panels.
 
 const token = process.env.DISCORD_BOT_TOKEN;

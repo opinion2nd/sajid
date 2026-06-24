@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata = {
-  title: "Brother Craft Bot Dashboard",
+  title: "Flaming Bot Dashboard",
   description: "Manage your Discord server's bot configuration",
 };
 

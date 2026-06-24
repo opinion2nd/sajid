@@ -1,4 +1,4 @@
-# Brother Craft Bot — Multi-Purpose Discord Bot
+# Flaming Bot — Multi-Purpose Discord Bot
 
 A self-contained Discord bot (discord.js v14 + TypeScript + SQLite).
 No external services required — all data is stored locally in `data/bot.sqlite3`.
