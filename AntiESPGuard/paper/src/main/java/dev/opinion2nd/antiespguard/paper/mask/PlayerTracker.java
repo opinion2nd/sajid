@@ -1,6 +1,5 @@
 package dev.opinion2nd.antiespguard.paper.mask;
 
-import dev.opinion2nd.antiespguard.common.MaskRules;
 import dev.opinion2nd.antiespguard.paper.PaperConfig;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
@@ -67,12 +66,12 @@ public final class PlayerTracker implements Listener {
         boolean nowUnder = to.getY() < cfg.raw().revealBelowYWhenUnder;
         boolean stateFlip = nowUnder != data.underground;
 
-        int rescan = cfg.rules().rescanThreshold(player.isGliding());
-        boolean movedEnough = Double.isNaN(data.lastScanX)
-                || Math.abs(to.getX() - data.lastScanX) >= rescan
-                || Math.abs(to.getZ() - data.lastScanZ) >= rescan;
+        // Vanilla-style: the reveal set only needs recomputing when the
+        // player crosses into a new chunk, exactly like normal chunk loading.
+        boolean changedChunk = (to.getBlockX() >> 4) != data.lastScanChunkX
+                || (to.getBlockZ() >> 4) != data.lastScanChunkZ;
 
-        if (!stateFlip && !movedEnough) {
+        if (!stateFlip && !changedChunk) {
             return;
         }
         refresh(player, data, stateFlip);
@@ -88,14 +87,14 @@ public final class PlayerTracker implements Listener {
 
         data.worldActive = cfg.isWorldActive(player.getWorld());
         data.underground = loc.getY() < cfg.raw().revealBelowYWhenUnder;
-        data.lastScanX = loc.getX();
-        data.lastScanZ = loc.getZ();
+        data.lastScanChunkX = loc.getBlockX() >> 4;
+        data.lastScanChunkZ = loc.getBlockZ() >> 4;
 
         Set<Long> previous = new HashSet<>(data.revealedChunks);
         Set<Long> desired = new HashSet<>();
 
         if (data.worldActive && !data.bypass && data.underground) {
-            int radius = revealRadiusChunks(player, cfg);
+            int radius = player.getViewDistance();
             int pcx = loc.getBlockX() >> 4;
             int pcz = loc.getBlockZ() >> 4;
             for (int dx = -radius; dx <= radius; dx++) {
@@ -129,14 +128,5 @@ public final class PlayerTracker implements Listener {
                 }
             }
         }
-    }
-
-    private int revealRadiusChunks(Player player, PaperConfig cfg) {
-        MaskRules rules = cfg.rules();
-        boolean elytra = player.isGliding();
-        int distBlocks = rules.revealLookahead(elytra);
-        int radius = Math.max(cfg.raw().scanRadiusChunks, (int) Math.ceil(distBlocks / 16.0));
-        int view = player.getViewDistance() + 1;
-        return Math.min(radius, Math.max(cfg.raw().scanRadiusChunks, view));
     }
 }

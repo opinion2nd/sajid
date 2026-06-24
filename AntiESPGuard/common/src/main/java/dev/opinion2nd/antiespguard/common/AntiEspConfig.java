@@ -14,9 +14,9 @@ import java.util.LinkedHashSet;
  * Platform-agnostic configuration model for AntiESPGuard.
  *
  * <p>Mirrors the feature set of the reference AntiESPFreecam plugin with the
- * anti-xray system intentionally removed. Every platform (Paper, Fabric,
- * NeoForge) parses the same {@code config.yml} into this object so the masking
- * decision logic in {@link MaskRules} behaves identically everywhere.</p>
+ * anti-xray system intentionally removed. Parses {@code config.yml} into this
+ * object so the masking decision logic in {@link MaskRules} stays
+ * side-effect-free and testable.</p>
  */
 public final class AntiEspConfig {
 
@@ -29,8 +29,6 @@ public final class AntiEspConfig {
     public int hideBelowY = 20;
     /** Masking activates when a player's Y is at or above this value. */
     public int revealBelowYWhenUnder = 30;
-    /** Min mask/unmask radius in chunks (auto-extends to view distance + 4). */
-    public int scanRadiusChunks = 4;
     /** Max chunks processed per tick for Y-threshold transitions. */
     public int maxChunksPerTick = 128;
     /** Block shown when masking. STONE = solid/indistinguishable (recommended). */
@@ -41,14 +39,9 @@ public final class AntiEspConfig {
     public boolean remaskOnReturn = true;
 
     // ---- Progressive reveal (lazy unmask) ----------------------------------
-    public final LazyUnmask lazyUnmask = new LazyUnmask();
-
-    public static final class LazyUnmask {
-        public int distance = 32;          // lookahead (blocks) when walking
-        public int distanceElytra = 64;    // lookahead (blocks) when flying with elytra
-        public int rescanBlocks = 1;       // blocks moved before a rescan (walk)
-        public int rescanBlocksElytra = 1; // blocks moved before a rescan (elytra)
-    }
+    // No tunables: the revealed radius is simply the player's own view
+    // distance, and it refreshes on chunk-cross — exactly how vanilla
+    // chunk loading already behaves. Nothing here to configure.
 
     // ---- Entity / player masking -------------------------------------------
     /** Hide entities below hideBelowY from surface players (anti entity-radar). */
@@ -100,7 +93,6 @@ public final class AntiEspConfig {
             m.put("Freecam", true);
             m.put("Meteor Client", true);
             m.put("Wurst", true);
-            m.put("Xaero's Minimap", true);
             return m;
         }
     }
@@ -137,21 +129,12 @@ public final class AntiEspConfig {
         c.disabledWorlds = stringSet(root.get("disabledWorlds"), c.disabledWorlds);
         c.hideBelowY = asInt(root.get("hideBelowY"), c.hideBelowY);
         c.revealBelowYWhenUnder = asInt(root.get("revealBelowYWhenUnder"), c.revealBelowYWhenUnder);
-        c.scanRadiusChunks = asInt(root.get("scanRadiusChunks"), c.scanRadiusChunks);
         c.maxChunksPerTick = asInt(root.get("maxChunksPerTick"), c.maxChunksPerTick);
         c.maskBlock = asString(root.get("maskBlock"), c.maskBlock).toUpperCase(Locale.ROOT);
         c.skipMaskIfAlreadyAir = asBool(root.get("skipMaskIfAlreadyAir"), c.skipMaskIfAlreadyAir);
         c.remaskOnReturn = asBool(root.get("remaskOnReturn"), c.remaskOnReturn);
         c.maskEntities = asBool(root.get("maskEntities"), c.maskEntities);
         c.maskUndergroundPlayers = asBool(root.get("maskUndergroundPlayers"), c.maskUndergroundPlayers);
-
-        Map<String, Object> lazy = asMap(root.get("lazyUnmask"));
-        if (lazy != null) {
-            c.lazyUnmask.distance = asInt(lazy.get("distance"), c.lazyUnmask.distance);
-            c.lazyUnmask.distanceElytra = asInt(lazy.get("distanceElytra"), c.lazyUnmask.distanceElytra);
-            c.lazyUnmask.rescanBlocks = asInt(lazy.get("rescanBlocks"), c.lazyUnmask.rescanBlocks);
-            c.lazyUnmask.rescanBlocksElytra = asInt(lazy.get("rescanBlocksElytra"), c.lazyUnmask.rescanBlocksElytra);
-        }
 
         Map<String, Object> tab = asMap(root.get("tabPrefix"));
         if (tab != null) {
@@ -209,10 +192,6 @@ public final class AntiEspConfig {
      */
     public List<String> validateAndClamp() {
         List<String> warnings = new ArrayList<>();
-        if (scanRadiusChunks < 4) {
-            warnings.add("scanRadiusChunks < 4 is unsafe; raised to 4.");
-            scanRadiusChunks = 4;
-        }
         if (maxChunksPerTick < 1) {
             warnings.add("maxChunksPerTick must be >= 1; raised to 1.");
             maxChunksPerTick = 1;

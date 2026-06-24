@@ -28,8 +28,7 @@ public final class ModSignatures {
     private static final Map<String, List<String>> SIGNATURES = Map.of(
             "Freecam", List.of("freecam"),
             "Meteor Client", List.of("meteor", "meteorclient"),
-            "Wurst", List.of("wurst"),
-            "Xaero's Minimap", List.of("xaero", "xaerominimap", "xaeros")
+            "Wurst", List.of("wurst")
     );
 
     /**

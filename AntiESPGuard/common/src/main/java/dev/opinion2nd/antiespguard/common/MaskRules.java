@@ -3,10 +3,10 @@ package dev.opinion2nd.antiespguard.common;
 /**
  * Pure, side-effect-free masking decisions shared by every platform.
  *
- * <p>The platform layer is responsible for <em>how</em> blocks/entities are
- * hidden (packet rewriting, {@code hideEntity}, mixins, …). This class only
- * answers the <em>whether</em> questions, so the behaviour is provably
- * identical on Paper, Fabric and NeoForge.</p>
+ * <p>The platform layer (Paper) is responsible for <em>how</em> blocks/entities
+ * are hidden (packet rewriting, {@code hideEntity}, …). This class only
+ * answers the <em>whether</em> questions, keeping the decision logic
+ * provably side-effect-free.</p>
  */
 public final class MaskRules {
 
@@ -55,19 +55,6 @@ public final class MaskRules {
             return false;
         }
         return isPlayer ? cfg.maskUndergroundPlayers : cfg.maskEntities;
-    }
-
-    /**
-     * Lookahead distance (in blocks) used when progressively revealing chunks
-     * as a player descends. Elytra flight uses a longer lookahead.
-     */
-    public int revealLookahead(boolean elytraFlying) {
-        return elytraFlying ? cfg.lazyUnmask.distanceElytra : cfg.lazyUnmask.distance;
-    }
-
-    /** Blocks the player must move before a reveal rescan is triggered. */
-    public int rescanThreshold(boolean elytraFlying) {
-        return elytraFlying ? cfg.lazyUnmask.rescanBlocksElytra : cfg.lazyUnmask.rescanBlocks;
     }
 
     public String maskBlockName() {

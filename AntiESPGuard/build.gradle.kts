@@ -17,8 +17,6 @@ subprojects {
         mavenCentral()
         maven("https://repo.papermc.io/repository/maven-public/")
         maven("https://repo.codemc.io/repository/maven-releases/")  // PacketEvents
-        maven("https://maven.fabricmc.net/")
-        maven("https://maven.neoforged.net/releases")
     }
 
     extensions.configure<JavaPluginExtension> {

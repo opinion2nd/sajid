@@ -41,27 +41,6 @@ jobs:
       - name: Build Paper jar (must pass)
         run: ./gradlew :paper:shadowJar --no-daemon --stacktrace
 
-      # Fabric / NeoForge pull Minecraft + mappings and use Mixins; allow them to
-      # fail without blocking the Paper artifact, so any compile issues surface
-      # in the logs while the Paper jar still publishes.
-      - name: Build Fabric jar
-        id: fabric
-        continue-on-error: true
-        run: ./gradlew :fabric:build --no-daemon --stacktrace 2>&1 | tee /tmp/fabric.log
-
-      - name: Build NeoForge jar
-        id: neoforge
-        continue-on-error: true
-        run: ./gradlew :neoforge:build --no-daemon --stacktrace 2>&1 | tee /tmp/neoforge.log
-
-      - name: Show Fabric / NeoForge build error tails
-        if: always()
-        run: |
-          echo "==================== FABRIC ===================="
-          grep -nE "error:|: error|FAILED|What went wrong|Caused by|cannot find symbol|does not|incompatible types" /tmp/fabric.log | tail -80 || true
-          echo "==================== NEOFORGE ===================="
-          grep -nE "error:|: error|FAILED|What went wrong|Caused by|cannot find symbol|does not|incompatible types" /tmp/neoforge.log | tail -80 || true
-
       - name: List built artifacts
         run: find . -name '*.jar' -path '*/build/libs/*' -not -name '*-sources.jar'
 
@@ -71,8 +50,6 @@ jobs:
           name: AntiESPGuard-jars
           path: |
             AntiESPGuard/paper/build/libs/*.jar
-            AntiESPGuard/fabric/build/libs/*.jar
-            AntiESPGuard/neoforge/build/libs/*.jar
           if-no-files-found: error
 
       # Rolling Release → direct, login-free download links (great on mobile).
@@ -85,12 +62,9 @@ jobs:
           prerelease: true
           files: |
             AntiESPGuard/paper/build/libs/*.jar
-            AntiESPGuard/fabric/build/libs/*.jar
-            AntiESPGuard/neoforge/build/libs/*.jar
           body: |
             Latest AntiESPGuard build from `${{ github.sha }}`.
 
             - **Paper** (`AntiESPGuard-Paper-*.jar`): drop into `plugins/` **with PacketEvents**.
-            - **Fabric** / **NeoForge**: drop into the server's `mods/` folder (server-side).
 
             Anti-Xray is intentionally not included.

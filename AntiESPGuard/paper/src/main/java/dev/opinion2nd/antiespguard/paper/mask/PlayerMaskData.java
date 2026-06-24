@@ -22,9 +22,9 @@ public final class PlayerMaskData {
     /** Chunks (packed key) currently revealed to this underground player. */
     public final Set<Long> revealedChunks = ConcurrentHashMap.newKeySet();
 
-    /** Last position where we recomputed the reveal set (rescan throttle). */
-    public volatile double lastScanX = Double.NaN;
-    public volatile double lastScanZ = Double.NaN;
+    /** Chunk the last reveal-set computation was done in (vanilla chunk-cross trigger). */
+    public volatile int lastScanChunkX = Integer.MIN_VALUE;
+    public volatile int lastScanChunkZ = Integer.MIN_VALUE;
 
     public static long chunkKey(int chunkX, int chunkZ) {
         return ((long) chunkX & 0xFFFFFFFFL) | (((long) chunkZ & 0xFFFFFFFFL) << 32);
