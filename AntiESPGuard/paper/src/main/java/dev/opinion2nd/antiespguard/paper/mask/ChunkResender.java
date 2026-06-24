@@ -72,6 +72,10 @@ public final class ChunkResender {
         send = findMethod(connection.getClass(), "send",
                 Class.forName("net.minecraft.network.protocol.Packet"));
         send.setAccessible(true);
+
+        plugin.getLogger().info("Progressive reveal ready (chunk re-send via "
+                + packetCtor.getDeclaringClass().getSimpleName()
+                + " with " + packetCtor.getParameterCount() + " args).");
     }
 
     /** Re-send the given chunk to the player. Call on the player's region thread. */
