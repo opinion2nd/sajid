@@ -18,14 +18,16 @@ export async function adminRoute(fastify: FastifyInstance) {
   // Revoke a license key
   fastify.post<{ Body: { key: string } }>('/revoke', async (request, reply) => {
     const { key } = request.body;
-    await LicenseService.revoke(key);
+    const ok = await LicenseService.revoke(key);
+    if (!ok) return reply.code(404).send({ error: 'License not found' });
     return reply.code(200).send({ ok: true });
   });
 
   // Remove server binding (allows key to move to new server)
   fastify.post<{ Body: { key: string } }>('/unbind', async (request, reply) => {
     const { key } = request.body;
-    await LicenseService.unbind(key);
+    const ok = await LicenseService.unbind(key);
+    if (!ok) return reply.code(404).send({ error: 'License not found' });
     return reply.code(200).send({ ok: true });
   });
 

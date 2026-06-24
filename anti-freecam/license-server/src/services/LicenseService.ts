@@ -90,12 +90,14 @@ export const LicenseService = {
     return key;
   },
 
-  async revoke(key: string): Promise<void> {
-    await prisma.license.update({ where: { key }, data: { revokedAt: new Date() } });
+  async revoke(key: string): Promise<boolean> {
+    const result = await prisma.license.updateMany({ where: { key }, data: { revokedAt: new Date() } });
+    return result.count > 0;
   },
 
-  async unbind(key: string): Promise<void> {
-    await prisma.license.update({ where: { key }, data: { serverId: null } });
+  async unbind(key: string): Promise<boolean> {
+    const result = await prisma.license.updateMany({ where: { key }, data: { serverId: null } });
+    return result.count > 0;
   },
 
   async listAll(product?: string) {
