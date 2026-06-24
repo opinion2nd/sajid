@@ -33,6 +33,7 @@ public final class PlayerTracker implements Listener {
         Player player = event.getPlayer();
         PlayerMaskData data = service.getOrCreate(player);
         data.bypass = player.hasPermission("antiespguard.bypass");
+        resender.ensureReady(player); // surface the ready/failed status in the console early
         refresh(player, data, true);
     }
 

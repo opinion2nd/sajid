@@ -111,6 +111,40 @@ public final class ChunkResender {
     }
 
     /**
+     * Force initialisation using an online player so {@link #isBroken()} and
+     * {@link #diagnostics()} report a meaningful result before anyone descends.
+     * Returns true if progressive reveal is usable.
+     */
+    public boolean ensureReady(Player sample) {
+        if (broken) {
+            return false;
+        }
+        try {
+            init(sample);
+            return true;
+        } catch (Throwable t) {
+            broken = true;
+            plugin.getLogger().log(Level.WARNING,
+                    "Progressive reveal init failed; chunk re-send unavailable on this server "
+                            + "version. Surface masking still works.", t);
+            return false;
+        }
+    }
+
+    /** Human-readable one-line status for the {@code /antiespguard status} command. */
+    public String diagnostics() {
+        if (broken) {
+            return "BROKEN — chunk re-send unavailable on this server version "
+                    + "(surface masking still works, but descending will not reveal terrain)";
+        }
+        if (packetCtor == null) {
+            return "not initialised yet (a player must be online)";
+        }
+        return "OK — re-send via " + packetCtor.getDeclaringClass().getSimpleName()
+                + " (" + packetCtor.getParameterCount() + " constructor args)";
+    }
+
+    /**
      * Pick a {@code ClientboundLevelChunkWithLightPacket} constructor whose first
      * two parameters accept a LevelChunk and a LevelLightEngine. Preference is
      * given to the shortest such signature, so trailing version-specific

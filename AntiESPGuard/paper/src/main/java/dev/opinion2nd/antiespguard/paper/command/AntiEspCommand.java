@@ -1,6 +1,7 @@
 package dev.opinion2nd.antiespguard.paper.command;
 
 import dev.opinion2nd.antiespguard.paper.AntiEspGuardPlugin;
+import dev.opinion2nd.antiespguard.paper.mask.ChunkResender;
 import dev.opinion2nd.antiespguard.paper.mask.MaskService;
 import dev.opinion2nd.antiespguard.paper.mask.PlayerMaskData;
 import org.bukkit.Bukkit;
@@ -20,21 +21,30 @@ public final class AntiEspCommand implements CommandExecutor, TabCompleter {
 
     private final AntiEspGuardPlugin plugin;
     private final MaskService service;
+    private final ChunkResender resender;
 
-    public AntiEspCommand(AntiEspGuardPlugin plugin, MaskService service) {
+    public AntiEspCommand(AntiEspGuardPlugin plugin, MaskService service, ChunkResender resender) {
         this.plugin = plugin;
         this.service = service;
+        this.resender = resender;
     }
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 0) {
             sender.sendMessage(ChatColor.AQUA + "AntiESPGuard " + plugin.getDescription().getVersion()
-                    + ChatColor.GRAY + " — /" + label + " <reload|bypass [player]>");
+                    + ChatColor.GRAY + " — /" + label + " <reload|bypass [player]|status>");
             return true;
         }
 
         switch (args[0].toLowerCase()) {
+            case "status" -> {
+                if (!sender.hasPermission("antiespguard.reload")) {
+                    sender.sendMessage(ChatColor.RED + "No permission.");
+                    return true;
+                }
+                sendStatus(sender);
+            }
             case "reload" -> {
                 if (!sender.hasPermission("antiespguard.reload")) {
                     sender.sendMessage(ChatColor.RED + "No permission.");
@@ -59,15 +69,34 @@ public final class AntiEspCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage(ChatColor.GREEN + "Masking bypass for " + target.getName()
                         + " is now " + (data.bypass ? "ON" : "OFF") + ".");
             }
-            default -> sender.sendMessage(ChatColor.RED + "Unknown sub-command. Use reload | bypass.");
+            default -> sender.sendMessage(ChatColor.RED + "Unknown sub-command. Use reload | bypass | status.");
         }
         return true;
+    }
+
+    /** Report server version + whether progressive reveal (chunk re-send) works. */
+    private void sendStatus(CommandSender sender) {
+        Player sample = (sender instanceof Player p) ? p
+                : Bukkit.getOnlinePlayers().stream().findFirst().orElse(null);
+        if (sample != null) {
+            resender.ensureReady(sample); // force init so the result is meaningful
+        }
+        sender.sendMessage(ChatColor.AQUA + "AntiESPGuard " + plugin.getDescription().getVersion()
+                + ChatColor.AQUA + " status");
+        sender.sendMessage(ChatColor.GRAY + " Server: " + ChatColor.WHITE + Bukkit.getVersion());
+        sender.sendMessage(ChatColor.GRAY + " API: " + ChatColor.WHITE + Bukkit.getBukkitVersion());
+        sender.sendMessage(ChatColor.GRAY + " Progressive reveal: "
+                + (resender.isBroken() ? ChatColor.RED : ChatColor.GREEN) + resender.diagnostics());
+        if (sample == null) {
+            sender.sendMessage(ChatColor.YELLOW
+                    + " (a player must be online to test reveal — join, then run this again.)");
+        }
     }
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 1) {
-            return new ArrayList<>(List.of("reload", "bypass")).stream()
+            return new ArrayList<>(List.of("reload", "bypass", "status")).stream()
                     .filter(s -> s.startsWith(args[0].toLowerCase()))
                     .collect(Collectors.toList());
         }

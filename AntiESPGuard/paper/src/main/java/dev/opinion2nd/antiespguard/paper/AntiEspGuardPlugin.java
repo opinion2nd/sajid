@@ -37,6 +37,7 @@ public final class AntiEspGuardPlugin extends JavaPlugin {
 
     private MaskService maskService;
     private ModDetectionListener modDetection;
+    private ChunkResender resender;
     private final List<PacketListenerCommon> packetListeners = new ArrayList<>();
 
     @Override
@@ -44,7 +45,7 @@ public final class AntiEspGuardPlugin extends JavaPlugin {
         PaperConfig config = loadConfiguration();
         this.maskService = new MaskService(config);
 
-        ChunkResender resender = new ChunkResender(this);
+        this.resender = new ChunkResender(this);
 
         // ---- PacketEvents listeners (run async; read immutable config) -------
         registerPacketListener(new ChunkMaskListener(maskService));
@@ -66,7 +67,7 @@ public final class AntiEspGuardPlugin extends JavaPlugin {
         }
 
         // ---- Command ---------------------------------------------------------
-        AntiEspCommand cmd = new AntiEspCommand(this, maskService);
+        AntiEspCommand cmd = new AntiEspCommand(this, maskService, resender);
         if (getCommand("antiespguard") != null) {
             getCommand("antiespguard").setExecutor(cmd);
             getCommand("antiespguard").setTabCompleter(cmd);
