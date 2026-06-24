@@ -43,11 +43,29 @@ const command: Command = {
       }
     }
 
+    const expiryText = license.expiresAt ? `<t:${Math.floor(license.expiresAt / 1000)}:R>` : "Never";
+
+    const dmEmbed = new EmbedBuilder()
+      .setTitle("Your License Key")
+      .setColor(COLORS.info)
+      .setDescription(
+        "Sharing this key with anyone will result in your license being **permanently** disabled and your access to the product **removed**.",
+      )
+      .addFields(
+        { name: "Product", value: license.productName, inline: true },
+        { name: "Expires", value: expiryText, inline: true },
+        { name: "License Key", value: `\`\`\`${license.licenseKey}\`\`\`` },
+      );
+    const dmSent = await interaction.user.send({ embeds: [dmEmbed] }).then(
+      () => true,
+      () => false,
+    );
+
     await interaction.reply({
       embeds: [
         successEmbed(
-          `Redeemed your license for **${license.productName}**!` +
-            (license.expiresAt ? ` Expires <t:${Math.floor(license.expiresAt / 1000)}:R>.` : " It never expires.") +
+          `Redeemed your license for **${license.productName}**! Expires ${expiryText === "Never" ? "Never" : expiryText}.` +
+            (dmSent ? " I've sent the key to your DMs." : "\n⚠️ I couldn't DM you — enable DMs from server members and run `/getlicense` to see your key.") +
             roleNote,
         ),
       ],
