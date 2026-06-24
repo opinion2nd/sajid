@@ -1,9 +1,17 @@
 # AntiESPGuard
 
 A multi-platform, **server-side** anti-Freecam / anti-ESP system for Minecraft
-**1.21.x**. It defeats x-ray-camera cheats by never sending real underground
-geometry/entities to players who are on the surface, and reports/kicks known
-cheat clients.
+**1.21 – 1.21.11 and 26.1** (Bukkit / Spigot / Paper / Folia / Purpur, plus
+Fabric / NeoForge). It defeats x-ray-camera cheats by never sending real
+underground geometry/entities to players who are on the surface, and
+reports/kicks known cheat clients.
+
+The Paper module's `plugin.yml` declares a generic `api-version: '1.21'`,
+which Paper only uses as a *minimum* bound — so the same jar loads on every
+1.21.x patch and on the new year-based 26.1 line. The actual 26.1 protocol
+support comes from whichever **PacketEvents** plugin version the server admin
+has installed (PacketEvents >= 2.12.0 added 26.1 support) — our jar only
+compiles against PacketEvents' API, it does not bundle it.
 
 This is a clean reimplementation modelled on the `AntiESPFreecam` plugin, with
 **one deliberate difference: the Anti-Xray subsystem is intentionally NOT
