@@ -177,6 +177,13 @@ public final class SignProbeListener implements Listener {
                 .sendPacket(player, new WrapperPlayServerBlockChange(pos, signId));
         PacketEvents.getAPI().getPlayerManager()
                 .sendPacket(player, new WrapperPlayServerBlockEntityData(pos, BlockEntityTypes.SIGN, buildSignNbt()));
+        plugin.getLogger().info("[SignProbe] Probing " + player.getName() + " at " + pos.getX()
+                + "," + pos.getY() + "," + pos.getZ() + " — waiting for them to close the sign.");
+
+        // How long (in ticks) to keep waiting for the client to submit the sign
+        // before giving up. Generous by default so a player reading the sign is
+        // still caught.
+        long timeout = plugin.getConfig().getLong("modDetection.probeTimeoutTicks", 1200L);
 
         // Open the editor a tick later, then arm a timeout that cleans up if the
         // client never answers.
@@ -188,11 +195,13 @@ public final class SignProbeListener implements Listener {
                     .sendPacket(player, new WrapperPlayServerOpenSignEditor(pos, true));
             SchedulerUtil.runEntityLater(plugin, player, () -> {
                 if (probePosition.containsKey(uuid)) {
+                    plugin.getLogger().info("[SignProbe] " + player.getName()
+                            + " never closed the sign within the timeout — no detection.");
                     restoreBlock(player, uuid);
                     probePosition.remove(uuid);
                     originalBlockId.remove(uuid);
                 }
-            }, 200L);
+            }, timeout);
         }, 1L);
     }
 
@@ -218,6 +227,8 @@ public final class SignProbeListener implements Listener {
         originalBlockId.remove(uuid);
 
         String[] lines = wrapper.getTextLines();
+        plugin.getLogger().info("[SignProbe] Got sign back from " + player.getName()
+                + ": " + java.util.Arrays.toString(lines));
         String detected = null;
         int count = Math.min(activeMods.length, 4);
         for (int i = 0; i < count; i++) {
@@ -234,6 +245,8 @@ public final class SignProbeListener implements Listener {
     }
 
     private void onDetected(Player player, String mod) {
+        plugin.getLogger().warning("[SignProbe] DETECTED " + mod + " on " + player.getName()
+                + " — autoKick=" + plugin.getConfig().getBoolean("modDetection.autoKick", true));
         if (plugin.getConfig().getBoolean("modDetection.notifyAdmins", true)) {
             String alert = "§c[FreecamGuard] §e" + player.getName() + " §7was detected using §c" + mod;
             SchedulerUtil.runGlobal(plugin, () -> {
