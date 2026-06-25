@@ -22,7 +22,8 @@ public final class AfConfig {
     /** Blocks strictly below this Y are occlusion-masked. */
     public final int hideBelowY;
 
-    /** Block sent in place of a fully-buried block. AIR = true void (default). */
+    /** Block sent in place of a fully-buried block. Must be an opaque solid so the
+     *  legit player's view stays vanilla; freecam/x-ray then hits solid rock. */
     public final Material maskBlock;
 
     public final boolean maskEntities;
@@ -46,8 +47,8 @@ public final class AfConfig {
 
         this.hideBelowY = c.getInt("hideBelowY", 20);
 
-        Material mat = Material.matchMaterial(c.getString("maskBlock", "AIR"));
-        this.maskBlock = (mat != null && mat.isBlock()) ? mat : Material.AIR;
+        Material mat = Material.matchMaterial(c.getString("maskBlock", "DEEPSLATE"));
+        this.maskBlock = (mat != null && mat.isBlock()) ? mat : Material.DEEPSLATE;
 
         this.maskEntities = c.getBoolean("maskEntities", false);
 

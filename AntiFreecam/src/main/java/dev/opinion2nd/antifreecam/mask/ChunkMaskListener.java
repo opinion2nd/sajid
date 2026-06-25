@@ -17,12 +17,17 @@ import org.bukkit.entity.Player;
  * Occlusion masking of outgoing CHUNK_DATA packets.
  *
  * <p>For every block strictly below {@code hideBelowY} a solid block is rewritten
- * to AIR (void) <em>iff it is fully buried</em> — i.e. all six of its neighbours
- * are themselves fully-occluding solids. Any block that touches air, a cave, a
- * tunnel or a transparent block is left untouched, so the parts of the world a
- * legitimate player can actually see stay 100% vanilla, while ore veins hidden
- * inside solid rock are never sent at all. A freecam / x-ray camera flying into
- * the rock therefore sees genuine void.
+ * to the configured opaque {@code maskBlock} (default deepslate) <em>iff it is
+ * fully buried</em> — i.e. all six of its neighbours are themselves fully-occluding
+ * solids. Any block that touches air, a cave, a tunnel or a transparent block is
+ * left untouched, so the parts of the world a legitimate player can actually see
+ * stay 100% vanilla, while ore veins hidden inside solid rock are never revealed.
+ * A freecam / x-ray camera flying into the rock therefore hits solid rock and
+ * finds nothing.
+ *
+ * <p>The fill must be an opaque solid: the server sends identical block data to a
+ * player's real camera and their freecam camera, so an air fill would make the
+ * buried volume see-through for everyone (not just freecam).
  */
 public final class ChunkMaskListener extends PacketListenerAbstract {
 

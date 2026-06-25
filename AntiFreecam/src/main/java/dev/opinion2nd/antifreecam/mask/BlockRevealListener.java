@@ -42,13 +42,11 @@ public final class BlockRevealListener implements Listener {
     private final Plugin plugin;
     private final MaskService service;
     private final ChunkResender resender;
-    private final BlockData air;
 
     public BlockRevealListener(Plugin plugin, MaskService service, ChunkResender resender) {
         this.plugin = plugin;
         this.service = service;
         this.resender = resender;
-        this.air = Material.AIR.createBlockData();
     }
 
     @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
@@ -76,11 +74,12 @@ public final class BlockRevealListener implements Listener {
             return;
         }
         // Placing a block can fully bury a neighbour that used to be exposed; hide
-        // it again so it can't be peeked with freecam.
+        // it again (with the opaque fill block) so it can't be peeked with freecam.
+        BlockData fill = cfg.maskBlock.createBlockData();
         for (BlockFace face : FACES) {
             Block n = placed.getRelative(face);
             if (n.getY() < cfg.hideBelowY && isSolid(n) && isFullyBuried(n)) {
-                sendToViewers(n.getLocation(), air, true);
+                sendToViewers(n.getLocation(), fill, true);
             }
         }
     }

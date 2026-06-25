@@ -4,18 +4,21 @@
 # ============================================================================
 #
 # HOW IT WORKS (short version):
-#   * Below `hideBelowY`, a solid block is sent to the client as VOID (air) only
-#     if it is FULLY BURIED — every one of its 6 neighbours is also solid. Any
-#     block that touches a cave / tunnel / dug-out space is sent for real.
-#   * So the caves and mines you can actually see stay 100% vanilla, while ore
-#     veins buried in solid rock are never sent. A freecam / x-ray camera flying
-#     into the rock sees nothing but void.
-#   * Mining stays vanilla: when you break a block, the block behind it is
-#     revealed instantly (no "void holes").
+#   * Below `hideBelowY`, a solid block is replaced by `maskBlock` (an opaque
+#     solid, e.g. DEEPSLATE) only if it is FULLY BURIED — every one of its 6
+#     neighbours is also solid. Any block that touches a cave / tunnel / dug-out
+#     space is sent for real.
+#   * So the caves and mines you can actually see stay 100% vanilla (you never
+#     see the fake block — it is always behind a wall), while ore veins buried in
+#     solid rock are hidden. A freecam / x-ray camera flying into the rock hits
+#     solid rock and finds no ores or caves.
+#   * Mining stays vanilla: when you break a block, the real block behind it is
+#     revealed instantly (no holes).
 #
-# A server CANNOT detect whether a client has freecam toggled (it is 100%
-# client-side), so this plugin does not try to — it simply never sends the data
-# freecam would need.
+# WHY NOT "void"/air? A server CANNOT detect freecam (it is 100% client-side) and
+# it sends the SAME blocks to your real camera and a freecam camera. If the buried
+# rock were air, EVERYONE (including you) would see through it. Keeping it an
+# opaque solid is the only way your own view stays vanilla.
 # ----------------------------------------------------------------------------
 
 # Master switch.
@@ -32,11 +35,12 @@ disabledWorlds: []
 # Occlusion-mask every block strictly below this Y.
 hideBelowY: 20
 
-# Block sent in place of a fully-buried block.
-#   AIR  -> true void (recommended; this is what you want for anti-freecam).
-#   STONE/DEEPSLATE -> solid camouflage. Use ONLY if pure air ever causes
-#                      lighting artifacts near caves on your build.
-maskBlock: AIR
+# Block sent in place of a fully-buried block. MUST be an opaque solid.
+#   DEEPSLATE -> best camouflage below Y20 (recommended).
+#   STONE     -> use if you mask a higher Y band where stone is natural.
+#   (AIR is intentionally NOT recommended: it makes the buried rock see-through
+#    for everyone, including normal players — see the note at the top.)
+maskBlock: DEEPSLATE
 
 # ---- Optional: anti entity-ESP (experimental, OFF by default) --------------
 # Hides entity-spawn packets for entities below hideBelowY from masked players.
