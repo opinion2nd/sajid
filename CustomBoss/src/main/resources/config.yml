@@ -1,0 +1,62 @@
+# =====================================================================
+#  CustomBoss configuration
+#  Tweak the values below, then run /boss reload in-game.
+# =====================================================================
+boss:
+  # Colour codes use '&'. Supports any LivingEntity type.
+  display-name: "&c&lInferno Warlord"
+  entity-type: WITHER_SKELETON
+
+  # Total health (1 heart = 2). The boss bar scales to this value.
+  health: 500.0
+  # Melee attack damage the boss deals.
+  damage: 12.0
+  # Base movement speed attribute (vanilla zombie ≈ 0.23).
+  movement-speed: 0.28
+
+  bossbar:
+    # PINK, BLUE, RED, GREEN, YELLOW, PURPLE, WHITE
+    color: RED
+    # SOLID, SEGMENTED_6, SEGMENTED_10, SEGMENTED_12, SEGMENTED_20
+    style: SEGMENTED_10
+
+  abilities:
+    # Seconds between special attacks.
+    interval-seconds: 6
+
+    fireball:
+      enabled: true
+
+    summon-minions:
+      enabled: true
+      type: ZOMBIE
+      count: 3
+
+    aoe-knockback:
+      enabled: true
+      radius: 6.0
+      damage: 8.0
+      strength: 2.0
+
+    teleport:
+      enabled: true
+
+    # When the boss drops below the health threshold it permanently
+    # speeds up once.
+    enrage:
+      enabled: true
+      health-threshold: 0.3
+      speed-multiplier: 1.5
+
+  rewards:
+    # {player} is replaced by the killer's name. Leave empty to disable.
+    broadcast: "&6The &c&lInferno Warlord &6has been slain by &e{player}&6!"
+    # Console commands run on death. {player} is replaced by the killer.
+    commands:
+      - "give {player} diamond 5"
+    # Items dropped on death, format: "MATERIAL AMOUNT".
+    drops:
+      - "DIAMOND 5"
+      - "NETHERITE_INGOT 1"
+      - "GOLDEN_APPLE 3"
+      - "EXPERIENCE_BOTTLE 16"
