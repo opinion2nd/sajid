@@ -1,0 +1,33 @@
+# ============================================================================
+# FreecamGuard
+# Detects Freecam + cheat clients (Meteor, Wurst) and kicks them.
+# No X-ray feature, no minimap detection.
+# ============================================================================
+
+# ---- Sign-probe mod detection ---------------------------------------------
+modDetection:
+  # Probe every player a few seconds after they join.
+  probeOnJoin: true
+  # Delay (in ticks, 20 = 1s) before the probe runs after join.
+  probeDelayTicks: 100
+  # Kick the player automatically when a disallowed mod is detected.
+  autoKick: true
+  # {mod} is replaced with the detected mod name. '&' colour codes supported.
+  kickMessage: "&cYou are using a disallowed mod ({mod}) on this server! Please remove it and rejoin."
+  # Send an in-game alert to players with the freecamguard.notify permission.
+  notifyAdmins: true
+  # Which mods to detect. Only these are checked (max 4).
+  detect:
+    Freecam: true
+    Meteor Client: true
+    Wurst: true
+
+# ---- Client brand / channel detection -------------------------------------
+# Reads the client brand (minecraft:brand) and registered plugin channels
+# (minecraft:register) to catch Freecam / Meteor / Wurst even if the sign
+# probe is dodged.
+brandDetection:
+  # Alert admins when a modded client brand or a cheat channel is seen.
+  notifyAdmins: true
+  # Kick a player when a known cheat channel (freecam/meteor/wurst) is found.
+  kickOnCheatChannel: true
