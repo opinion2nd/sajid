@@ -1,0 +1,99 @@
+[CENTER][SIZE=7][B]FreecamGuard[/B][/SIZE]
+[SIZE=4]Packet-level Freecam & cheat-client detector — kicks them on join.[/SIZE]
+[SIZE=3]Paper / Purpur / Folia / Leaf • Minecraft 1.21+ • 100% server-side[/SIZE][/CENTER]
+
+[HR][/HR]
+
+[SIZE=6][B]✨ Features[/B][/SIZE]
+[LIST]
+[*][B]Freecam mod detection[/B] — instantly identifies the client-side Freecam mod and kicks the player.
+[*][B]Cheat-client detection[/B] — also probes for [B]Meteor Client[/B] and [B]Wurst[/B].
+[*][B]Invisible sign-probe[/B] — a server-only sign that never touches your world; no fake blocks left behind.
+[*][B]Strict / anti-dodge mode[/B] — clients that block or ignore the check are kicked too, so "anti-detection" cheats can't slip through.
+[*][B]Brand & channel watch[/B] — a second layer reading the client brand and plugin channels for freecam: / meteor-client: / wurst:.
+[*][B]Fully customizable messages[/B] — multi-line, colour-coded kick screens with {mod} / {player} placeholders.
+[*][B]Staff alerts[/B] — in-game notifications + console logging on every detection.
+[*][B]Per-mod toggles, bypass permission, live reload.[/B]
+[*][B]Folia-ready[/B], async-safe, ultra lightweight (no per-tick scanning).
+[/LIST]
+
+[HR][/HR]
+
+[SIZE=6][B]🧠 How it works[/B][/SIZE]
+Minecraft signs support [I]translation keys[/I]. The server shows the player a hidden sign containing a key like [ICODE]key.freecam.toggle[/ICODE]:
+[LIST]
+[*]A [B]vanilla[/B] client can't translate the unknown key, so it sends the [B]raw key[/B] back.
+[*]A client with the [B]Freecam mod[/B] auto-replaces it with the mod's label ("Toggle Freecam").
+[/LIST]
+FreecamGuard reads the answer:
+[LIST]
+[*][B]Raw key[/B] returned → clean client → nothing happens.
+[*][B]Translated[/B] text returned → mod detected → player kicked.
+[*][B]Blank / blocked[/B] (client refused the probe) → treated as a dodge → kicked (strict mode).
+[/LIST]
+The fake sign is never placed in your world — the original block is restored instantly, and the sign re-pops until the client answers so it can't be ignored.
+
+[HR][/HR]
+
+[SIZE=6][B]📦 Requirements[/B][/SIZE]
+[LIST]
+[*]Paper / Purpur / Folia / Leaf, Minecraft [B]1.21+[/B]
+[*][B]PacketEvents[/B] installed on the server (hard dependency)
+[*]Java [B]21[/B]
+[/LIST]
+
+[SIZE=6][B]⬇️ Installation[/B][/SIZE]
+[LIST=1]
+[*]Put [B]PacketEvents[/B] in your plugins folder.
+[*]Put [B]FreecamGuard.jar[/B] in plugins.
+[*]Start the server once — config.yml is generated.
+[*]Edit the config if you like, then run [ICODE]/freecamguard reload[/ICODE].
+[/LIST]
+
+[HR][/HR]
+
+[SIZE=6][B]⌨️ Commands[/B][/SIZE]
+[LIST]
+[*][ICODE]/freecamguard reload[/ICODE] — reload config.yml
+[*][ICODE]/freecamguard status[/ICODE] — show what is being detected & settings
+[*]Alias: [ICODE]/fcg[/ICODE]
+[/LIST]
+
+[SIZE=6][B]🔑 Permissions[/B][/SIZE]
+[LIST]
+[*][ICODE]freecamguard.admin[/ICODE] (op) — use the commands
+[*][ICODE]freecamguard.notify[/ICODE] (op) — receive detection alerts
+[*][ICODE]freecamguard.bypass[/ICODE] (false) — exempt a player from the probe
+[/LIST]
+
+[HR][/HR]
+
+[SIZE=6][B]⚙️ Configuration[/B][/SIZE]
+[CODE=yaml]
+modDetection:
+  probeOnJoin: true          # run the check when a player joins
+  probeDelayTicks: 40        # delay before the sign pops (20 ticks = 1s)
+  probeTimeoutTicks: 300     # how long to wait for an answer (300 = 15s)
+  autoKick: true             # kick on detection
+  kickOnNoResponse: true     # STRICT: kick clients that ignore/block the sign
+  notifyAdmins: true         # alert freecamguard.notify staff
+  kickMessage: "&c&l✖ Disallowed Mod Detected\n \n&7You are using &c&l{mod}&7.\n&7This is &cnot allowed&7 on this server.\n&7Remove it and rejoin to play."
+  noResponseKickMessage: "&c&l✖ Anti-Cheat Check Failed\n \n&7You did not close the verification sign.\n&7Please &f&lrejoin&7 and &fclose the sign&7 that pops up."
+  detect:
+    Freecam: true
+    Meteor Client: true
+    Wurst: true
+
+brandDetection:
+  notifyAdmins: true         # alert on modded brand / cheat channel
+  kickOnCheatChannel: true   # kick on a known cheat plugin channel
+[/CODE]
+Use [ICODE]&[/ICODE] colour codes and [ICODE]\n[/ICODE] for new lines. [ICODE]{mod}[/ICODE] = detected mod, [ICODE]{player}[/ICODE] = player name.
+
+[HR][/HR]
+
+[SIZE=6][B]❓ FAQ[/B][/SIZE]
+[B]Needs a client mod or resource pack?[/B] No — 100% server-side.
+[B]Will it kick legit players?[/B] A normal player just closes the quick sign pop-up and is verified instantly. Only clients that block/ignore the check are kicked by strict mode (toggle it off if you prefer).
+[B]Bedrock (Geyser/Floodgate)?[/B] Automatically skipped — the check is Java-only.
+[B]Catches every cheat?[/B] It reliably catches mods that expose translatable keys (like Freecam) and dodgers via strict mode. For movement/combat cheats (fly, killaura, reach) pair it with a behavioural anti-cheat; for Freecam/ESP vision, pair it with a block-masking plugin.
