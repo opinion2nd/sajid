@@ -48,7 +48,7 @@ jobs:
       # Publish a rolling Release so the jar has a direct, mobile-friendly
       # download link (no login required on a public repo).
       - name: Publish rolling Release
-        if: github.ref == 'refs/heads/claude/ei-plugins-korte-copy-j6o3rw' || github.ref == 'refs/heads/main'
+        if: startsWith(github.ref, 'refs/heads/claude/') || github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: antifreecam-latest
