@@ -1,0 +1,26 @@
+name: FreecamGuard
+main: dev.opinion2nd.freecamguard.FreecamGuardPlugin
+version: ${version}
+api-version: '1.21'
+author: opinion2nd
+description: Detects Freecam and cheat clients (Meteor, Wurst) with a sign probe and kicks them. No X-ray, no minimap detection.
+depend: [packetevents]
+folia-supported: true
+
+commands:
+  freecamguard:
+    description: FreecamGuard admin commands
+    aliases: [fcg]
+    usage: /freecamguard <reload|status>
+    permission: freecamguard.admin
+
+permissions:
+  freecamguard.admin:
+    description: Allows reloading FreecamGuard and viewing status
+    default: op
+  freecamguard.notify:
+    description: Receives in-game detection alerts
+    default: op
+  freecamguard.bypass:
+    description: Exempts a player from the cheat-mod probe on join
+    default: false
