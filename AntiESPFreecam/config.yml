@@ -1,0 +1,219 @@
+# ========================================================================
+# AntiESPFreecam (DONUT) — HARDENED profile
+# Paper / Purpur / Folia / Leaf | MC 1.21.1 - 1.21.x (fork auto-detected)
+# ========================================================================
+
+# Dimensions where masking is active: NORMAL, NETHER, THE_END
+enabledEnvironments:
+- NORMAL
+- NETHER
+
+# Worlds where the plugin is fully inactive (exact folder name).
+disabledWorlds: []
+
+# Hide all blocks below this Y from surface players.
+hideBelowY: 20
+
+# Masking activates when a player's Y is at or above this value.
+revealBelowYWhenUnder: 30
+
+# Min mask/unmask radius in chunks (auto-extends to view distance + 4). Don't go below 4.
+scanRadiusChunks: 4
+
+# Max chunks processed per tick for Y-threshold transitions.
+maxChunksPerTick: 128
+
+# Progressive chunk reveal when going underground (core freecam resistance).
+lazyUnmask:
+  distance: 32          # lookahead (blocks) when walking/sprinting
+  distanceElytra: 64    # lookahead (blocks) when flying with elytra
+  rescanBlocks: 1       # blocks moved before a rescan (walk)
+  rescanBlocksElytra: 1 # blocks moved before a rescan (elytra)
+
+# Re-mask previously revealed chunks when a player returns to the surface.
+remaskOnReturn: true
+
+# Block shown when masking. STONE = solid/indistinguishable (recommended).
+maskBlock: STONE
+skipMaskIfAlreadyAir: false
+
+# Hide entities below hideBelowY from surface players (anti entity-radar).
+maskEntities: true
+
+# Hide underground players (nametags/hitboxes) from surface players (combat ESP).
+maskUndergroundPlayers: true
+
+# ---- TAB prefix for hidden players -----------------------------------------
+# Hidden players are re-added to TAB with their prefix, resolved in order:
+# playerListName (if styled) -> PlaceholderAPI -> LuckPerms API -> Vault -> team.
+# placeholderFormats: tried top to bottom, first real prefix wins (needs PAPI).
+# useVault: read prefix/suffix from Vault Chat API when no placeholder resolves.
+tabPrefix:
+  placeholderFormats:
+    - "%luckperms_prefix%%player_name%%luckperms_suffix%"
+    - "%vault_prefix%%player_name%%vault_suffix%"
+  useVault: true
+
+# ---- Anti-Xray -------------------------------------------------------------
+# DISABLED in this build. The X-ray (ore-hiding) feature has been turned off by
+# request: this plugin only protects against Freecam/ESP and detects+kicks
+# cheat clients. Leave `enabled: false` to keep the X-ray feature removed.
+# Replaces ores with stone/deepslate/netherrack in chunk packets for all
+# underground players; ores near the player are revealed so they can mine.
+antiXray:
+  enabled: false
+  belowY: 40
+  # When true, surface (masked) players get the WHOLE band [hideBelowY, belowY)
+  # fully masked (every block -> maskBlock), not just the hiddenOres list — so
+  # entire structures (walls, floors, redstone) that sit above hideBelowY are
+  # hidden, not just ores. Capped at the player's own level so they are never
+  # walled in. Use this when you want `belowY` to mean "fully hide everything up
+  # to here for surface players", while keeping hideBelowY as the deep void.
+  fullMaskSurface: false
+  # Master switch for anti-xray in the Nether. false = anti-xray is fully OFF
+  # in the Nether (no ore/redstone hiding, no reveal there at all), overriding
+  # netherBelowY. The core hideBelowY freecam mask is unaffected by this.
+  netherEnabled: true
+  # Separate anti-xray depth for the Nether. The Nether is enclosed (bedrock
+  # roof at Y=127) and its ores (gold/quartz/ancient debris) spread through the
+  # whole column, so masking only below `belowY` leaves most of them exposed.
+  # Set higher (e.g. 120) to cover the entire Nether. -1 = use `belowY`.
+  # Applies to both masking and the mine-reveal, so players can still dig.
+  netherBelowY: -1
+  revealRadius: 2        # blocks around player where ores show as real
+  fluidRevealRadius: 4   # reveal radius for lava/water
+  # Line-of-sight gate: only reveal an in-range ore if the player can actually
+  # SEE it (no full opaque block between eye and ore) — closes the "ore glows
+  # through a thin wall" ESP leak. Safest defaults: ores only (lava/water
+  # always revealed), direct neighbours always shown, and any uncertainty
+  # reveals so mining never breaks. Off by default; enable to test on a live
+  # server. Costs a tiny voxel raycast per nearby ore (reuses chunk snapshots).
+  occlusionCheck: false
+  # lava/water replacement: DEFAULT (stone/deepslate) | NONE (show real) | <BLOCK>
+  lavaReplacement: NONE
+  waterReplacement: NONE
+  # Skybase masking: hide hiddenOres ABOVE aboveY from players below it.
+  # Requires aboveY > revealBelowYWhenUnder (validated on startup).
+  skybase:
+    enabled: false
+    aboveY: 200
+  hiddenOres:
+  # Vanilla ores
+  - IRON_ORE
+  - DEEPSLATE_IRON_ORE
+  - COPPER_ORE
+  - DEEPSLATE_COPPER_ORE
+  - GOLD_ORE
+  - DEEPSLATE_GOLD_ORE
+  - NETHER_GOLD_ORE
+  - REDSTONE_ORE
+  - DEEPSLATE_REDSTONE_ORE
+  - EMERALD_ORE
+  - DEEPSLATE_EMERALD_ORE
+  - LAPIS_ORE
+  - DEEPSLATE_LAPIS_ORE
+  - DIAMOND_ORE
+  - DEEPSLATE_DIAMOND_ORE
+  - COAL_ORE
+  - DEEPSLATE_COAL_ORE
+  - NETHER_QUARTZ_ORE
+  - ANCIENT_DEBRIS
+  # Light sources
+  - GLOWSTONE
+  - GLOW_LICHEN
+  - SEA_LANTERN
+  - SHROOMLIGHT
+  - REDSTONE_TORCH
+  - REDSTONE_WALL_TORCH
+  - REDSTONE_LAMP
+  - CAMPFIRE
+  - SOUL_CAMPFIRE
+  - RESPAWN_ANCHOR
+  # Trial-chamber / dungeon markers
+  # WARNING: block-entity blocks (spawner, vault, chests, barrel, dispenser,
+  # dropper, hopper, crafter, sculk sensors/shrieker) CANNOT be masked safely.
+  # Masking rewrites only the block STATE; the block-entity NBT is never carried,
+  # so on mask->reveal the client loses it — e.g. a STACKED SPAWNER's count
+  # resets and only returns after the block is broken & replaced. Keep these
+  # commented out unless you accept that breakage. END_PORTAL_FRAME is NOT a
+  # block entity and is safe to mask.
+  #- TRIAL_SPAWNER
+  #- VAULT
+  #- SPAWNER
+  #- CHEST
+  #- TRAPPED_CHEST
+  #- BARREL
+  - END_PORTAL_FRAME
+  # Redstone
+  - REDSTONE_BLOCK
+  - REDSTONE_WIRE
+  - REPEATER
+  - COMPARATOR
+  - PISTON
+  - PISTON_HEAD
+  - STICKY_PISTON
+  - OBSERVER
+  - DISPENSER
+  - DROPPER
+  - HOPPER
+  - SCULK_SENSOR
+  - CALIBRATED_SCULK_SENSOR
+  - SCULK_SHRIEKER
+  - POWERED_RAIL
+  - DETECTOR_RAIL
+  - RAIL
+  - ACTIVATOR_RAIL
+  - CRAFTER
+  # Amethyst geodes
+  - SMALL_AMETHYST_BUD
+  - MEDIUM_AMETHYST_BUD
+  - LARGE_AMETHYST_BUD
+  - AMETHYST_CLUSTER
+  - AMETHYST_BLOCK
+  - BUDDING_AMETHYST
+  # Copper bulbs
+  - COPPER_BULB
+  - EXPOSED_COPPER_BULB
+  - WEATHERED_COPPER_BULB
+  - OXIDIZED_COPPER_BULB
+  - WAXED_COPPER_BULB
+  - WAXED_EXPOSED_COPPER_BULB
+  - WAXED_WEATHERED_COPPER_BULB
+  - WAXED_OXIDIZED_COPPER_BULB
+
+# ---- Anti Seed Cracker -----------------------------------------------------
+# Replace the hashed world seed sent to clients (JOIN_GAME/RESPAWN) with a
+# random value. Seed-cracker mods (SeedcrackerX) use that hash to instantly
+# verify reverse-engineered seed candidates — without it the attack loses its
+# verification oracle. No gameplay effect (client uses it only for cosmetic
+# biome-border noise). For full protection also enable Paper's
+# feature-seeds.generate-random-seeds-for-all in paper-world-defaults.yml.
+antiSeedCracker:
+  hideSeed: true
+
+# ---- Brand Detection -------------------------------------------------------
+brandDetection:
+  notifyAdmins: true
+
+# ---- Mod Detection ---------------------------------------------------------
+modDetection:
+  probeOnJoin: true
+  autoKick: true
+  kickMessage: §cYou are using a cheat mod that is not allowed on this server ({mod})!
+    Please remove it and rejoin.
+  notifyAdmins: true
+  discordWebhook: ''
+  discordColor: 16711680
+  # Enable detection per mod (max 4 active at once).
+  # Freecam + cheat clients (Meteor, Wurst) are detected and kicked.
+  # Xaero's Minimap detection is DISABLED by request (minimap is allowed).
+  detect:
+    Freecam: true
+    Meteor Client: true
+    Wurst: true
+    Xaero's Minimap: false
+
+# ---- Update Checker --------------------------------------------------------
+updateChecker:
+  enabled: true
+  notifyOps: true
