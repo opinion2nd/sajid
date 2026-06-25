@@ -1,20 +1,33 @@
 # AntiFreecam
 
-An original, from-scratch anti-freecam / anti-ESP block masker for **Paper / Purpur 1.21.x**.
-It hides everything below a configurable Y level from players who are on the surface, so a
-freecam or ESP camera that flies underground sees nothing but stone — while normal underground
-play stays fully vanilla.
+An original, from-scratch anti-freecam / anti-x-ray block masker for
+**Paper / Purpur 1.21.x**. Below a configurable Y level it sends fully-buried
+blocks to the client as **void (air)**, so a freecam or x-ray camera that flies
+into solid rock sees nothing — while the caves and mines you can actually reach
+stay completely vanilla.
 
-> 100% original code (not derived from any closed-source plugin). MIT-style — it's yours to edit and ship.
+> A server cannot detect whether a client has freecam toggled (it is 100%
+> client-side), so this plugin does not try to. It simply never sends the data
+> freecam would need.
 
 ## How it works
 
+Below `hideBelowY`, a solid block is rewritten to **air** only if it is **fully
+buried** — every one of its six neighbours is also a solid block. Any block that
+touches a cave, tunnel or dug-out space is left untouched.
+
+- The parts of the world you can legitimately see render exactly like vanilla —
+  **no fake stone, no radius cliffs**.
+- Ore veins buried inside solid rock are never sent, so freecam / x-ray sees void.
+- Mining stays vanilla: breaking a block instantly reveals the block behind it, so
+  there are **no "void holes"**.
+
 | Stage | Where | What |
 |-------|-------|------|
-| State tracking | `PlayerTracker` (main thread) | Marks each player surface vs underground, computes the reveal neighbourhood. |
-| Masking | `ChunkMaskListener` (PacketEvents) | Rewrites every block below `hideBelowY` to `maskBlock` in outgoing chunk packets for masked players/chunks. |
-| Reveal / re-mask | `ChunkResender` (NMS) | Re-sends chunks when a player crosses the surface/underground boundary so the change is seamless. |
-| Entity hiding | `EntityMaskListener` | Drops spawn packets for entities below `hideBelowY` from surface players. |
+| State tracking | `PlayerTracker` (main thread) | Tracks each player's bypass + active-world flags. |
+| Masking | `ChunkMaskListener` (PacketEvents) | Occlusion-masks fully-buried blocks below `hideBelowY` to `maskBlock` (AIR) in outgoing chunk packets. |
+| Reveal-on-mine | `BlockRevealListener` | Reveals newly-exposed blocks on break, re-hides on place, re-sends chunks after explosions. |
+| Entity hiding | `EntityMaskListener` | Optional anti entity-ESP, **off by default**. |
 | Mod detection | `BrandDetectionListener` | Best-effort `minecraft:brand` watch (Wurst by default). |
 
 ## Requirements
@@ -25,10 +38,13 @@ play stays fully vanilla.
 ## Build
 
 ```bash
-gradle build      # or ./gradlew build once you generate a wrapper
+./gradlew build
 ```
 
-The shaded jar lands in `build/libs/AntiFreecam-1.0.0.jar`. Drop it (and PacketEvents) into `plugins/`.
+The shaded jar lands in `build/libs/AntiFreecam-1.0.0.jar`. Drop it (and
+PacketEvents) into `plugins/`.
+
+See **[HOW_IT_WORKS.md](HOW_IT_WORKS.md)** for a short Bengali explainer.
 
 ## Commands & permissions
 
@@ -37,7 +53,9 @@ The shaded jar lands in `build/libs/AntiFreecam-1.0.0.jar`. Drop it (and PacketE
 
 ## Notes / things to verify on a live server
 
-- **Progressive reveal** depends on an NMS chunk re-send. If the server internals change, masking
-  still works but reveal is skipped (a warning is logged once) — open an issue with your version.
-- **Entity hiding** is experimental; a hidden entity reappears on its next spawn packet.
-- **Mod detection** via brand is a *signal*, not proof — many clients spoof the brand.
+- **Pure-air fill** is the most freecam-proof option; if you ever see lighting
+  artifacts near caves on your build, set `maskBlock` to `STONE`/`DEEPSLATE`.
+- A thin one-block "shell" on chunk borders is visible to freecam (it never
+  reveals buried veins); it can be tightened later by reading neighbour chunks.
+- Piston / fluid-driven exposures are not reveal-handled (rare below Y20; they
+  self-heal on the next chunk reload). Break / place / explosions are handled.

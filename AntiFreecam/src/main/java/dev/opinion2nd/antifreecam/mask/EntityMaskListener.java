@@ -9,12 +9,14 @@ import dev.opinion2nd.antifreecam.AfConfig;
 import org.bukkit.entity.Player;
 
 /**
- * Stops entity-spawn packets for entities below {@code hideBelowY} from reaching
- * surface players, closing the entity-radar / combat-ESP leak.
+ * Optional anti entity-ESP: stops entity-spawn packets for entities below
+ * {@code hideBelowY} from reaching masked players.
  *
- * <p>Experimental: an entity hidden this way reappears the next time the client
- * receives a spawn for it (e.g. it moves, or the player relogs). Verify on a
- * test server.
+ * <p>Off by default ({@code maskEntities: false}) — it conflicts with a fully
+ * vanilla feel (it would also hide mobs in caves you are actually in) and is
+ * experimental: a hidden entity reappears the next time the client receives a
+ * spawn for it (e.g. it moves, or the player relogs). Enable only if you
+ * specifically want to fight entity radar.
  */
 public final class EntityMaskListener extends PacketListenerAbstract {
 
@@ -38,9 +40,8 @@ public final class EntityMaskListener extends PacketListenerAbstract {
             return;
         }
 
-        PlayerMaskData data = service.get(viewer.getUniqueId());
-        if (data == null || data.bypass || !data.worldActive || data.underground) {
-            return; // only surface players are protected from below-Y entities
+        if (!service.isActive(viewer)) {
+            return;
         }
 
         WrapperPlayServerSpawnEntity spawn = new WrapperPlayServerSpawnEntity(event);

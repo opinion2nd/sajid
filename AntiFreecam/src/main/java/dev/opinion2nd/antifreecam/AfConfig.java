@@ -5,7 +5,6 @@ import org.bukkit.World;
 import org.bukkit.configuration.file.FileConfiguration;
 
 import java.util.HashSet;
-import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 
@@ -15,19 +14,16 @@ import java.util.Set;
  */
 public final class AfConfig {
 
+    public final boolean enabled;
+
     public final Set<World.Environment> enabledEnvironments = new HashSet<>();
     public final Set<String> disabledWorlds = new HashSet<>();
 
+    /** Blocks strictly below this Y are occlusion-masked. */
     public final int hideBelowY;
-    public final int revealBelowYWhenUnder;
-    public final int scanRadiusChunks;
-    public final Material maskBlock;
-    public final boolean skipMaskIfAlreadyAir;
 
-    public final int lazyDistance;
-    public final int lazyDistanceElytra;
-    public final int rescanBlocks;
-    public final boolean remaskOnReturn;
+    /** Block sent in place of a fully-buried block. AIR = true void (default). */
+    public final Material maskBlock;
 
     public final boolean maskEntities;
 
@@ -38,6 +34,8 @@ public final class AfConfig {
     public final Set<String> watchedBrands = new HashSet<>();
 
     public AfConfig(FileConfiguration c) {
+        this.enabled = c.getBoolean("enabled", true);
+
         for (String env : c.getStringList("enabledEnvironments")) {
             try {
                 enabledEnvironments.add(World.Environment.valueOf(env.toUpperCase(Locale.ROOT)));
@@ -47,19 +45,11 @@ public final class AfConfig {
         disabledWorlds.addAll(c.getStringList("disabledWorlds"));
 
         this.hideBelowY = c.getInt("hideBelowY", 20);
-        this.revealBelowYWhenUnder = c.getInt("revealBelowYWhenUnder", 30);
-        this.scanRadiusChunks = Math.max(4, c.getInt("scanRadiusChunks", 4));
 
-        Material mat = Material.matchMaterial(c.getString("maskBlock", "STONE"));
-        this.maskBlock = (mat != null && mat.isBlock()) ? mat : Material.STONE;
-        this.skipMaskIfAlreadyAir = c.getBoolean("skipMaskIfAlreadyAir", false);
+        Material mat = Material.matchMaterial(c.getString("maskBlock", "AIR"));
+        this.maskBlock = (mat != null && mat.isBlock()) ? mat : Material.AIR;
 
-        this.lazyDistance = Math.max(16, c.getInt("lazyUnmask.distance", 256));
-        this.lazyDistanceElytra = Math.max(16, c.getInt("lazyUnmask.distanceElytra", 256));
-        this.rescanBlocks = Math.max(1, c.getInt("lazyUnmask.rescanBlocks", 1));
-        this.remaskOnReturn = c.getBoolean("remaskOnReturn", true);
-
-        this.maskEntities = c.getBoolean("maskEntities", true);
+        this.maskEntities = c.getBoolean("maskEntities", false);
 
         this.modDetectionEnabled = c.getBoolean("modDetection.enabled", true);
         this.autoKick = c.getBoolean("modDetection.autoKick", true);

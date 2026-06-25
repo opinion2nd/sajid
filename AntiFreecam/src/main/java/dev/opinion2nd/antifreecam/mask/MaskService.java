@@ -9,8 +9,12 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Central, thread-safe registry of per-player mask state plus the core
- * "should this chunk be masked for this player?" decision used by the packet
+ * "should this player be masked at all?" decision used by the packet and block
  * listeners.
+ *
+ * <p>With the occlusion model there is no per-chunk reveal set any more: every
+ * masked player gets exactly the same geometry-based masking, so the only thing
+ * this service decides is whether masking is switched on for a given player.
  */
 public final class MaskService {
 
@@ -42,20 +46,15 @@ public final class MaskService {
     }
 
     /**
-     * @return true if blocks below hideBelowY in chunk (cx,cz) must be masked
-     *         to STONE for this player.
+     * @return true if outgoing block data for this player must be occlusion-masked
+     *         (plugin enabled, player tracked, not bypassed, in an enabled world).
      */
-    public boolean shouldMaskChunk(UUID uuid, int cx, int cz) {
-        PlayerMaskData data = players.get(uuid);
-        if (data == null || data.bypass || !data.worldActive) {
+    public boolean isActive(Player player) {
+        AfConfig cfg = config;
+        if (!cfg.enabled) {
             return false;
         }
-        // Surface player: hide everything below the threshold.
-        if (!data.underground) {
-            return true;
-        }
-        // Underground: reveal the player's neighbourhood, mask the rest so a
-        // freecam camera that flies away from the body still hits stone.
-        return !data.revealedChunks.contains(PlayerMaskData.chunkKey(cx, cz));
+        PlayerMaskData data = players.get(player.getUniqueId());
+        return data != null && !data.bypass && data.worldActive;
     }
 }

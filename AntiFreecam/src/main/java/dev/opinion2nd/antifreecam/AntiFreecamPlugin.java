@@ -3,6 +3,7 @@ package dev.opinion2nd.antifreecam;
 import com.github.retrooper.packetevents.PacketEvents;
 import dev.opinion2nd.antifreecam.command.AfCommand;
 import dev.opinion2nd.antifreecam.detect.BrandDetectionListener;
+import dev.opinion2nd.antifreecam.mask.BlockRevealListener;
 import dev.opinion2nd.antifreecam.mask.ChunkMaskListener;
 import dev.opinion2nd.antifreecam.mask.EntityMaskListener;
 import dev.opinion2nd.antifreecam.mask.MaskService;
@@ -13,11 +14,11 @@ import org.bukkit.plugin.java.JavaPlugin;
 /**
  * AntiFreecam — original anti-freecam / anti-ESP block masker for Paper 1.21.x.
  *
- * <p>Pipeline: a Bukkit {@link PlayerTracker} maintains each player's
- * surface/underground state on the main thread; the PacketEvents
- * {@link ChunkMaskListener} rewrites below-Y blocks to stone on the way out; the
- * {@link ChunkResender} re-sends chunks when a player crosses the boundary so
- * the reveal/re-mask is seamless.
+ * <p>Pipeline: a Bukkit {@link PlayerTracker} keeps each player's bypass/world
+ * flags up to date; the PacketEvents {@link ChunkMaskListener} occlusion-masks
+ * fully-buried blocks below Y to void on the way out; the {@link BlockRevealListener}
+ * keeps mining vanilla by revealing newly-exposed blocks (and re-sending chunks
+ * after explosions via {@link ChunkResender}).
  */
 public final class AntiFreecamPlugin extends JavaPlugin {
 
@@ -38,7 +39,9 @@ public final class AntiFreecamPlugin extends JavaPlugin {
         registerPacketListener(new BrandDetectionListener(this, maskService));
 
         getServer().getPluginManager().registerEvents(
-                new PlayerTracker(maskService, resender), this);
+                new PlayerTracker(maskService), this);
+        getServer().getPluginManager().registerEvents(
+                new BlockRevealListener(this, maskService, resender), this);
 
         AfCommand cmd = new AfCommand(this, maskService);
         getCommand("antifreecam").setExecutor(cmd);
