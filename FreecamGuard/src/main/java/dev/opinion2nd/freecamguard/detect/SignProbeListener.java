@@ -172,46 +172,63 @@ public final class SignProbeListener implements Listener {
         originalBlockId.put(uuid, globalIdOf(block));
         probePosition.put(uuid, pos);
 
+        sendFakeSign(player, pos);
+        plugin.getLogger().info("[SignProbe] Probing " + player.getName() + " at " + pos.getX()
+                + "," + pos.getY() + "," + pos.getZ() + " — they must close the sign to be verified.");
+
+        long timeoutTicks = plugin.getConfig().getLong("modDetection.probeTimeoutTicks", 300L);
+        long deadlineNanos = System.nanoTime() + timeoutTicks * 50_000_000L; // 1 tick ~= 50ms
+
+        // Open the editor a tick later, then start a watchdog that re-pops the
+        // sign every couple of seconds (so it cannot just be dismissed/ignored)
+        // and finally fails the probe at the deadline.
+        SchedulerUtil.runEntityLater(plugin, player, () -> {
+            if (!player.isOnline() || !probePosition.containsKey(uuid)) {
+                return;
+            }
+            openSignEditor(player, pos);
+            watchProbe(player, uuid, pos, deadlineNanos);
+        }, 1L);
+    }
+
+    private void sendFakeSign(Player player, Vector3i pos) {
         int signId = WrappedBlockState.getDefaultState(StateTypes.OAK_SIGN).getGlobalId();
         PacketEvents.getAPI().getPlayerManager()
                 .sendPacket(player, new WrapperPlayServerBlockChange(pos, signId));
         PacketEvents.getAPI().getPlayerManager()
                 .sendPacket(player, new WrapperPlayServerBlockEntityData(pos, BlockEntityTypes.SIGN, buildSignNbt()));
-        plugin.getLogger().info("[SignProbe] Probing " + player.getName() + " at " + pos.getX()
-                + "," + pos.getY() + "," + pos.getZ() + " — waiting for them to close the sign.");
+    }
 
-        // How long (in ticks) to keep waiting for the client to submit the sign
-        // before giving up. Generous by default so a player reading the sign is
-        // still caught.
-        long timeout = plugin.getConfig().getLong("modDetection.probeTimeoutTicks", 300L);
+    private void openSignEditor(Player player, Vector3i pos) {
+        PacketEvents.getAPI().getPlayerManager()
+                .sendPacket(player, new WrapperPlayServerOpenSignEditor(pos, true));
+    }
 
-        // Open the editor a tick later, then arm a timeout that cleans up if the
-        // client never answers.
+    /**
+     * Re-show the sign every couple of seconds until the client answers, then
+     * fail the probe once the deadline passes. This stops a player from simply
+     * dismissing/ignoring the sign and continuing to play.
+     */
+    private void watchProbe(Player player, UUID uuid, Vector3i pos, long deadlineNanos) {
         SchedulerUtil.runEntityLater(plugin, player, () -> {
-            if (!player.isOnline() || !probePosition.containsKey(uuid)) {
+            if (!probePosition.containsKey(uuid)) {
+                return; // a response already arrived and was handled
+            }
+            if (!player.isOnline()) {
+                probePosition.remove(uuid);
+                originalBlockId.remove(uuid);
                 return;
             }
-            PacketEvents.getAPI().getPlayerManager()
-                    .sendPacket(player, new WrapperPlayServerOpenSignEditor(pos, true));
-            SchedulerUtil.runEntityLater(plugin, player, () -> {
-                if (probePosition.containsKey(uuid)) {
-                    restoreBlock(player, uuid);
-                    probePosition.remove(uuid);
-                    originalBlockId.remove(uuid);
-                    boolean strict = plugin.getConfig().getBoolean("modDetection.kickOnNoResponse", true);
-                    if (strict && player.isOnline()) {
-                        plugin.getLogger().warning("[SignProbe] " + player.getName()
-                                + " never closed the probe sign — kicking (strict mode).");
-                        String raw = plugin.getConfig().getString("modDetection.noResponseKickMessage",
-                                "&cYou must close the verification sign to play here.");
-                        kickPlayer(player, buildKickComponent(raw, "Unknown", player.getName()));
-                    } else {
-                        plugin.getLogger().info("[SignProbe] " + player.getName()
-                                + " never closed the sign within the timeout — no detection.");
-                    }
-                }
-            }, timeout);
-        }, 1L);
+            if (System.nanoTime() >= deadlineNanos) {
+                restoreAndClear(player, uuid);
+                strictKickOrLog(player, "never closed/answered the probe sign");
+                return;
+            }
+            // Not answered yet — show the sign again so it cannot be ignored.
+            sendFakeSign(player, pos);
+            openSignEditor(player, pos);
+            watchProbe(player, uuid, pos, deadlineNanos);
+        }, 40L);
     }
 
     private void handleSignResponse(PacketReceiveEvent event) {
@@ -231,25 +248,50 @@ public final class SignProbeListener implements Listener {
         }
         // This was our probe — swallow it so it never reaches the server logic.
         event.setCancelled(true);
-        restoreBlock(player, uuid);
-        probePosition.remove(uuid);
-        originalBlockId.remove(uuid);
 
         String[] lines = wrapper.getTextLines();
         plugin.getLogger().info("[SignProbe] Got sign back from " + player.getName()
                 + ": " + java.util.Arrays.toString(lines));
         String detected = null;
+        boolean cleanEcho = true;
         int count = Math.min(activeMods.length, 4);
         for (int i = 0; i < count; i++) {
             String line = (lines != null && i < lines.length && lines[i] != null) ? lines[i] : "";
-            // Untouched key == vanilla / mod absent. Anything else == translated.
-            if (!line.isEmpty() && !line.equals(activeMods[i][1])) {
-                detected = activeMods[i][0];
+            if (line.equals(activeMods[i][1])) {
+                continue; // vanilla echoes our raw key back untouched
+            }
+            if (!line.isEmpty()) {
+                detected = activeMods[i][0]; // a mod translated the key — caught
                 break;
             }
+            cleanEcho = false; // key came back blank — the client stripped it (dodge)
         }
+
+        restoreAndClear(player, uuid);
         if (detected != null) {
             onDetected(player, detected);
+        } else if (!cleanEcho) {
+            strictKickOrLog(player, "returned a blank/tampered probe sign");
+        }
+    }
+
+    private void restoreAndClear(Player player, UUID uuid) {
+        restoreBlock(player, uuid);
+        probePosition.remove(uuid);
+        originalBlockId.remove(uuid);
+    }
+
+    private void strictKickOrLog(Player player, String reason) {
+        boolean strict = plugin.getConfig().getBoolean("modDetection.kickOnNoResponse", true);
+        if (strict && player.isOnline()) {
+            plugin.getLogger().warning("[SignProbe] " + player.getName() + " " + reason
+                    + " — kicking (strict mode).");
+            String raw = plugin.getConfig().getString("modDetection.noResponseKickMessage",
+                    "&cYou must close the verification sign to play here.");
+            kickPlayer(player, buildKickComponent(raw, "Unknown", player.getName()));
+        } else {
+            plugin.getLogger().info("[SignProbe] " + player.getName() + " " + reason
+                    + " — not verified (strict mode off).");
         }
     }
 
