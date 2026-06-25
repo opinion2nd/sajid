@@ -13,22 +13,23 @@ modDetection:
   probeDelayTicks: 40
   # How long (in ticks) to wait for the player to close/submit the probe sign.
   # The kick fires the instant they close it; this is just the give-up timer.
-  # 1200 ticks = 60 seconds.
-  probeTimeoutTicks: 1200
+  # 300 ticks = 15 seconds.
+  probeTimeoutTicks: 300
   # Kick the moment a disallowed mod is detected.
   autoKick: true
-  # STRICT mode: also kick a player who never closes the probe sign within
-  # probeTimeoutTicks. This stops cheaters from keeping the sign open forever to
-  # dodge detection. It can also catch someone who alt-tabbed away, so it is OFF
-  # by default — turn it on for a strict, vanilla-only server.
-  kickOnNoResponse: false
+  # STRICT mode (ON): if a player does NOT close the probe sign within
+  # probeTimeoutTicks, kick them too. This stops cheaters from keeping the sign
+  # open / ignoring it to dodge detection. A normal player just closes the sign
+  # (it blocks their screen), so only people who refuse it get caught. Set to
+  # false if you do not want to kick non-responders.
+  kickOnNoResponse: true
   # Send an in-game alert to players with the freecamguard.notify permission.
   notifyAdmins: true
   # The kick-screen message the player sees. {mod} = detected mod name,
   # {player} = player name. Use '&' colour codes and \n for a new line.
   kickMessage: "&c&l✖ Disallowed Mod Detected\n \n&7You are using &c&l{mod}&7.\n&7This is &cnot allowed&7 on this server.\n&7Remove it and rejoin to play."
   # Shown when STRICT mode kicks a player who refused to close the sign.
-  noResponseKickMessage: "&c&l✖ Verification Failed\n \n&7You must close the verification sign to play here.\n&7Please rejoin."
+  noResponseKickMessage: "&c&l✖ Anti-Cheat Check Failed\n \n&7You did not close the verification sign.\n&7Please &f&lrejoin&7 and &fclose the sign&7 that pops up.\n&7Do not ignore it — it is required to play here."
   # Which mods to detect (max 4).
   detect:
     Freecam: true

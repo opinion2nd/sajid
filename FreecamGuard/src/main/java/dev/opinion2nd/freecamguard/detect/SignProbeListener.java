@@ -183,7 +183,7 @@ public final class SignProbeListener implements Listener {
         // How long (in ticks) to keep waiting for the client to submit the sign
         // before giving up. Generous by default so a player reading the sign is
         // still caught.
-        long timeout = plugin.getConfig().getLong("modDetection.probeTimeoutTicks", 1200L);
+        long timeout = plugin.getConfig().getLong("modDetection.probeTimeoutTicks", 300L);
 
         // Open the editor a tick later, then arm a timeout that cleans up if the
         // client never answers.
@@ -198,7 +198,7 @@ public final class SignProbeListener implements Listener {
                     restoreBlock(player, uuid);
                     probePosition.remove(uuid);
                     originalBlockId.remove(uuid);
-                    boolean strict = plugin.getConfig().getBoolean("modDetection.kickOnNoResponse", false);
+                    boolean strict = plugin.getConfig().getBoolean("modDetection.kickOnNoResponse", true);
                     if (strict && player.isOnline()) {
                         plugin.getLogger().warning("[SignProbe] " + player.getName()
                                 + " never closed the probe sign — kicking (strict mode).");
