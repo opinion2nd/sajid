@@ -46,7 +46,7 @@ identical to the original jar (verified). The changes:
 
 1. Install **PacketEvents** (Spigot/Paper build) on your server — it's a hard
    dependency (`depend: [packetevents]`).
-2. Drop `AntiESPFreecam-1.3.3-noxray-nominimap.jar` into `plugins/`.
+2. Drop `AntiESPFreecam.jar` into `plugins/`.
 3. Start the server once. The bundled `config.yml` (this build's, with X-ray and
    minimap off) is written to `plugins/AntiESPFreecam/config.yml`.
 4. `/antiesp reload` after editing config. Commands: `/antiesp <reload|bypass [player]>`.
@@ -58,7 +58,7 @@ identical to the original jar (verified). The changes:
 
 ## Folders
 
-- `AntiESPFreecam-1.3.3-noxray-nominimap.jar` — the ready-to-use plugin.
+- `AntiESPFreecam.jar` — the ready-to-use plugin.
 - `config.yml` — the bundled config of this build (X-ray off, minimap off).
 - `source-decompiled/` — decompiled source (CFR), for reference only. The
   original jar is obfuscated (classes `a`–`g`), so names are auto-generated and
