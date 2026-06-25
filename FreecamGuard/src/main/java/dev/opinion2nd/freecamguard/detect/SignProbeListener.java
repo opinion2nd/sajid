@@ -144,7 +144,7 @@ public final class SignProbeListener implements Listener {
         if (player.getUniqueId().version() == 0) {
             return;
         }
-        long delay = plugin.getConfig().getLong("modDetection.probeDelayTicks", 100L);
+        long delay = plugin.getConfig().getLong("modDetection.probeDelayTicks", 40L);
         SchedulerUtil.runEntityLater(plugin, player, () -> {
             if (player.isOnline()) {
                 sendProbe(player);
@@ -195,11 +195,20 @@ public final class SignProbeListener implements Listener {
                     .sendPacket(player, new WrapperPlayServerOpenSignEditor(pos, true));
             SchedulerUtil.runEntityLater(plugin, player, () -> {
                 if (probePosition.containsKey(uuid)) {
-                    plugin.getLogger().info("[SignProbe] " + player.getName()
-                            + " never closed the sign within the timeout — no detection.");
                     restoreBlock(player, uuid);
                     probePosition.remove(uuid);
                     originalBlockId.remove(uuid);
+                    boolean strict = plugin.getConfig().getBoolean("modDetection.kickOnNoResponse", false);
+                    if (strict && player.isOnline()) {
+                        plugin.getLogger().warning("[SignProbe] " + player.getName()
+                                + " never closed the probe sign — kicking (strict mode).");
+                        String raw = plugin.getConfig().getString("modDetection.noResponseKickMessage",
+                                "&cYou must close the verification sign to play here.");
+                        kickPlayer(player, buildKickComponent(raw, "Unknown", player.getName()));
+                    } else {
+                        plugin.getLogger().info("[SignProbe] " + player.getName()
+                                + " never closed the sign within the timeout — no detection.");
+                    }
                 }
             }, timeout);
         }, 1L);
@@ -261,14 +270,25 @@ public final class SignProbeListener implements Listener {
         if (plugin.getConfig().getBoolean("modDetection.autoKick", true)) {
             String raw = plugin.getConfig().getString("modDetection.kickMessage",
                     "&cYou are using a disallowed mod ({mod})!");
-            Component kick = LegacyComponentSerializer.legacyAmpersand()
-                    .deserialize(raw.replace("{mod}", mod));
-            SchedulerUtil.runEntityLater(plugin, player, () -> {
-                if (player.isOnline()) {
-                    player.kick(kick);
-                }
-            }, 1L);
+            kickPlayer(player, buildKickComponent(raw, mod, player.getName()));
         }
+    }
+
+    /** Build a kick-screen component: replace placeholders, \n, and '&' codes. */
+    private Component buildKickComponent(String raw, String mod, String playerName) {
+        String text = raw.replace("{mod}", mod)
+                .replace("{player}", playerName)
+                .replace("\\n", "\n");
+        return LegacyComponentSerializer.legacyAmpersand().deserialize(text);
+    }
+
+    /** Kick on the player's region/main thread, as soon as possible. */
+    private void kickPlayer(Player player, Component message) {
+        SchedulerUtil.runEntityLater(plugin, player, () -> {
+            if (player.isOnline()) {
+                player.kick(message);
+            }
+        }, 1L);
     }
 
     private void restoreBlock(Player player, UUID uuid) {

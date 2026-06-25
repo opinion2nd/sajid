@@ -6,21 +6,30 @@
 
 # ---- Sign-probe mod detection ---------------------------------------------
 modDetection:
-  # Probe every player a few seconds after they join.
+  # Probe every player shortly after they join.
   probeOnJoin: true
-  # Delay (in ticks, 20 = 1s) before the probe runs after join.
-  probeDelayTicks: 100
-  # How long (in ticks) to wait for the player to close/submit the probe sign
-  # before giving up. The kick only happens once the player closes the sign,
-  # so keep this generous. 1200 ticks = 60 seconds.
+  # Delay (in ticks, 20 = 1s) before the probe sign pops up after join.
+  # Kept short so a cheater sees it almost immediately.
+  probeDelayTicks: 40
+  # How long (in ticks) to wait for the player to close/submit the probe sign.
+  # The kick fires the instant they close it; this is just the give-up timer.
+  # 1200 ticks = 60 seconds.
   probeTimeoutTicks: 1200
-  # Kick the player automatically when a disallowed mod is detected.
+  # Kick the moment a disallowed mod is detected.
   autoKick: true
-  # {mod} is replaced with the detected mod name. '&' colour codes supported.
-  kickMessage: "&cYou are using a disallowed mod ({mod}) on this server! Please remove it and rejoin."
+  # STRICT mode: also kick a player who never closes the probe sign within
+  # probeTimeoutTicks. This stops cheaters from keeping the sign open forever to
+  # dodge detection. It can also catch someone who alt-tabbed away, so it is OFF
+  # by default — turn it on for a strict, vanilla-only server.
+  kickOnNoResponse: false
   # Send an in-game alert to players with the freecamguard.notify permission.
   notifyAdmins: true
-  # Which mods to detect. Only these are checked (max 4).
+  # The kick-screen message the player sees. {mod} = detected mod name,
+  # {player} = player name. Use '&' colour codes and \n for a new line.
+  kickMessage: "&c&l✖ Disallowed Mod Detected\n \n&7You are using &c&l{mod}&7.\n&7This is &cnot allowed&7 on this server.\n&7Remove it and rejoin to play."
+  # Shown when STRICT mode kicks a player who refused to close the sign.
+  noResponseKickMessage: "&c&l✖ Verification Failed\n \n&7You must close the verification sign to play here.\n&7Please rejoin."
+  # Which mods to detect (max 4).
   detect:
     Freecam: true
     Meteor Client: true
@@ -29,7 +38,7 @@ modDetection:
 # ---- Client brand / channel detection -------------------------------------
 # Reads the client brand (minecraft:brand) and registered plugin channels
 # (minecraft:register) to catch Freecam / Meteor / Wurst even if the sign
-# probe is dodged.
+# probe is dodged. This fires immediately on join (no sign needed).
 brandDetection:
   # Alert admins when a modded client brand or a cheat channel is seen.
   notifyAdmins: true
