@@ -16,7 +16,8 @@ dependencies {
     // Provided by the server at runtime — never shaded in.
     compileOnly("io.papermc.paper:paper-api:1.21.1-R0.1-SNAPSHOT")
     // We `depend: [packetevents]` in plugin.yml, so it is compileOnly here too.
-    compileOnly("com.github.retrooper:packetevents-spigot:2.5.0")
+    // 2.13.0 covers the whole 1.18 -> 1.21.11 -> 26.x protocol range.
+    compileOnly("com.github.retrooper:packetevents-spigot:2.13.0")
 }
 
 java {

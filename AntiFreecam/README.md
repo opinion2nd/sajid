@@ -32,8 +32,14 @@ touches a cave, tunnel or dug-out space is left untouched.
 
 ## Requirements
 
-- Paper / Purpur **1.21.x**, Java **21**
-- The **PacketEvents** plugin installed on the server (hard dependency)
+- Bukkit / Spigot / Paper / Purpur, **Minecraft 1.18 → 1.21.11 / 26.x**, Java **21**
+- The **PacketEvents** plugin installed on the server (hard dependency) — install a
+  PacketEvents build that supports your Minecraft version (2.13.0+ for 1.21.11 / 26.x)
+
+> Notes: **Folia is not yet supported** (its region scheduler needs separate work).
+> On Spigot/Bukkit the explosion reveal-on-mine step is skipped (it uses Paper NMS);
+> the core anti-freecam masking and break/place reveal still work everywhere.
+> Versions below 1.21 should load but are not live-tested — verify before relying on them.
 
 ## Build
 

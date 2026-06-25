@@ -1,7 +1,7 @@
 name: AntiFreecam
 main: dev.opinion2nd.antifreecam.AntiFreecamPlugin
 version: ${version}
-api-version: '1.21'
+api-version: '1.18'
 author: opinion2nd
 description: Hides blocks below a Y level from surface players to defeat Freecam / ESP cheats. Original implementation.
 depend: [packetevents]
