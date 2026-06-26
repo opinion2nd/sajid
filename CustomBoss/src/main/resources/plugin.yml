@@ -1,0 +1,17 @@
+name: CustomBoss
+version: '${version}'
+main: dev.opinion2nd.customboss.CustomBossPlugin
+api-version: '1.21'
+author: opinion2nd
+description: Spawn a custom boss with a boss bar, special attacks and custom rewards.
+
+commands:
+  boss:
+    description: Manage custom bosses
+    usage: /boss <spawn|killall|list|reload>
+    permission: customboss.command
+
+permissions:
+  customboss.command:
+    description: Allows using the /boss command
+    default: op
