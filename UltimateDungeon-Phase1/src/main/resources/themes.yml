@@ -1,0 +1,101 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# UltimateDungeon  |  themes.yml
+# Theme definitions — block palettes, ambience, monster pools, boss selection.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+config-version: 1
+
+themes:
+  ancient_ruins:
+    display-name: "Ancient Ruins"
+    blocks:
+      primary: COBBLESTONE
+      secondary: MOSSY_COBBLESTONE
+      accent: MOSSY_STONE_BRICKS
+      floor: STONE_BRICKS
+      ceiling: CRACKED_STONE_BRICKS
+    ambient-sound: BLOCK_CAVE_DRIP_WATER
+    particles:
+      - FALLING_DUST
+      - SMOKE_NORMAL
+    monster-pool:
+      - common_monster_1
+      - common_monster_2
+      - elite_monster_1
+    boss-pool:
+      - boss_1
+      - boss_2
+
+  frozen_cavern:
+    display-name: "Frozen Cavern"
+    blocks:
+      primary: PACKED_ICE
+      secondary: BLUE_ICE
+      accent: SNOW_BLOCK
+      floor: ICE
+      ceiling: PACKED_ICE
+    ambient-sound: BLOCK_POWDER_SNOW_STEP
+    particles:
+      - SNOWFLAKE
+      - CLOUD
+    monster-pool:
+      - common_monster_3
+      - elite_monster_2
+    boss-pool:
+      - boss_3
+
+  corrupted_temple:
+    display-name: "Corrupted Temple"
+    blocks:
+      primary: PURPUR_BLOCK
+      secondary: BLACKSTONE
+      accent: CRYING_OBSIDIAN
+      floor: PURPUR_SLAB
+      ceiling: BLACKSTONE
+    ambient-sound: BLOCK_SOUL_SAND_PLACE
+    particles:
+      - SOUL_FIRE_FLAME
+      - PORTAL
+    monster-pool:
+      - common_monster_4
+      - elite_monster_3
+    boss-pool:
+      - boss_4
+      - boss_5
+
+  volcanic_fortress:
+    display-name: "Volcanic Fortress"
+    blocks:
+      primary: NETHER_BRICKS
+      secondary: MAGMA_BLOCK
+      accent: BLACKSTONE
+      floor: NETHER_BRICKS
+      ceiling: BASALT
+    ambient-sound: BLOCK_LAVA_AMBIENT
+    particles:
+      - FLAME
+      - LAVA
+    monster-pool:
+      - common_monster_5
+      - elite_monster_1
+    boss-pool:
+      - boss_6
+
+  forgotten_catacombs:
+    display-name: "Forgotten Catacombs"
+    blocks:
+      primary: DEEPSLATE_BRICKS
+      secondary: BONE_BLOCK
+      accent: CRACKED_DEEPSLATE_BRICKS
+      floor: DEEPSLATE_TILES
+      ceiling: DEEPSLATE
+    ambient-sound: BLOCK_ROOTED_DIRT_PLACE
+    particles:
+      - SMOKE_LARGE
+      - SPELL_MOB
+    monster-pool:
+      - common_monster_1
+      - rare_monster_1
+    boss-pool:
+      - boss_7
+      - boss_8

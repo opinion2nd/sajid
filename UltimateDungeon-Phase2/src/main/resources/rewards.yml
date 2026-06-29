@@ -1,0 +1,49 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# UltimateDungeon  |  rewards.yml
+# Reward pools per event type. All values configurable here.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+config-version: 1
+
+reward-events:
+  BOSS_KILL:
+    money: 500
+    experience: 1000
+    loot-table: boss_general_loot
+    commands: []
+
+  MINI_BOSS_KILL:
+    money: 150
+    experience: 300
+    loot-table: mini_boss_loot
+    commands: []
+
+  TREASURE_ROOM:
+    money: 50
+    experience: 100
+    loot-table: treasure_room_loot
+    commands: []
+
+  SECRET_ROOM:
+    money: 100
+    experience: 200
+    loot-table: secret_room_loot
+    commands: []
+
+  WAVE_COMPLETION:
+    money: 30
+    experience: 50
+    loot-table: wave_loot
+    commands: []
+
+  DUNGEON_COMPLETION:
+    money: 200
+    experience: 500
+    loot-table: completion_bonus_loot
+    commands: []
+
+  DAILY_BONUS:
+    money: 100
+    experience: 200
+    loot-table: daily_bonus_loot
+    commands: []

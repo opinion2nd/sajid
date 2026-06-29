@@ -1,0 +1,19 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# UltimateDungeon  |  party.yml
+# Party size, invite timeouts, leader transfer, and cooperative rules.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+config-version: 1
+
+max-party-size: 6
+invite-timeout: 60
+ready-check-duration: 30
+reconnect-timeout: 120
+
+# auto   — leadership transfers to the next senior member on leader departure.
+# manual — leader must manually transfer before leaving.
+# disband — party disbands if the leader leaves without transferring.
+leader-transfer-mode: auto
+
+friendly-fire: false
+late-join: false

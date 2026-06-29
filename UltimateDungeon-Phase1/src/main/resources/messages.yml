@@ -1,0 +1,53 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# UltimateDungeon  |  messages.yml
+# All user-facing text. Supports full MiniMessage formatting.
+# Placeholders: {player} {party-size} {theme} {difficulty} {boss-name}
+#               {monsters} {waves} {time} {rewards}
+# ═══════════════════════════════════════════════════════════════════════════════
+
+config-version: 1
+
+prefix: "<dark_gray>[<gold><bold>UD</bold></gold><dark_gray>] "
+
+no-permission: "<red>You don't have permission to do that."
+player-only: "<red>This command can only be used by players."
+unknown-subcommand: "<red>Unknown command. Use <yellow>/dungeon</yellow> for help."
+
+dungeon:
+  already-in-dungeon: "<red>You are already in a dungeon."
+  not-in-dungeon: "<red>You are not currently in a dungeon."
+  generating: "<yellow>Generating your dungeon, please wait..."
+  starting: "<green>Your dungeon is starting!"
+  completed: "<gold>Dungeon completed! Well done, <yellow>{player}</yellow>!"
+  failed: "<red>The dungeon has failed. Better luck next time."
+  leave-success: "<yellow>You have left the dungeon."
+
+party:
+  created: "<green>Party created. You are the leader."
+  disbanded: "<red>Your party has been disbanded."
+  invited: "<yellow>{player} has been invited to your party."
+  invite-received: "<yellow>{player} has invited you to their party. <green>[Accept]</green> <red>[Deny]</red>"
+  invite-expired: "<red>Your invitation to {player} has expired."
+  joined: "<green>{player} has joined the party."
+  left: "<yellow>{player} has left the party."
+  kicked: "<red>{player} has been removed from the party."
+  leader-transferred: "<yellow>Leadership transferred to {player}."
+  already-in-party: "<red>You are already in a party."
+  not-in-party: "<red>You are not in a party."
+  party-full: "<red>That party is full."
+  no-invite: "<red>You have no pending party invitation."
+  not-leader: "<red>Only the party leader can do that."
+  ready-check-started: "<yellow>Ready check started! All members must accept within {time}s."
+  ready-check-passed: "<green>All members are ready. Starting dungeon..."
+  ready-check-failed: "<red>Ready check failed. Not all members confirmed in time."
+
+boss:
+  countdown: "<yellow>Boss encounter begins in <red>{time}</red>..."
+  encounter-start: "<red>The <bold>{boss-name}</bold> has awakened!"
+  phase-change: "<dark_red>Phase change! The <bold>{boss-name}</bold> grows stronger!"
+  defeated: "<gold>The <bold>{boss-name}</bold> has been defeated!"
+  arena-locked: "<red>The arena is sealed. There is no escape."
+
+rewards:
+  rewarded: "<gold>You have received your rewards!"
+  collect-timeout: "<red>Your rewards have expired."
