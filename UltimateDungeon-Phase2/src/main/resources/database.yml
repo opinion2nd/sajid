@@ -1,0 +1,25 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# UltimateDungeon  |  database.yml
+# Database engine, connection settings, and pool configuration.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+config-version: 1
+
+# Engine: sqlite (default, zero config) | mysql (production)
+type: sqlite
+
+sqlite:
+  file: "ultimatedungeon.db"
+
+mysql:
+  host: "localhost"
+  port: 3306
+  database: "ultimatedungeon"
+  username: "root"
+  password: "changeme"
+  pool:
+    maximum-pool-size: 10
+    minimum-idle: 2
+    connection-timeout: 30000
+    idle-timeout: 600000
+    max-lifetime: 1800000

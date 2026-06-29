@@ -1,0 +1,27 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# UltimateDungeon  |  performance.yml
+# Async settings, entity caps, and cache configuration.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+config-version: 1
+
+# Maximum entities (monsters + boss summons) allowed in a single dungeon instance.
+max-entities-per-dungeon: 80
+
+# Number of threads available for async dungeon generation.
+generation-thread-count: 2
+
+cache:
+  # How long (seconds) player stat cache entries remain valid.
+  player-stats-ttl: 300
+  # How long (seconds) dungeon instance data is cached after completion.
+  instance-cache-ttl: 60
+
+# Tick intervals for repeating tasks (in server ticks, 20/sec).
+tick-intervals:
+  dungeon-heartbeat: 20
+  boss-ai: 10
+  monster-ai: 10
+  trap-tick: 20
+  invitation-expiry: 20
+  ready-check-expiry: 20

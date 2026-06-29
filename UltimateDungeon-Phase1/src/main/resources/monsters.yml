@@ -1,0 +1,35 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# UltimateDungeon  |  monsters.yml
+# Monster stats, AI values, ability configs, and drop tables.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+config-version: 1
+
+monsters:
+  common_monster_1:
+    display-name: "<gray>Dungeon Crawler"
+    category: COMMON
+    health: 20.0
+    damage: 3.0
+    speed: 0.25
+    spawn-weight: 40
+    abilities:
+      - id: basic_strike
+        cooldown-ticks: 40
+        damage: 3.0
+      - id: group_call
+        cooldown-ticks: 200
+        range: 16
+    equipment:
+      helmet: LEATHER_HELMET
+      chestplate: LEATHER_CHESTPLATE
+      hand: STONE_SWORD
+    drops:
+      - item: BONE
+        chance: 0.4
+        min: 1
+        max: 3
+      - item: ROTTEN_FLESH
+        chance: 0.3
+        min: 1
+        max: 2

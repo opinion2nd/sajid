@@ -1,0 +1,40 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# UltimateDungeon  |  traps.yml
+# Trap definitions — damage, cooldowns, trigger types, and difficulty scaling.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+config-version: 1
+
+traps:
+  SpikeTrap:
+    display-name: "Spike Trap"
+    trigger-type: PLAYER_MOVEMENT
+    base-damage: 4.0
+    cooldown-ticks: 60
+    trigger-radius: 1.0
+    activation-delay-ticks: 5
+    knockback: 0.5
+    status-effects: []
+
+  ArrowLauncherTrap:
+    display-name: "Arrow Launcher"
+    trigger-type: TIMED
+    base-damage: 3.0
+    cooldown-ticks: 40
+    trigger-radius: 0
+    activation-delay-ticks: 0
+    knockback: 0.2
+    status-effects: []
+
+  PoisonAreaTrap:
+    display-name: "Poison Cloud"
+    trigger-type: PLAYER_MOVEMENT
+    base-damage: 1.0
+    cooldown-ticks: 20
+    trigger-radius: 2.0
+    activation-delay-ticks: 0
+    knockback: 0.0
+    status-effects:
+      - effect: POISON
+        duration-ticks: 100
+        amplifier: 0

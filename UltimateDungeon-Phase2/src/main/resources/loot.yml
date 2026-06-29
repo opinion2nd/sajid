@@ -1,0 +1,48 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# UltimateDungeon  |  loot.yml
+# Loot tables with rarity weights and item pools.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+config-version: 1
+
+# Global rarity base chances (modified by difficulty loot-tier-bonus).
+rarity-chances:
+  COMMON: 0.55
+  UNCOMMON: 0.25
+  RARE: 0.12
+  EPIC: 0.05
+  LEGENDARY: 0.025
+  MYTHIC: 0.005
+
+loot-tables:
+  boss_general_loot:
+    rolls:
+      min: 2
+      max: 4
+    entries:
+      - rarity: RARE
+        item: DIAMOND
+        min: 1
+        max: 3
+      - rarity: EPIC
+        item: DIAMOND_SWORD
+        min: 1
+        max: 1
+      - rarity: LEGENDARY
+        item: NETHERITE_INGOT
+        min: 1
+        max: 1
+
+  treasure_room_loot:
+    rolls:
+      min: 1
+      max: 3
+    entries:
+      - rarity: COMMON
+        item: GOLD_INGOT
+        min: 1
+        max: 5
+      - rarity: UNCOMMON
+        item: EMERALD
+        min: 1
+        max: 3
