@@ -8,6 +8,7 @@ import com.ultimatedungeon.core.PluginLogger;
 import com.ultimatedungeon.core.PluginScheduler;
 import com.ultimatedungeon.dungeon.instance.DungeonContext;
 import com.ultimatedungeon.dungeon.instance.DungeonInstance;
+import com.ultimatedungeon.dungeon.world.DungeonWorldManager;
 import com.ultimatedungeon.room.model.RoomGraph;
 import com.ultimatedungeon.room.registry.RoomRegistry;
 import com.ultimatedungeon.theme.model.ThemeDefinition;
@@ -48,6 +49,9 @@ public final class DungeonGenerator implements IDungeonGenerator {
     private final PluginScheduler      scheduler;
     private final PluginLogger         logger;
 
+    /** Optional isolated-world manager; when set, dungeons build in the dungeon world. */
+    private DungeonWorldManager        worldManager;
+
     public DungeonGenerator(
             @NotNull final DungeonConfig       dungeonConfig,
             @NotNull final ThemeRegistry       themeRegistry,
@@ -65,6 +69,11 @@ public final class DungeonGenerator implements IDungeonGenerator {
         this.roomPlacer        = new RoomPlacer(roomRegistry, logger);
         this.decorationPainter = new DecorationPainter(dungeonConfig, logger);
         this.validator         = new GenerationValidator(logger);
+    }
+
+    /** Injects the dungeon-world manager so generation targets the isolated world. */
+    public void setWorldManager(@NotNull final DungeonWorldManager worldManager) {
+        this.worldManager = worldManager;
     }
 
     // ── IDungeonGenerator ─────────────────────────────────────────────────────
@@ -164,7 +173,11 @@ public final class DungeonGenerator implements IDungeonGenerator {
     }
 
     private World resolveWorld(@NotNull final DungeonGenerationRequest request) {
-        // For now use the default world — world isolation is handled in Milestone 3
+        // Prefer the isolated dungeon world; fall back to the default world only
+        // if world isolation is unavailable.
+        if (worldManager != null && worldManager.getDungeonWorld() != null) {
+            return worldManager.getDungeonWorld();
+        }
         return Bukkit.getWorlds().isEmpty() ? null : Bukkit.getWorlds().get(0);
     }
 }

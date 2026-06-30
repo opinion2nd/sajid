@@ -49,6 +49,7 @@ public final class PluginBootstrap {
     private ThemeRegistry        themeRegistry;
     private RoomRegistry         roomRegistry;
     private DungeonGenerator     dungeonGenerator;
+    private com.ultimatedungeon.dungeon.world.DungeonWorldManager dungeonWorldManager;
     private DungeonInstanceManager dungeonInstanceManager;
     private GenerationPipeline   generationPipeline;
 
@@ -154,10 +155,18 @@ public final class PluginBootstrap {
         serviceRegistry.register(RoomRegistry.class, roomRegistry);
         pluginLogger.info("Room templates registered: " + roomRegistry.getTemplateCount());
 
+        // ── Isolated dungeon world ─────────────────────────────────────────────
+        final var worldProvider = new com.ultimatedungeon.dungeon.world.IsolatedWorldProvider(pluginLogger);
+        final var worldFactory  = new com.ultimatedungeon.dungeon.world.DungeonWorldFactory(worldProvider, pluginLogger);
+        dungeonWorldManager     = new com.ultimatedungeon.dungeon.world.DungeonWorldManager(worldFactory, pluginLogger);
+        dungeonWorldManager.initialise();
+        serviceRegistry.register(com.ultimatedungeon.dungeon.world.DungeonWorldManager.class, dungeonWorldManager);
+
         // ── Dungeon generator ──────────────────────────────────────────────────
         dungeonGenerator = new DungeonGenerator(
                 configManager.getDungeonConfig(), themeRegistry,
                 roomRegistry, pluginScheduler, pluginLogger);
+        dungeonGenerator.setWorldManager(dungeonWorldManager);
         serviceRegistry.register(DungeonGenerator.class, dungeonGenerator);
 
         // ── Dungeon instance manager ───────────────────────────────────────────
