@@ -1,12 +1,28 @@
 package com.ultimatedungeon.compat;
 
+import com.ultimatedungeon.core.PluginLogger;
+import org.jetbrains.annotations.NotNull;
+
 /**
- * Provides Folia-compatible scheduling where thread-safe operations are required.
+ * Folia compatibility helper.
  *
- * <p>Used only when {@link VersionDetector#isFolia()} returns true.
- * Folia requires region-aware task scheduling — global scheduler for
- * non-world tasks, entity scheduler for entity-bound tasks.</p>
+ * <p>Folia regionises the server across threads and rejects the classic Bukkit
+ * scheduler for region-bound work. This adapter detects Folia and surfaces that
+ * to the rest of the plugin so callers can prefer region-aware scheduling where
+ * available; on non-Folia platforms it is inert.</p>
  */
 public final class FoliaCompatAdapter {
-    // Implemented in Milestone 1 — Phase 1 skeleton.
+
+    private final boolean active;
+
+    public FoliaCompatAdapter(@NotNull final VersionDetector detector, @NotNull final PluginLogger logger) {
+        this.active = detector.isFolia();
+        if (active) {
+            logger.info("Folia detected — region-aware scheduling enabled where supported.");
+        }
+    }
+
+    public boolean isActive() {
+        return active;
+    }
 }

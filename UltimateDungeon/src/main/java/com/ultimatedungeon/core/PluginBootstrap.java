@@ -174,6 +174,10 @@ public final class PluginBootstrap {
                 + (versionDetector.isFolia()     ? " [Folia]"   : "")
                 + (versionDetector.isPurpur()    ? " [Purpur]"  : "")
                 + (versionDetector.isSpigotOnly()? " [Spigot]"  : " [Paper]"));
+        // Construct compat adapters for their startup detection/logging side effects.
+        new com.ultimatedungeon.compat.FoliaCompatAdapter(versionDetector, pluginLogger);
+        new com.ultimatedungeon.compat.PurpurCompatAdapter(versionDetector, pluginLogger);
+        new com.ultimatedungeon.compat.SpigotCompatAdapter(versionDetector, pluginLogger);
     }
 
     private void initServiceRegistry() {
@@ -411,6 +415,18 @@ public final class PluginBootstrap {
         final PluginManager pm = plugin.getServer().getPluginManager();
         pm.registerEvents(new PartyPlayerQuitListener(partyManager), plugin);
         pm.registerEvents(new PartyPlayerJoinListener(invitationManager), plugin);
+
+        // Gameplay activation & safety listeners
+        pm.registerEvents(new com.ultimatedungeon.listeners.room.RoomEnterListener(
+                dungeonInstanceManager, waveManager, trapEngine, puzzleEngine, bossEngine, arenaLockdown), plugin);
+        pm.registerEvents(new com.ultimatedungeon.listeners.trap.TrapTriggerListener(
+                trapEngine, dungeonInstanceManager), plugin);
+        pm.registerEvents(new com.ultimatedungeon.listeners.player.PlayerDeathInDungeonListener(
+                plugin, statisticsService, dungeonInstanceManager), plugin);
+        pm.registerEvents(new com.ultimatedungeon.listeners.arena.ArenaEscapeListener(
+                arenaLockdown, new com.ultimatedungeon.boss.arena.ArenaEscapeBlocker(), dungeonInstanceManager), plugin);
+        pm.registerEvents(new com.ultimatedungeon.listeners.gui.GuiClickListener(guiManager), plugin);
+
         pluginLogger.info("Listeners registered.");
     }
 
