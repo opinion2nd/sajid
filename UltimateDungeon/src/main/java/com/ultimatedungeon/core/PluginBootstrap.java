@@ -426,6 +426,12 @@ public final class PluginBootstrap {
         pm.registerEvents(new com.ultimatedungeon.listeners.arena.ArenaEscapeListener(
                 arenaLockdown, new com.ultimatedungeon.boss.arena.ArenaEscapeBlocker(), dungeonInstanceManager), plugin);
         pm.registerEvents(new com.ultimatedungeon.listeners.gui.GuiClickListener(guiManager), plugin);
+        pm.registerEvents(new com.ultimatedungeon.listeners.puzzle.PuzzleInteractListener(
+                puzzleEngine, dungeonInstanceManager), plugin);
+        pm.registerEvents(new com.ultimatedungeon.listeners.arena.ArenaPortalBlockListener(
+                arenaLockdown, dungeonInstanceManager), plugin);
+        pm.registerEvents(new com.ultimatedungeon.listeners.arena.ArenaTeleportBlockListener(
+                arenaLockdown, dungeonInstanceManager), plugin);
 
         pluginLogger.info("Listeners registered.");
     }
