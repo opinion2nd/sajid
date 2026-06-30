@@ -1,6 +1,229 @@
 package com.ultimatedungeon.dungeon.lifecycle;
 
-/** DungeonLauncher — dungeon lifecycle orchestration. Implemented in Milestone 3. */
+import com.ultimatedungeon.api.dungeon.DungeonGenerationRequest;
+import com.ultimatedungeon.api.dungeon.IDungeonInstance;
+import com.ultimatedungeon.config.files.MessagesConfig;
+import com.ultimatedungeon.core.PluginLogger;
+import com.ultimatedungeon.dungeon.generation.GenerationPipeline;
+import com.ultimatedungeon.dungeon.instance.DungeonCleanupService;
+import com.ultimatedungeon.dungeon.instance.DungeonInstance;
+import com.ultimatedungeon.dungeon.instance.DungeonInstanceManager;
+import com.ultimatedungeon.managers.PlayerSessionManager;
+import com.ultimatedungeon.room.model.RoomData;
+import com.ultimatedungeon.services.NotificationService;
+import com.ultimatedungeon.services.PlayerTeleportService;
+import com.ultimatedungeon.services.StatisticsService;
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.entity.Player;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
+
+/**
+ * Orchestrates the full dungeon launch and teardown pipeline.
+ *
+ * <p>Launch flow: build a request → run the generation pipeline → on success,
+ * remember each player's origin, open a session, teleport them to the spawn
+ * room and announce the start. Completion and failure both return every player
+ * home, close sessions, run cleanup, and notify.</p>
+ */
 public final class DungeonLauncher {
-    private DungeonLauncher() {}
+
+    private final GenerationPipeline     pipeline;
+    private final DungeonInstanceManager instanceManager;
+    private final PlayerSessionManager   sessionManager;
+    private final PlayerTeleportService  teleportService;
+    private final NotificationService    notifications;
+    private final StatisticsService      statistics;
+    private final DungeonCleanupService  cleanupService;
+    private final MessagesConfig         messages;
+    private final PluginLogger           logger;
+
+    /** Origin locations to return players to when their run ends. */
+    private final Map<UUID, Location> returnLocations = new ConcurrentHashMap<>();
+    /** Players associated with each active instance. */
+    private final Map<UUID, Set<UUID>> instancePlayers = new ConcurrentHashMap<>();
+    /** Database record id per instance for completion stats. */
+    private final Map<UUID, Long> instanceRecordId = new ConcurrentHashMap<>();
+
+    /** Optional hook invoked on completion (instance, winners) — wired to rewards. */
+    private BiConsumer<DungeonInstance, List<Player>> onComplete;
+
+    public DungeonLauncher(@NotNull final GenerationPipeline pipeline,
+                           @NotNull final DungeonInstanceManager instanceManager,
+                           @NotNull final PlayerSessionManager sessionManager,
+                           @NotNull final PlayerTeleportService teleportService,
+                           @NotNull final NotificationService notifications,
+                           @NotNull final StatisticsService statistics,
+                           @NotNull final DungeonCleanupService cleanupService,
+                           @NotNull final MessagesConfig messages,
+                           @NotNull final PluginLogger logger) {
+        this.pipeline = pipeline;
+        this.instanceManager = instanceManager;
+        this.sessionManager = sessionManager;
+        this.teleportService = teleportService;
+        this.notifications = notifications;
+        this.statistics = statistics;
+        this.cleanupService = cleanupService;
+        this.messages = messages;
+        this.logger = logger;
+    }
+
+    public void setCompletionHook(@NotNull final BiConsumer<DungeonInstance, List<Player>> hook) {
+        this.onComplete = hook;
+    }
+
+    // ── Launch ──────────────────────────────────────────────────────────────
+
+    /**
+     * Launches a dungeon for the given players.
+     *
+     * @return {@code false} if the generation pipeline rejected the request
+     *         (e.g. server at capacity)
+     */
+    public boolean launch(@NotNull final DungeonGenerationRequest request,
+                          @NotNull final List<Player> players) {
+        for (final Player p : players) notifications.chat(p, messages.getDungeonGenerating());
+
+        return pipeline.launch(request, players,
+                instance -> onGenerated(instance, players, request),
+                error -> players.forEach(p ->
+                        notifications.chat(p, messages.getDungeonFailed())));
+    }
+
+    private void onGenerated(@NotNull final IDungeonInstance instance,
+                             @NotNull final List<Player> players,
+                             @NotNull final DungeonGenerationRequest request) {
+        final Location spawn = resolveSpawn(instance);
+        final Set<UUID> ids = new LinkedHashSet<>();
+
+        if (instance instanceof DungeonInstance di) {
+            di.setActive();
+        }
+
+        for (final Player p : players) {
+            if (!p.isOnline()) continue;
+            returnLocations.put(p.getUniqueId(), p.getLocation().clone());
+            sessionManager.createSession(p, instance.getInstanceId());
+            instanceManager.associatePlayer(p, instance.getInstanceId());
+            ids.add(p.getUniqueId());
+            if (spawn != null) teleportService.teleport(p, spawn);
+            notifications.chat(p, messages.getDungeonStarting());
+            notifications.title(p, "<gold>Dungeon", "<gray>" + request.getThemeId());
+        }
+        instancePlayers.put(instance.getInstanceId(), ids);
+
+        // Record run start (attribute to the requester).
+        final Player requester = Bukkit.getPlayer(request.getRequesterId());
+        if (requester != null) {
+            statistics.ensurePlayer(requester);
+            statistics.recordRunStart(request.getRequesterId(), request.getThemeId(),
+                    request.getDifficultyId(), players.size(),
+                    id -> instanceRecordId.put(instance.getInstanceId(), id));
+        }
+        logger.info("Dungeon launched: " + instance.getInstanceId()
+                + " for " + ids.size() + " player(s).");
+    }
+
+    // ── Completion / failure ────────────────────────────────────────────────
+
+    /** Completes a dungeon successfully: rewards hook, stats, return players, cleanup. */
+    public void complete(@NotNull final DungeonInstance instance, @Nullable final String bossKilled) {
+        final UUID id = instance.getInstanceId();
+        final List<Player> players = onlinePlayers(id);
+        final long duration = instance.getContext().getElapsedMs();
+        final var request = instance.getContext().getRequest();
+
+        if (onComplete != null) {
+            try {
+                onComplete.accept(instance, players);
+            } catch (final Exception e) {
+                logger.severe("Reward hook failed for " + id, e);
+            }
+        }
+
+        final Long recordId = instanceRecordId.get(id);
+        statistics.recordCompletion(request.getRequesterId(),
+                recordId != null ? recordId : -1L, duration, bossKilled, request.getDifficultyId());
+
+        for (final Player p : players) {
+            notifications.chat(p, messages.getDungeonCompleted());
+            notifications.title(p, "<green>Victory!", "<gray>Dungeon complete");
+        }
+        instance.end();
+        teardown(instance, players);
+    }
+
+    /** Fails a dungeon: notify, return players, cleanup. */
+    public void fail(@NotNull final DungeonInstance instance) {
+        final List<Player> players = onlinePlayers(instance.getInstanceId());
+        for (final Player p : players) {
+            notifications.chat(p, messages.getDungeonFailed());
+            notifications.title(p, "<red>Defeat", "<gray>The dungeon claimed you");
+        }
+        instance.fail();
+        teardown(instance, players);
+    }
+
+    /** Removes a single player from their dungeon (e.g. /dungeon leave). */
+    public void leave(@NotNull final Player player) {
+        sendHome(player);
+        sessionManager.removeSession(player);
+        instanceManager.disassociatePlayer(player);
+        for (final Set<UUID> set : instancePlayers.values()) set.remove(player.getUniqueId());
+    }
+
+    // ── Helpers ─────────────────────────────────────────────────────────────
+
+    private void teardown(@NotNull final DungeonInstance instance, @NotNull final List<Player> players) {
+        final UUID id = instance.getInstanceId();
+        for (final Player p : players) {
+            sendHome(p);
+            sessionManager.removeSession(p);
+            instanceManager.disassociatePlayer(p);
+        }
+        cleanupService.cleanup(instance);
+        instanceManager.removeInstance(id);
+        instancePlayers.remove(id);
+        instanceRecordId.remove(id);
+    }
+
+    private void sendHome(@NotNull final Player player) {
+        final Location home = returnLocations.remove(player.getUniqueId());
+        teleportService.teleport(player,
+                home != null ? home : player.getServer().getWorlds().get(0).getSpawnLocation());
+    }
+
+    @NotNull
+    private List<Player> onlinePlayers(@NotNull final UUID instanceId) {
+        final List<Player> list = new ArrayList<>();
+        final Set<UUID> ids = instancePlayers.getOrDefault(instanceId, Set.of());
+        for (final UUID uuid : ids) {
+            final Player p = Bukkit.getPlayer(uuid);
+            if (p != null && p.isOnline()) list.add(p);
+        }
+        return list;
+    }
+
+    @Nullable
+    private Location resolveSpawn(@NotNull final IDungeonInstance instance) {
+        if (!(instance instanceof DungeonInstance di) || di.getRoomGraph() == null) return null;
+        final RoomData spawnRoom = di.getRoomGraph().getSpawnRoom();
+        return spawnRoom != null ? spawnRoom.getCentre() : null;
+    }
+
+    /** Returns the players currently inside the given instance. */
+    @NotNull
+    public List<Player> getPlayers(@NotNull final UUID instanceId) {
+        return onlinePlayers(instanceId);
+    }
 }

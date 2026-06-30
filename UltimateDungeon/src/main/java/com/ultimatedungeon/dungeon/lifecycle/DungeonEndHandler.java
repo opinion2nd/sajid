@@ -1,6 +1,22 @@
 package com.ultimatedungeon.dungeon.lifecycle;
 
-/** DungeonEndHandler — dungeon lifecycle orchestration. Implemented in Milestone 3. */
+import com.ultimatedungeon.dungeon.instance.DungeonInstance;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+/**
+ * Handles successful dungeon completion by delegating to {@link DungeonLauncher},
+ * which owns the player set, rewards hook, statistics and cleanup pipeline.
+ */
 public final class DungeonEndHandler {
-    private DungeonEndHandler() {}
+
+    private final DungeonLauncher launcher;
+
+    public DungeonEndHandler(@NotNull final DungeonLauncher launcher) {
+        this.launcher = launcher;
+    }
+
+    public void onComplete(@NotNull final DungeonInstance instance, @Nullable final String bossKilled) {
+        launcher.complete(instance, bossKilled);
+    }
 }
