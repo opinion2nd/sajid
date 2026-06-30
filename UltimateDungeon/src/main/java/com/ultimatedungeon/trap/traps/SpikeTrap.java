@@ -1,14 +1,17 @@
 package com.ultimatedungeon.trap.traps;
 
-import com.ultimatedungeon.api.trap.ITrap;
-import org.bukkit.Location;
+import com.ultimatedungeon.trap.model.TrapDefinition;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
 import org.jetbrains.annotations.NotNull;
 
-/** SpikeTrap — trap implementation. Milestone 4. */
-public final class SpikeTrap implements ITrap {
-    @Override @NotNull public String getTrapId() { return "SpikeTrap"; }
-    @Override public void place(@NotNull final Location location) {}
-    @Override public void activate() {}
-    @Override public void reset() {}
-    @Override public boolean isActive() { return false; }
+/** Spikes erupt from the floor, damaging and lightly launching anyone above. */
+public final class SpikeTrap extends AbstractTrap {
+    public SpikeTrap(@NotNull final TrapDefinition definition) { super(definition); }
+    @Override
+    protected void onActivate() {
+        particle(Particle.CRIT, 30);
+        sound(Sound.ENTITY_PLAYER_HURT, 1.0f, 0.8f);
+        damageNearby();
+    }
 }

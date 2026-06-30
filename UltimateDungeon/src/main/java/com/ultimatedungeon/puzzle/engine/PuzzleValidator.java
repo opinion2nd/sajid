@@ -1,4 +1,12 @@
 package com.ultimatedungeon.puzzle.engine;
 
-/** PuzzleValidator — puzzle engine component. Implemented in Milestone 4. */
-public final class PuzzleValidator { private PuzzleValidator() {} }
+import com.ultimatedungeon.api.puzzle.IPuzzle;
+import org.jetbrains.annotations.NotNull;
+
+/** Validates whether a puzzle has been fully and correctly solved. */
+public final class PuzzleValidator {
+
+    public boolean isComplete(@NotNull final IPuzzle puzzle) {
+        return puzzle.isSolved();
+    }
+}

@@ -1,14 +1,12 @@
 package com.ultimatedungeon.puzzle.puzzles;
 
-import com.ultimatedungeon.api.puzzle.IPuzzle;
+import com.ultimatedungeon.puzzle.model.PuzzleDefinition;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
-/** LeverOrderPuzzle — puzzle implementation. Milestone 4. */
-public final class LeverOrderPuzzle implements IPuzzle {
-    @Override @NotNull public String getPuzzleId() { return "LeverOrderPuzzle"; }
-    @Override public void start() {}
-    @Override public void reset() {}
-    @Override public boolean isSolved() { return false; }
-    @Override public void onPlayerInteract(@NotNull final Player player) {}
+/** Players must pull levers in the correct sequence. */
+public final class LeverOrderPuzzle extends AbstractPuzzle {
+    public LeverOrderPuzzle() { super(PuzzleDefinition.of("LeverOrderPuzzle", 3)); }
+    public LeverOrderPuzzle(@NotNull final PuzzleDefinition def) { super(def); }
+    @Override public void onPlayerInteract(@NotNull final Player player) { advance(player); }
 }

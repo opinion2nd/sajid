@@ -1,14 +1,17 @@
 package com.ultimatedungeon.trap.traps;
 
-import com.ultimatedungeon.api.trap.ITrap;
-import org.bukkit.Location;
+import com.ultimatedungeon.trap.model.TrapDefinition;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
 import org.jetbrains.annotations.NotNull;
 
-/** MovingObstacleTrap — trap implementation. Milestone 4. */
-public final class MovingObstacleTrap implements ITrap {
-    @Override @NotNull public String getTrapId() { return "MovingObstacleTrap"; }
-    @Override public void place(@NotNull final Location location) {}
-    @Override public void activate() {}
-    @Override public void reset() {}
-    @Override public boolean isActive() { return false; }
+/** A swinging obstacle that knocks players back forcefully. */
+public final class MovingObstacleTrap extends AbstractTrap {
+    public MovingObstacleTrap(@NotNull final TrapDefinition definition) { super(definition); }
+    @Override
+    protected void onActivate() {
+        particle(Particle.CRIT, 10);
+        sound(Sound.BLOCK_PISTON_EXTEND, 1.0f, 0.6f);
+        damageNearby();
+    }
 }

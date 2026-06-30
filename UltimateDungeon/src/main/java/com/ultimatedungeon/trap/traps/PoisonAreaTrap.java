@@ -1,14 +1,17 @@
 package com.ultimatedungeon.trap.traps;
 
-import com.ultimatedungeon.api.trap.ITrap;
-import org.bukkit.Location;
+import com.ultimatedungeon.trap.model.TrapDefinition;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
 import org.jetbrains.annotations.NotNull;
 
-/** PoisonAreaTrap — trap implementation. Milestone 4. */
-public final class PoisonAreaTrap implements ITrap {
-    @Override @NotNull public String getTrapId() { return "PoisonAreaTrap"; }
-    @Override public void place(@NotNull final Location location) {}
-    @Override public void activate() {}
-    @Override public void reset() {}
-    @Override public boolean isActive() { return false; }
+/** Releases a toxic cloud applying its configured status effects. */
+public final class PoisonAreaTrap extends AbstractTrap {
+    public PoisonAreaTrap(@NotNull final TrapDefinition definition) { super(definition); }
+    @Override
+    protected void onActivate() {
+        particle(Particle.SMOKE, 40);
+        sound(Sound.ENTITY_SPLASH_POTION_BREAK, 1.0f, 1.0f);
+        damageNearby();
+    }
 }

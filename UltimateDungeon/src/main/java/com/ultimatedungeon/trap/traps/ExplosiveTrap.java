@@ -1,14 +1,20 @@
 package com.ultimatedungeon.trap.traps;
 
-import com.ultimatedungeon.api.trap.ITrap;
-import org.bukkit.Location;
+import com.ultimatedungeon.trap.model.TrapDefinition;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
 import org.jetbrains.annotations.NotNull;
 
-/** ExplosiveTrap — trap implementation. Milestone 4. */
-public final class ExplosiveTrap implements ITrap {
-    @Override @NotNull public String getTrapId() { return "ExplosiveTrap"; }
-    @Override public void place(@NotNull final Location location) {}
-    @Override public void activate() {}
-    @Override public void reset() {}
-    @Override public boolean isActive() { return false; }
+/** Detonates a non-destructive blast, damaging and flinging nearby players. */
+public final class ExplosiveTrap extends AbstractTrap {
+    public ExplosiveTrap(@NotNull final TrapDefinition definition) { super(definition); }
+    @Override
+    protected void onActivate() {
+        if (location == null || location.getWorld() == null) return;
+        particle(Particle.EXPLOSION, 5);
+        sound(Sound.ENTITY_GENERIC_EXPLODE, 1.0f, 1.0f);
+        // Cosmetic + scripted damage only; never break dungeon blocks.
+        location.getWorld().createExplosion(location, 0.0f, false, false);
+        damageNearby();
+    }
 }

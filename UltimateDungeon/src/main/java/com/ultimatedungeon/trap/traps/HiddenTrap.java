@@ -1,14 +1,18 @@
 package com.ultimatedungeon.trap.traps;
 
-import com.ultimatedungeon.api.trap.ITrap;
-import org.bukkit.Location;
+import com.ultimatedungeon.trap.model.TrapDefinition;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
 import org.jetbrains.annotations.NotNull;
 
-/** HiddenTrap — trap implementation. Milestone 4. */
-public final class HiddenTrap implements ITrap {
-    @Override @NotNull public String getTrapId() { return "HiddenTrap"; }
-    @Override public void place(@NotNull final Location location) {}
-    @Override public void activate() {}
-    @Override public void reset() {}
-    @Override public boolean isActive() { return false; }
+/** A concealed pressure trap that strikes once when stepped on. */
+public final class HiddenTrap extends AbstractTrap {
+    public HiddenTrap(@NotNull final TrapDefinition definition) { super(definition); }
+    @Override
+    protected void onActivate() {
+        particle(Particle.CRIT, 20);
+        sound(Sound.BLOCK_TRIPWIRE_CLICK_ON, 1.0f, 1.0f);
+        damageNearby();
+        reset(); // single-use
+    }
 }
