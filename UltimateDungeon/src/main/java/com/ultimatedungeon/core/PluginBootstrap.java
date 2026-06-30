@@ -404,7 +404,7 @@ public final class PluginBootstrap {
 
         final DungeonCommand dungeonCommand = new DungeonCommand(
                 new CommandPermissionChecker(pluginLogger), dungeonLaunchService, dungeonLauncher,
-                dungeonInstanceManager, statisticsService, partyManager, themeRegistry, configManager);
+                dungeonInstanceManager, statisticsService, partyManager, themeRegistry, configManager, guiManager);
         final var dungeonCmd = plugin.getCommand("dungeon");
         if (dungeonCmd != null) { dungeonCmd.setExecutor(dungeonCommand); dungeonCmd.setTabCompleter(dungeonCommand); }
 

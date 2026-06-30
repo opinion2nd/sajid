@@ -5,8 +5,10 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * PlayerStatsGui — GUI screen implementation.
- * <p>Layout and items configured in gui.yml. Implemented in Milestone 5.</p>
+ * Personal statistics screen.
+ *
+ * <p>The {@code /dungeon stats} command provides the same information in chat;
+ * this GUI hook is retained for layout configuration in {@code gui.yml}.</p>
  */
 public final class PlayerStatsGui extends AbstractGui {
 
@@ -14,7 +16,7 @@ public final class PlayerStatsGui extends AbstractGui {
         super(viewer);
     }
 
-    @Override public void open() {}
-    @Override public void refresh() {}
-    @Override public void handleClick(final int slot) {}
+    @Override public void open() { viewer.performCommand("dungeon stats"); }
+    @Override public void refresh() { }
+    @Override public void handleClick(final int slot) { }
 }
