@@ -4,6 +4,7 @@ import org.bukkit.Material;
 import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.entity.EntityType;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -25,6 +26,7 @@ public final class BossDefinition {
 
     private final String id;
     private final String displayName;
+    private final EntityType entityType;
     private final double maxHealth;
     private final Material arenaLockBlock;
     private final int countdownSeconds;
@@ -38,7 +40,8 @@ public final class BossDefinition {
     private final boolean dialogueEnabled;
     private final Map<String, String> dialogue;
 
-    private BossDefinition(final String id, final String displayName, final double maxHealth,
+    private BossDefinition(final String id, final String displayName, final EntityType entityType,
+                           final double maxHealth,
                            final Material arenaLockBlock, final int countdownSeconds,
                            final BarColor barColor, final BarStyle barStyle,
                            final List<BossPhaseData> phases, final List<AbilitySpec> abilities,
@@ -46,6 +49,7 @@ public final class BossDefinition {
                            final boolean dialogueEnabled, final Map<String, String> dialogue) {
         this.id = id;
         this.displayName = displayName;
+        this.entityType = entityType;
         this.maxHealth = maxHealth;
         this.arenaLockBlock = arenaLockBlock;
         this.countdownSeconds = countdownSeconds;
@@ -111,12 +115,26 @@ public final class BossDefinition {
             }
         }
 
+        final EntityType entity = parseEntity(s.getString("entity-type", "WITHER_SKELETON"));
+
         return new BossDefinition(id,
-                s.getString("display-name", id),
+                s.getString("display-name", id), entity,
                 s.getDouble("health", 500.0),
                 lock, s.getInt("countdown-seconds", 10),
                 color, style, phases, abilities,
                 money, exp, loot, dlgOn, lines);
+    }
+
+    private static EntityType parseEntity(final String raw) {
+        if (raw == null) return EntityType.WITHER_SKELETON;
+        try {
+            final EntityType type = EntityType.valueOf(raw.toUpperCase());
+            final Class<?> cls = type.getEntityClass();
+            return cls != null && org.bukkit.entity.LivingEntity.class.isAssignableFrom(cls)
+                    ? type : EntityType.WITHER_SKELETON;
+        } catch (final IllegalArgumentException ex) {
+            return EntityType.WITHER_SKELETON;
+        }
     }
 
     private static Material parseMaterial(final String raw, final Material def) {
@@ -136,6 +154,7 @@ public final class BossDefinition {
 
     @NotNull public String getId() { return id; }
     @NotNull public String getDisplayName() { return displayName; }
+    @NotNull public EntityType getEntityType() { return entityType; }
     public double getMaxHealth() { return maxHealth; }
     @NotNull public Material getArenaLockBlock() { return arenaLockBlock; }
     public int getCountdownSeconds() { return countdownSeconds; }

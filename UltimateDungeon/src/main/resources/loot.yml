@@ -46,3 +46,79 @@ loot-tables:
         item: EMERALD
         min: 1
         max: 3
+
+  # ── Reward-event tables (referenced by rewards.yml) ─────────────────────────
+  mini_boss_loot:
+    rolls: { min: 1, max: 3 }
+    entries:
+      - { rarity: UNCOMMON, item: IRON_INGOT, min: 2, max: 6 }
+      - { rarity: RARE, item: DIAMOND, min: 1, max: 2 }
+  wave_loot:
+    rolls: { min: 1, max: 2 }
+    entries:
+      - { rarity: COMMON, item: ARROW, min: 4, max: 12 }
+      - { rarity: UNCOMMON, item: GOLDEN_APPLE, min: 1, max: 1 }
+  secret_room_loot:
+    rolls: { min: 2, max: 3 }
+    entries:
+      - { rarity: RARE, item: ENCHANTED_GOLDEN_APPLE, min: 1, max: 1 }
+      - { rarity: EPIC, item: DIAMOND_BLOCK, min: 1, max: 1 }
+  completion_bonus_loot:
+    rolls: { min: 2, max: 4 }
+    entries:
+      - { rarity: RARE, item: EXPERIENCE_BOTTLE, min: 4, max: 12 }
+      - { rarity: EPIC, item: NETHERITE_SCRAP, min: 1, max: 2 }
+      - { rarity: LEGENDARY, item: NETHERITE_INGOT, min: 1, max: 1 }
+  daily_bonus_loot:
+    rolls: { min: 1, max: 2 }
+    entries:
+      - { rarity: EPIC, item: DIAMOND, min: 3, max: 6 }
+      - { rarity: LEGENDARY, item: NETHERITE_INGOT, min: 1, max: 1 }
+
+  # ── Per-boss loot tables ────────────────────────────────────────────────────
+  boss_1_loot:
+    rolls: { min: 2, max: 4 }
+    entries:
+      - { rarity: RARE, item: DIAMOND, min: 2, max: 4 }
+      - { rarity: EPIC, item: GOLDEN_APPLE, min: 1, max: 3 }
+      - { rarity: LEGENDARY, item: ENCHANTED_GOLDEN_APPLE, min: 1, max: 1 }
+  boss_2_loot:
+    rolls: { min: 2, max: 4 }
+    entries:
+      - { rarity: RARE, item: EMERALD, min: 3, max: 6 }
+      - { rarity: EPIC, item: DIAMOND_PICKAXE, min: 1, max: 1 }
+      - { rarity: LEGENDARY, item: NETHERITE_SCRAP, min: 1, max: 2 }
+  boss_3_loot:
+    rolls: { min: 3, max: 5 }
+    entries:
+      - { rarity: RARE, item: BLUE_ICE, min: 4, max: 8 }
+      - { rarity: EPIC, item: DIAMOND_SWORD, min: 1, max: 1 }
+      - { rarity: LEGENDARY, item: NETHERITE_INGOT, min: 1, max: 1 }
+  boss_4_loot:
+    rolls: { min: 3, max: 5 }
+    entries:
+      - { rarity: EPIC, item: ENDER_EYE, min: 2, max: 4 }
+      - { rarity: LEGENDARY, item: NETHERITE_INGOT, min: 1, max: 2 }
+      - { rarity: MYTHIC, item: NETHERITE_BLOCK, min: 1, max: 1 }
+  boss_5_loot:
+    rolls: { min: 3, max: 5 }
+    entries:
+      - { rarity: EPIC, item: WITHER_SKELETON_SKULL, min: 1, max: 1 }
+      - { rarity: LEGENDARY, item: NETHERITE_INGOT, min: 1, max: 2 }
+  boss_6_loot:
+    rolls: { min: 3, max: 5 }
+    entries:
+      - { rarity: EPIC, item: NETHERITE_SCRAP, min: 2, max: 4 }
+      - { rarity: LEGENDARY, item: NETHERITE_INGOT, min: 1, max: 2 }
+      - { rarity: MYTHIC, item: NETHERITE_AXE, min: 1, max: 1 }
+  boss_7_loot:
+    rolls: { min: 3, max: 6 }
+    entries:
+      - { rarity: EPIC, item: BONE_BLOCK, min: 4, max: 8 }
+      - { rarity: LEGENDARY, item: NETHERITE_INGOT, min: 1, max: 2 }
+      - { rarity: MYTHIC, item: ENCHANTED_GOLDEN_APPLE, min: 1, max: 2 }
+  boss_8_loot:
+    rolls: { min: 4, max: 6 }
+    entries:
+      - { rarity: LEGENDARY, item: NETHERITE_INGOT, min: 2, max: 3 }
+      - { rarity: MYTHIC, item: NETHERITE_BLOCK, min: 1, max: 1 }

@@ -111,7 +111,7 @@ public final class BossEngine {
             logger.warning("Cannot spawn unknown boss: " + bossId);
             return null;
         }
-        final Entity raw = location.getWorld().spawnEntity(location, EntityType.WITHER_SKELETON);
+        final Entity raw = location.getWorld().spawnEntity(location, def.getEntityType());
         if (!(raw instanceof final LivingEntity boss)) {
             raw.remove();
             return null;
@@ -177,9 +177,28 @@ public final class BossEngine {
         boss.dead = true;
         boss.bossBar.remove();
         announce(arenaPlayers(boss), boss.def, "death");
+        spawnVictoryFireworks(boss.entity.getLocation());
         active.remove(boss.instanceId);
         onBossDeath.accept(boss.instanceId, boss.def.getId());
         logger.info("Boss defeated: " + boss.def.getId() + " in instance " + boss.instanceId);
+    }
+
+    private void spawnVictoryFireworks(@NotNull final org.bukkit.Location loc) {
+        if (loc.getWorld() == null) return;
+        for (int i = 0; i < 4; i++) {
+            final org.bukkit.entity.Entity e = loc.getWorld().spawnEntity(
+                    loc.clone().add(Math.random() * 4 - 2, 1, Math.random() * 4 - 2),
+                    EntityType.FIREWORK_ROCKET);
+            if (!(e instanceof final org.bukkit.entity.Firework fw)) continue;
+            final org.bukkit.inventory.meta.FireworkMeta meta = fw.getFireworkMeta();
+            meta.addEffect(org.bukkit.FireworkEffect.builder()
+                    .withColor(org.bukkit.Color.YELLOW, org.bukkit.Color.RED)
+                    .withFade(org.bukkit.Color.WHITE)
+                    .with(org.bukkit.FireworkEffect.Type.BALL_LARGE)
+                    .flicker(true).trail(true).build());
+            meta.setPower(1);
+            fw.setFireworkMeta(meta);
+        }
     }
 
     @NotNull

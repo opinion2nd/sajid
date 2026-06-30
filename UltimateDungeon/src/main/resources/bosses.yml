@@ -1,39 +1,210 @@
 # ═══════════════════════════════════════════════════════════════════════════════
 # UltimateDungeon  |  bosses.yml
-# All boss definitions — stats, phases, abilities, rewards, arena config.
-# Boss names and final ability implementations added in Milestone 4.
+# Eight unique bosses — each with its own entity, arena, BossBar, three phases,
+# five abilities, drop table, rewards and dialogue.
+#
+# Ability slots are applied in order:
+#   1 = Area-Denial   2 = Projectile   3 = Summon   4 = Mobility   5 = Environment
+# Damage/cooldown/range here are BASE values; difficulty multipliers scale them.
 # ═══════════════════════════════════════════════════════════════════════════════
 
 config-version: 1
 
 bosses:
+
+  # ── Ancient Ruins ──────────────────────────────────────────────────────────
   boss_1:
-    display-name: "<red><bold>Placeholder Boss One</bold></red>"
-    health: 500
+    display-name: "<red><bold>Korthel, the Forgotten King</bold></red>"
+    entity-type: ZOMBIE
+    health: 600
     arena-lock-block: OBSIDIAN
     countdown-seconds: 10
-    bossbar:
-      color: RED
-      style: SEGMENTED_20
+    bossbar: { color: RED, style: SEGMENTED_20 }
     phases:
-      - threshold: 1.0
-        phase-id: phase_one
-      - threshold: 0.5
-        phase-id: phase_two
-      - threshold: 0.25
-        phase-id: phase_three
+      - { threshold: 1.0, phase-id: phase_one }
+      - { threshold: 0.5, phase-id: phase_two }
+      - { threshold: 0.25, phase-id: phase_three }
     abilities:
-      ability_1: { damage: 8.0, cooldown-ticks: 60 }
-      ability_2: { damage: 12.0, cooldown-ticks: 100 }
-      ability_3: { damage: 6.0, cooldown-ticks: 40 }
-      ability_4: { damage: 0.0, cooldown-ticks: 200 }
-      ability_5: { damage: 20.0, cooldown-ticks: 300 }
-    rewards:
-      money: 500
-      experience: 1000
-      loot-table: boss_1_loot
+      tomb_quake:   { damage: 9.0,  cooldown-ticks: 120, range: 6 }
+      cursed_bolt:  { damage: 11.0, cooldown-ticks: 80,  range: 14 }
+      raise_husks:  { damage: 0.0,  cooldown-ticks: 240, range: 6 }
+      royal_charge: { damage: 13.0, cooldown-ticks: 160, range: 12 }
+      decay_aura:   { damage: 4.0,  cooldown-ticks: 200, range: 8 }
+    rewards: { money: 500, experience: 1000, loot-table: boss_1_loot }
     dialogue:
       enabled: true
-      spawn: "<red>You dare enter my domain?"
-      phase-two: "<red>You will regret this!"
-      death: "<gray>...it cannot end like this..."
+      spawn: "<red>Korthel:</red> <gray>You trespass upon a throne older than memory."
+      phase-two: "<red>Korthel:</red> <gray>The crown does not yield so easily!"
+      death: "<gray>Korthel crumbles to dust... the throne is yours."
+
+  boss_2:
+    display-name: "<dark_purple><bold>Vaelora, Keeper of Ruin</bold></dark_purple>"
+    entity-type: EVOKER
+    health: 520
+    arena-lock-block: OBSIDIAN
+    countdown-seconds: 10
+    bossbar: { color: PURPLE, style: SEGMENTED_12 }
+    phases:
+      - { threshold: 1.0, phase-id: phase_one }
+      - { threshold: 0.5, phase-id: phase_two }
+      - { threshold: 0.25, phase-id: phase_three }
+    abilities:
+      collapsing_floor: { damage: 8.0,  cooldown-ticks: 130, range: 6 }
+      ruin_shard:       { damage: 10.0, cooldown-ticks: 70,  range: 16 }
+      summon_sentinels: { damage: 0.0,  cooldown-ticks: 260, range: 6 }
+      phase_step:       { damage: 9.0,  cooldown-ticks: 140, range: 10 }
+      dust_veil:        { damage: 3.0,  cooldown-ticks: 180, range: 7 }
+    rewards: { money: 450, experience: 900, loot-table: boss_2_loot }
+    dialogue:
+      enabled: true
+      spawn: "<dark_purple>Vaelora:</dark_purple> <gray>What was lost shall stay lost."
+      phase-two: "<dark_purple>Vaelora:</dark_purple> <gray>The ruins answer to me!"
+      death: "<gray>Vaelora fades back into the rubble."
+
+  # ── Frozen Cavern ──────────────────────────────────────────────────────────
+  boss_3:
+    display-name: "<blue><bold>Frostmaw, the Glacial Tyrant</bold></blue>"
+    entity-type: STRAY
+    health: 700
+    arena-lock-block: BLUE_ICE
+    countdown-seconds: 12
+    bossbar: { color: BLUE, style: SEGMENTED_20 }
+    phases:
+      - { threshold: 1.0, phase-id: phase_one }
+      - { threshold: 0.5, phase-id: phase_two }
+      - { threshold: 0.25, phase-id: phase_three }
+    abilities:
+      glacial_slam:   { damage: 10.0, cooldown-ticks: 120, range: 7 }
+      ice_lance:      { damage: 12.0, cooldown-ticks: 75,  range: 16 }
+      summon_brutes:  { damage: 0.0,  cooldown-ticks: 280, range: 6 }
+      avalanche_dash: { damage: 14.0, cooldown-ticks: 150, range: 12 }
+      blizzard:       { damage: 5.0,  cooldown-ticks: 200, range: 9 }
+    rewards: { money: 650, experience: 1300, loot-table: boss_3_loot }
+    dialogue:
+      enabled: true
+      spawn: "<blue>Frostmaw:</blue> <gray>Warm blood... how rare down here."
+      phase-two: "<blue>Frostmaw:</blue> <gray>Freeze!"
+      death: "<gray>Frostmaw shatters into a thousand shards."
+
+  # ── Corrupted Temple ───────────────────────────────────────────────────────
+  boss_4:
+    display-name: "<light_purple><bold>Nethys, the Void Prophet</bold></light_purple>"
+    entity-type: EVOKER
+    health: 750
+    arena-lock-block: CRYING_OBSIDIAN
+    countdown-seconds: 12
+    bossbar: { color: PURPLE, style: SEGMENTED_20 }
+    phases:
+      - { threshold: 1.0, phase-id: phase_one }
+      - { threshold: 0.5, phase-id: phase_two }
+      - { threshold: 0.25, phase-id: phase_three }
+    abilities:
+      void_rupture:    { damage: 11.0, cooldown-ticks: 120, range: 7 }
+      oblivion_bolt:   { damage: 14.0, cooldown-ticks: 70,  range: 18 }
+      summon_cultists: { damage: 0.0,  cooldown-ticks: 250, range: 6 }
+      void_blink:      { damage: 12.0, cooldown-ticks: 130, range: 14 }
+      despair_aura:    { damage: 5.0,  cooldown-ticks: 190, range: 9 }
+    rewards: { money: 800, experience: 1600, loot-table: boss_4_loot }
+    dialogue:
+      enabled: true
+      spawn: "<light_purple>Nethys:</light_purple> <gray>The void sees all. It sees you."
+      phase-two: "<light_purple>Nethys:</light_purple> <gray>Gaze into oblivion!"
+      death: "<gray>Nethys collapses inward and is gone."
+
+  boss_5:
+    display-name: "<dark_purple><bold>Malgrith, the Defiler</bold></dark_purple>"
+    entity-type: WITHER_SKELETON
+    health: 820
+    arena-lock-block: CRYING_OBSIDIAN
+    countdown-seconds: 12
+    bossbar: { color: PURPLE, style: SEGMENTED_20 }
+    phases:
+      - { threshold: 1.0, phase-id: phase_one }
+      - { threshold: 0.5, phase-id: phase_two }
+      - { threshold: 0.25, phase-id: phase_three }
+    abilities:
+      defile_ground: { damage: 12.0, cooldown-ticks: 110, range: 7 }
+      wither_bolt:   { damage: 13.0, cooldown-ticks: 75,  range: 16 }
+      raise_dead:    { damage: 0.0,  cooldown-ticks: 240, range: 6 }
+      shadow_lunge:  { damage: 15.0, cooldown-ticks: 140, range: 12 }
+      curse_field:   { damage: 6.0,  cooldown-ticks: 180, range: 8 }
+    rewards: { money: 850, experience: 1700, loot-table: boss_5_loot }
+    dialogue:
+      enabled: true
+      spawn: "<dark_purple>Malgrith:</dark_purple> <gray>I will defile even your bones."
+      phase-two: "<dark_purple>Malgrith:</dark_purple> <gray>Rot. ROT!"
+      death: "<gray>Malgrith dissolves into corruption."
+
+  # ── Volcanic Fortress ──────────────────────────────────────────────────────
+  boss_6:
+    display-name: "<red><bold>Ignarok, the Molten Warlord</bold></red>"
+    entity-type: PIGLIN_BRUTE
+    health: 780
+    arena-lock-block: NETHER_BRICKS
+    countdown-seconds: 12
+    bossbar: { color: RED, style: SEGMENTED_20 }
+    phases:
+      - { threshold: 1.0, phase-id: phase_one }
+      - { threshold: 0.5, phase-id: phase_two }
+      - { threshold: 0.25, phase-id: phase_three }
+    abilities:
+      magma_eruption: { damage: 12.0, cooldown-ticks: 110, range: 7 }
+      fireball_volley: { damage: 14.0, cooldown-ticks: 70,  range: 18 }
+      summon_emberlings: { damage: 0.0, cooldown-ticks: 240, range: 6 }
+      molten_charge:  { damage: 16.0, cooldown-ticks: 150, range: 12 }
+      heat_wave:      { damage: 6.0,  cooldown-ticks: 180, range: 9 }
+    rewards: { money: 820, experience: 1650, loot-table: boss_6_loot }
+    dialogue:
+      enabled: true
+      spawn: "<red>Ignarok:</red> <gray>You will burn like all the others."
+      phase-two: "<red>Ignarok:</red> <gray>The forge demands your ashes!"
+      death: "<gray>Ignarok cools to blackened stone."
+
+  # ── Forgotten Catacombs ────────────────────────────────────────────────────
+  boss_7:
+    display-name: "<white><bold>Sepulcra, the Bone Empress</bold></white>"
+    entity-type: WITHER_SKELETON
+    health: 880
+    arena-lock-block: DEEPSLATE_BRICKS
+    countdown-seconds: 12
+    bossbar: { color: WHITE, style: SEGMENTED_20 }
+    phases:
+      - { threshold: 1.0, phase-id: phase_one }
+      - { threshold: 0.5, phase-id: phase_two }
+      - { threshold: 0.25, phase-id: phase_three }
+    abilities:
+      bone_quake:     { damage: 12.0, cooldown-ticks: 110, range: 7 }
+      marrow_spear:   { damage: 14.0, cooldown-ticks: 75,  range: 16 }
+      raise_legion:   { damage: 0.0,  cooldown-ticks: 230, range: 6 }
+      grave_step:     { damage: 15.0, cooldown-ticks: 140, range: 12 }
+      crypt_chill:    { damage: 6.0,  cooldown-ticks: 180, range: 9 }
+    rewards: { money: 900, experience: 1800, loot-table: boss_7_loot }
+    dialogue:
+      enabled: true
+      spawn: "<white>Sepulcra:</white> <gray>My legions never tire. Do you?"
+      phase-two: "<white>Sepulcra:</white> <gray>Rise, my children!"
+      death: "<gray>Sepulcra's crown clatters to the floor."
+
+  boss_8:
+    display-name: "<green><bold>Mortakar, the Death Herald</bold></green>"
+    entity-type: SKELETON
+    health: 950
+    arena-lock-block: DEEPSLATE_BRICKS
+    countdown-seconds: 15
+    bossbar: { color: GREEN, style: SEGMENTED_20 }
+    phases:
+      - { threshold: 1.0, phase-id: phase_one }
+      - { threshold: 0.5, phase-id: phase_two }
+      - { threshold: 0.25, phase-id: phase_three }
+    abilities:
+      reaping_circle: { damage: 13.0, cooldown-ticks: 110, range: 8 }
+      soul_bolt:      { damage: 15.0, cooldown-ticks: 70,  range: 18 }
+      summon_wraiths: { damage: 0.0,  cooldown-ticks: 220, range: 6 }
+      death_warp:     { damage: 16.0, cooldown-ticks: 130, range: 14 }
+      withering_pall: { damage: 7.0,  cooldown-ticks: 170, range: 9 }
+    rewards: { money: 1000, experience: 2000, loot-table: boss_8_loot }
+    dialogue:
+      enabled: true
+      spawn: "<green>Mortakar:</green> <gray>I am the door at the end of every life."
+      phase-two: "<green>Mortakar:</green> <gray>Your time has come!"
+      death: "<gray>Mortakar bows... and finally rests."

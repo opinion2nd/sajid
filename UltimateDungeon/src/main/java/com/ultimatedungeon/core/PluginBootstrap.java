@@ -121,6 +121,7 @@ public final class PluginBootstrap {
     private PuzzleEngine         puzzleEngine;
     private BossEngine           bossEngine;
     private ArenaLockdownManager arenaLockdown;
+    private com.ultimatedungeon.boss.arena.ArenaCountdownManager arenaCountdown;
     private ArenaCleanupService  arenaCleanup;
     private DungeonLauncher      dungeonLauncher;
     private DungeonEndHandler    dungeonEndHandler;
@@ -324,6 +325,7 @@ public final class PluginBootstrap {
 
         // Arena
         arenaLockdown = new ArenaLockdownManager(pluginLogger);
+        arenaCountdown = new com.ultimatedungeon.boss.arena.ArenaCountdownManager(pluginScheduler, pluginLogger);
         arenaCleanup  = new ArenaCleanupService(arenaLockdown, bossEngine, pluginLogger);
 
         // Lifecycle
@@ -418,7 +420,8 @@ public final class PluginBootstrap {
 
         // Gameplay activation & safety listeners
         pm.registerEvents(new com.ultimatedungeon.listeners.room.RoomEnterListener(
-                dungeonInstanceManager, waveManager, trapEngine, puzzleEngine, bossEngine, arenaLockdown), plugin);
+                dungeonInstanceManager, waveManager, trapEngine, puzzleEngine, bossEngine,
+                arenaLockdown, arenaCountdown), plugin);
         pm.registerEvents(new com.ultimatedungeon.listeners.trap.TrapTriggerListener(
                 trapEngine, dungeonInstanceManager), plugin);
         pm.registerEvents(new com.ultimatedungeon.listeners.player.PlayerDeathInDungeonListener(
@@ -431,6 +434,8 @@ public final class PluginBootstrap {
         pm.registerEvents(new com.ultimatedungeon.listeners.arena.ArenaPortalBlockListener(
                 arenaLockdown, dungeonInstanceManager), plugin);
         pm.registerEvents(new com.ultimatedungeon.listeners.arena.ArenaTeleportBlockListener(
+                arenaLockdown, dungeonInstanceManager), plugin);
+        pm.registerEvents(new com.ultimatedungeon.listeners.arena.ArenaCommandBlockListener(
                 arenaLockdown, dungeonInstanceManager), plugin);
 
         pluginLogger.info("Listeners registered.");

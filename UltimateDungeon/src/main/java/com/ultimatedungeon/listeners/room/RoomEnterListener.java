@@ -1,8 +1,10 @@
 package com.ultimatedungeon.listeners.room;
 
 import com.ultimatedungeon.api.dungeon.IDungeonInstance;
+import com.ultimatedungeon.boss.arena.ArenaCountdownManager;
 import com.ultimatedungeon.boss.arena.ArenaLockdownManager;
 import com.ultimatedungeon.boss.engine.BossEngine;
+import com.ultimatedungeon.boss.model.BossDefinition;
 import com.ultimatedungeon.dungeon.instance.DungeonInstance;
 import com.ultimatedungeon.dungeon.instance.DungeonInstanceManager;
 import com.ultimatedungeon.monster.engine.WaveManager;
@@ -24,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Detects when a player first enters a dungeon room and activates it: combat
@@ -42,6 +45,7 @@ public final class RoomEnterListener implements Listener {
     private final PuzzleEngine puzzleEngine;
     private final BossEngine bossEngine;
     private final ArenaLockdownManager arenaLockdown;
+    private final ArenaCountdownManager arenaCountdown;
 
     private final Map<UUID, String> currentRoom = new ConcurrentHashMap<>();
 
@@ -50,13 +54,15 @@ public final class RoomEnterListener implements Listener {
                              @NotNull final TrapEngine trapEngine,
                              @NotNull final PuzzleEngine puzzleEngine,
                              @NotNull final BossEngine bossEngine,
-                             @NotNull final ArenaLockdownManager arenaLockdown) {
+                             @NotNull final ArenaLockdownManager arenaLockdown,
+                             @NotNull final ArenaCountdownManager arenaCountdown) {
         this.instanceManager = instanceManager;
         this.waveManager = waveManager;
         this.trapEngine = trapEngine;
         this.puzzleEngine = puzzleEngine;
         this.bossEngine = bossEngine;
         this.arenaLockdown = arenaLockdown;
+        this.arenaCountdown = arenaCountdown;
     }
 
     @EventHandler
@@ -98,12 +104,20 @@ public final class RoomEnterListener implements Listener {
             case PUZZLE -> puzzleEngine.startPuzzle(id, new ColorSequencePuzzle(), room::setCleared);
             case BOSS -> {
                 final List<String> bosses = theme != null ? theme.getBossPool() : List.of();
-                if (!bosses.isEmpty()) {
+                if (bosses.isEmpty()) return;
+                final String bossId = bosses.get(ThreadLocalRandom.current().nextInt(bosses.size()));
+                final BossDefinition def = bossEngine.getDefinition(bossId);
+                final int seconds = def != null ? def.getCountdownSeconds() : 10;
+                final var world = room.getCentre().getWorld();
+                if (world == null) return;
+                // Pre-fight countdown, then spawn the boss and seal the arena.
+                arenaCountdown.start(seconds, world.getPlayers(), () -> {
+                    if (world.getPlayers().stream().noneMatch(p -> room.contains(p.getLocation()))) {
+                        return; // countdown safety: everyone left, do not spawn
+                    }
                     arenaLockdown.lock(id, room);
-                    bossEngine.spawnBoss(id, bosses.get(0), room.getCentre(), difficulty,
-                            room.getCentre().getWorld() != null
-                                    ? room.getCentre().getWorld().getPlayers() : List.of());
-                }
+                    bossEngine.spawnBoss(id, bossId, room.getCentre(), difficulty, world.getPlayers());
+                });
             }
             default -> { /* spawn, treasure, merchant, secret, parkour, reward — no auto-activation */ }
         }
