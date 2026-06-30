@@ -25,8 +25,15 @@ public final class UltimateDungeon extends JavaPlugin {
     public void onEnable() {
         instance = this;
 
-        bootstrap = new PluginBootstrap(this);
-        bootstrap.start();
+        try {
+            bootstrap = new PluginBootstrap(this);
+            bootstrap.start();
+        } catch (final Throwable t) {
+            getLogger().log(java.util.logging.Level.SEVERE,
+                    "UltimateDungeon failed to enable — full stack trace below. "
+                    + "The plugin will be disabled.", t);
+            getServer().getPluginManager().disablePlugin(this);
+        }
     }
 
     @Override

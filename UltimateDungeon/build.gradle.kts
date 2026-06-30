@@ -57,17 +57,18 @@ tasks.shadowJar {
     archiveFileName = "UltimateDungeon-${project.version}.jar"
 
     // Relocate shaded dependencies to avoid classpath conflicts on the server.
-    relocate("org.sqlite",               "com.ultimatedungeon.libs.sqlite")
+    // NOTE: org.sqlite is intentionally NOT relocated — the driver is loaded by
+    // its fixed class name ("org.sqlite.JDBC") and via JDBC ServiceLoader, both
+    // of which break under relocation, causing the driver to be missing at runtime.
     relocate("com.zaxxer.hikari",        "com.ultimatedungeon.libs.hikari")
     relocate("com.mysql",                "com.ultimatedungeon.libs.mysql")
     relocate("com.github.benmanes",      "com.ultimatedungeon.libs.caffeine")
     relocate("com.google.errorprone",    "com.ultimatedungeon.libs.errorprone")
 
-    // Minimise: exclude unused classes from shaded libs.
-    minimize {
-        // Keep the full SQLite native library — minimise removes it otherwise.
-        exclude(dependency("org.xerial:sqlite-jdbc:.*"))
-    }
+    // No minimize(): the database drivers, HikariCP and Caffeine load classes
+    // reflectively / via ServiceLoader, so minimization strips classes that are
+    // needed at runtime and the plugin fails to enable.
+    mergeServiceFiles()
 }
 
 // ── run-paper (local dev server) ─────────────────────────────────────────────
