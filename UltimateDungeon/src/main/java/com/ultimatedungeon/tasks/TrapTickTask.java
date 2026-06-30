@@ -1,15 +1,20 @@
 package com.ultimatedungeon.tasks;
 
+import com.ultimatedungeon.dungeon.instance.DungeonInstanceManager;
+import com.ultimatedungeon.trap.engine.TrapEngine;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.jetbrains.annotations.NotNull;
 
-/**
- * TrapTickTask — scheduled task.
- * <p>Implemented in the milestone that delivers the owning system.</p>
- */
+/** Fires timed and random traps for every active dungeon instance. */
 public final class TrapTickTask extends BukkitRunnable {
-
-    @Override
-    public void run() {
-        // Implemented in the relevant milestone.
+    private final TrapEngine trapEngine;
+    private final DungeonInstanceManager instances;
+    public TrapTickTask(@NotNull final TrapEngine trapEngine,
+                        @NotNull final DungeonInstanceManager instances) {
+        this.trapEngine = trapEngine;
+        this.instances = instances;
+    }
+    @Override public void run() {
+        instances.getActiveInstances().forEach(i -> trapEngine.tick(i.getInstanceId()));
     }
 }

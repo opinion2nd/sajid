@@ -1,38 +1,81 @@
 package com.ultimatedungeon.core;
 
 import com.ultimatedungeon.UltimateDungeon;
+import com.ultimatedungeon.api.economy.IEconomyProvider;
+import com.ultimatedungeon.boss.arena.ArenaCleanupService;
+import com.ultimatedungeon.boss.arena.ArenaLockdownManager;
+import com.ultimatedungeon.boss.engine.BossEngine;
+import com.ultimatedungeon.commands.DungeonCommand;
 import com.ultimatedungeon.commands.PartyCommand;
+import com.ultimatedungeon.commands.framework.CommandPermissionChecker;
 import com.ultimatedungeon.compat.VersionDetector;
 import com.ultimatedungeon.config.ConfigManager;
 import com.ultimatedungeon.database.DatabaseManager;
 import com.ultimatedungeon.dungeon.generation.*;
+import com.ultimatedungeon.dungeon.instance.DungeonCleanupService;
+import com.ultimatedungeon.dungeon.instance.DungeonInstance;
 import com.ultimatedungeon.dungeon.instance.DungeonInstanceManager;
+import com.ultimatedungeon.dungeon.lifecycle.DungeonEndHandler;
+import com.ultimatedungeon.dungeon.lifecycle.DungeonFailureHandler;
+import com.ultimatedungeon.dungeon.lifecycle.DungeonLauncher;
+import com.ultimatedungeon.dungeon.world.DungeonWorldFactory;
+import com.ultimatedungeon.dungeon.world.DungeonWorldManager;
+import com.ultimatedungeon.dungeon.world.IsolatedWorldProvider;
 import com.ultimatedungeon.economy.NoOpEconomyProvider;
 import com.ultimatedungeon.economy.VaultEconomyProvider;
+import com.ultimatedungeon.gui.framework.GuiManager;
 import com.ultimatedungeon.listeners.party.PartyPlayerJoinListener;
 import com.ultimatedungeon.listeners.party.PartyPlayerQuitListener;
+import com.ultimatedungeon.loot.engine.LootGenerator;
+import com.ultimatedungeon.loot.engine.RarityRoller;
+import com.ultimatedungeon.loot.model.LootRarity;
+import com.ultimatedungeon.loot.model.LootTable;
+import com.ultimatedungeon.loot.registry.LootTableRegistry;
 import com.ultimatedungeon.managers.CooldownManager;
 import com.ultimatedungeon.managers.PlayerSessionManager;
+import com.ultimatedungeon.monster.engine.MonsterEngine;
+import com.ultimatedungeon.monster.engine.MonsterScaler;
+import com.ultimatedungeon.monster.engine.MonsterSpawner;
+import com.ultimatedungeon.monster.engine.WaveManager;
 import com.ultimatedungeon.party.manager.InvitationManager;
 import com.ultimatedungeon.party.manager.PartyManager;
 import com.ultimatedungeon.party.manager.ReadyCheckManager;
 import com.ultimatedungeon.party.service.PartyService;
 import com.ultimatedungeon.party.service.PartyValidationService;
+import com.ultimatedungeon.puzzle.engine.PuzzleEngine;
+import com.ultimatedungeon.rewards.engine.RewardDistributor;
+import com.ultimatedungeon.rewards.engine.RewardRoomService;
+import com.ultimatedungeon.rewards.engine.RewardValidator;
+import com.ultimatedungeon.rewards.model.RewardEvent;
 import com.ultimatedungeon.room.registry.RoomRegistry;
 import com.ultimatedungeon.room.templates.*;
+import com.ultimatedungeon.services.DifficultyService;
+import com.ultimatedungeon.services.DungeonLaunchService;
+import com.ultimatedungeon.services.NotificationService;
+import com.ultimatedungeon.services.PlayerTeleportService;
+import com.ultimatedungeon.services.StatisticsService;
+import com.ultimatedungeon.tasks.BossAITickTask;
+import com.ultimatedungeon.tasks.DungeonTickTask;
 import com.ultimatedungeon.tasks.InvitationExpiryTask;
+import com.ultimatedungeon.tasks.MonsterAITickTask;
+import com.ultimatedungeon.tasks.TrapTickTask;
 import com.ultimatedungeon.theme.registry.ThemeRegistry;
 import com.ultimatedungeon.theme.themes.*;
+import com.ultimatedungeon.trap.engine.TrapEngine;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.plugin.PluginManager;
 import org.jetbrains.annotations.NotNull;
+
+import java.util.EnumMap;
+import java.util.Map;
 
 /**
  * Orchestrates plugin startup in strict dependency order.
  *
  * <h3>Phase order</h3>
- * Logger → Version → Registry → Config → Scheduler → Database
- * → Registries (themes, rooms, generator) → Managers (session, cooldown, party,
- * dungeon) → Commands → Listeners → Economy
+ * Logger → Version → Registry → Config → Scheduler → Database → Registries
+ * → Managers → Economy → Gameplay (loot, rewards, combat engines, lifecycle)
+ * → Commands → Listeners.
  */
 public final class PluginBootstrap {
 
@@ -49,14 +92,41 @@ public final class PluginBootstrap {
     private ThemeRegistry        themeRegistry;
     private RoomRegistry         roomRegistry;
     private DungeonGenerator     dungeonGenerator;
-    private com.ultimatedungeon.dungeon.world.DungeonWorldManager dungeonWorldManager;
+    private DungeonWorldManager  dungeonWorldManager;
     private DungeonInstanceManager dungeonInstanceManager;
     private GenerationPipeline   generationPipeline;
 
-    // Party
+    // Managers
+    private PlayerSessionManager sessionManager;
+    private CooldownManager      cooldownManager;
     private PartyManager         partyManager;
     private InvitationManager    invitationManager;
     private ReadyCheckManager    readyCheckManager;
+
+    // Economy
+    private IEconomyProvider     economyProvider;
+
+    // Gameplay services / engines
+    private DifficultyService    difficultyService;
+    private NotificationService  notificationService;
+    private PlayerTeleportService teleportService;
+    private StatisticsService    statisticsService;
+    private LootTableRegistry    lootTableRegistry;
+    private LootGenerator        lootGenerator;
+    private RewardDistributor    rewardDistributor;
+    private RewardRoomService    rewardRoomService;
+    private MonsterEngine        monsterEngine;
+    private WaveManager          waveManager;
+    private TrapEngine           trapEngine;
+    private PuzzleEngine         puzzleEngine;
+    private BossEngine           bossEngine;
+    private ArenaLockdownManager arenaLockdown;
+    private ArenaCleanupService  arenaCleanup;
+    private DungeonLauncher      dungeonLauncher;
+    private DungeonEndHandler    dungeonEndHandler;
+    private DungeonFailureHandler dungeonFailureHandler;
+    private DungeonLaunchService dungeonLaunchService;
+    private GuiManager           guiManager;
 
     public PluginBootstrap(@NotNull final UltimateDungeon plugin) {
         this.plugin = plugin;
@@ -71,15 +141,24 @@ public final class PluginBootstrap {
         initDatabase();
         initRegistries();
         initManagers();
+        initEconomy();
+        initGameplay();
         initCommands();
         initListeners();
-        initEconomy();
         pluginLogger.info("UltimateDungeon v"
                 + plugin.getDescription().getVersion() + " enabled successfully.");
     }
 
     public void shutdown() {
-        pluginLogger.info("UltimateDungeon shutdown complete.");
+        // Scheduler and database are torn down by PluginShutdownHandler; here we
+        // just remove any spawned dungeon entities so none are orphaned.
+        if (dungeonInstanceManager != null) {
+            dungeonInstanceManager.getActiveInstances().forEach(i -> {
+                if (monsterEngine != null) monsterEngine.despawnAll(i.getInstanceId());
+                if (bossEngine != null) bossEngine.cleanup(i.getInstanceId());
+            });
+        }
+        if (pluginLogger != null) pluginLogger.info("UltimateDungeon shutdown complete.");
     }
 
     // ── Init phases ───────────────────────────────────────────────────────────
@@ -127,7 +206,6 @@ public final class PluginBootstrap {
     }
 
     private void initRegistries() {
-        // ── Theme registry ─────────────────────────────────────────────────────
         themeRegistry = new ThemeRegistry(pluginLogger);
         themeRegistry.register(new AncientRuinsTheme());
         themeRegistry.register(new FrozenCavernTheme());
@@ -137,7 +215,6 @@ public final class PluginBootstrap {
         serviceRegistry.register(ThemeRegistry.class, themeRegistry);
         pluginLogger.info("Themes registered: " + themeRegistry.getAllThemes().size());
 
-        // ── Room template registry ─────────────────────────────────────────────
         roomRegistry = new RoomRegistry(pluginLogger);
         roomRegistry.register(new SpawnRoomTemplate());
         roomRegistry.register(new CombatRoomTemplate());
@@ -155,25 +232,22 @@ public final class PluginBootstrap {
         serviceRegistry.register(RoomRegistry.class, roomRegistry);
         pluginLogger.info("Room templates registered: " + roomRegistry.getTemplateCount());
 
-        // ── Isolated dungeon world ─────────────────────────────────────────────
-        final var worldProvider = new com.ultimatedungeon.dungeon.world.IsolatedWorldProvider(pluginLogger);
-        final var worldFactory  = new com.ultimatedungeon.dungeon.world.DungeonWorldFactory(worldProvider, pluginLogger);
-        dungeonWorldManager     = new com.ultimatedungeon.dungeon.world.DungeonWorldManager(worldFactory, pluginLogger);
+        // Isolated dungeon world
+        final IsolatedWorldProvider worldProvider = new IsolatedWorldProvider(pluginLogger);
+        final DungeonWorldFactory worldFactory = new DungeonWorldFactory(worldProvider, pluginLogger);
+        dungeonWorldManager = new DungeonWorldManager(worldFactory, pluginLogger);
         dungeonWorldManager.initialise();
-        serviceRegistry.register(com.ultimatedungeon.dungeon.world.DungeonWorldManager.class, dungeonWorldManager);
+        serviceRegistry.register(DungeonWorldManager.class, dungeonWorldManager);
 
-        // ── Dungeon generator ──────────────────────────────────────────────────
         dungeonGenerator = new DungeonGenerator(
                 configManager.getDungeonConfig(), themeRegistry,
                 roomRegistry, pluginScheduler, pluginLogger);
         dungeonGenerator.setWorldManager(dungeonWorldManager);
         serviceRegistry.register(DungeonGenerator.class, dungeonGenerator);
 
-        // ── Dungeon instance manager ───────────────────────────────────────────
         dungeonInstanceManager = new DungeonInstanceManager(pluginLogger);
         serviceRegistry.register(DungeonInstanceManager.class, dungeonInstanceManager);
 
-        // ── Generation pipeline ────────────────────────────────────────────────
         generationPipeline = new GenerationPipeline(
                 configManager.getDungeonConfig(), dungeonGenerator,
                 dungeonInstanceManager, pluginLogger);
@@ -183,16 +257,14 @@ public final class PluginBootstrap {
     }
 
     private void initManagers() {
-        // Session & cooldown
-        final PlayerSessionManager sessionManager  = new PlayerSessionManager(pluginLogger);
-        final CooldownManager      cooldownManager = new CooldownManager();
+        sessionManager  = new PlayerSessionManager(pluginLogger);
+        cooldownManager = new CooldownManager();
         serviceRegistry.register(PlayerSessionManager.class, sessionManager);
         serviceRegistry.register(CooldownManager.class,      cooldownManager);
 
-        // Party services
-        final PartyService           partyService       = new PartyService(
+        final PartyService           partyService      = new PartyService(
                 configManager.getMessagesConfig(), pluginLogger, plugin.getServer());
-        final PartyValidationService validationService  = new PartyValidationService(
+        final PartyValidationService validationService = new PartyValidationService(
                 configManager.getPartyConfig(), sessionManager);
         invitationManager = new InvitationManager(
                 configManager.getPartyConfig(), partyService, pluginLogger);
@@ -205,7 +277,6 @@ public final class PluginBootstrap {
                 pluginLogger);
         serviceRegistry.register(PartyManager.class, partyManager);
 
-        // Invitation expiry task
         pluginScheduler.runSyncRepeating(
                 new InvitationExpiryTask(invitationManager)::run,
                 20L, configManager.getPerformanceConfig().getInvitationExpiryTicks());
@@ -213,12 +284,127 @@ public final class PluginBootstrap {
         pluginLogger.info("All managers initialised.");
     }
 
+    private void initEconomy() {
+        final VaultEconomyProvider vault = new VaultEconomyProvider(plugin);
+        economyProvider = vault.isAvailable() ? vault : new NoOpEconomyProvider();
+        serviceRegistry.register(IEconomyProvider.class, economyProvider);
+        pluginLogger.info("Economy: " + (vault.isAvailable() ? "Vault hooked." : "Vault absent (no-op)."));
+    }
+
+    private void initGameplay() {
+        difficultyService   = new DifficultyService(configManager.getDifficultyConfig(), pluginLogger);
+        notificationService = new NotificationService(pluginLogger);
+        teleportService     = new PlayerTeleportService(pluginLogger);
+        statisticsService   = new StatisticsService(databaseManager, pluginScheduler, pluginLogger);
+
+        // Loot
+        lootTableRegistry = new LootTableRegistry(pluginLogger);
+        loadLootTables();
+        lootGenerator = new LootGenerator(lootTableRegistry, new RarityRoller(pluginLogger), pluginLogger);
+
+        // Rewards
+        final RewardValidator rewardValidator = new RewardValidator(pluginLogger);
+        rewardDistributor = new RewardDistributor(configManager.getRewardsConfig(), economyProvider,
+                lootGenerator, notificationService, configManager.getMessagesConfig(),
+                statisticsService, rewardValidator, pluginLogger);
+        rewardRoomService = new RewardRoomService(lootGenerator, notificationService, pluginLogger);
+
+        // Combat engines
+        final MonsterSpawner spawner = new MonsterSpawner(plugin, pluginLogger);
+        monsterEngine = new MonsterEngine(configManager.getMonstersConfig(), spawner,
+                new MonsterScaler(), difficultyService, pluginLogger);
+        waveManager   = new WaveManager(monsterEngine, pluginLogger);
+        trapEngine    = new TrapEngine(configManager.getTrapsConfig(), difficultyService, pluginLogger);
+        puzzleEngine  = new PuzzleEngine(pluginLogger);
+        bossEngine    = new BossEngine(plugin, configManager.getBossesConfig(), difficultyService, pluginLogger);
+
+        // Arena
+        arenaLockdown = new ArenaLockdownManager(pluginLogger);
+        arenaCleanup  = new ArenaCleanupService(arenaLockdown, bossEngine, pluginLogger);
+
+        // Lifecycle
+        final DungeonCleanupService cleanupService = new DungeonCleanupService(pluginLogger);
+        dungeonLauncher = new DungeonLauncher(generationPipeline, dungeonInstanceManager, sessionManager,
+                teleportService, notificationService, statisticsService, cleanupService,
+                configManager.getMessagesConfig(), pluginLogger);
+        dungeonEndHandler     = new DungeonEndHandler(dungeonLauncher);
+        dungeonFailureHandler = new DungeonFailureHandler(dungeonLauncher);
+
+        // Completion → rewards
+        dungeonLauncher.setCompletionHook((instance, players) -> {
+            rewardDistributor.distributeAll(players, RewardEvent.DUNGEON_COMPLETION);
+            rewardDistributor.distributeAll(players, RewardEvent.BOSS_KILL);
+            rewardRoomService.grant(players, "completion_bonus_loot");
+        });
+
+        // Boss death → complete the dungeon
+        bossEngine.setDeathHook((instanceId, bossId) -> {
+            arenaCleanup.cleanup(instanceId);
+            final var instance = dungeonInstanceManager.getInstance(instanceId);
+            if (instance instanceof final DungeonInstance di) {
+                dungeonEndHandler.onComplete(di, bossId);
+            }
+        });
+
+        dungeonLaunchService = new DungeonLaunchService(dungeonLauncher, dungeonInstanceManager,
+                cooldownManager, difficultyService, themeRegistry, notificationService,
+                configManager.getMessagesConfig(), pluginLogger);
+
+        guiManager = new GuiManager(pluginLogger);
+
+        serviceRegistry.register(DungeonLauncher.class,      dungeonLauncher);
+        serviceRegistry.register(DungeonLaunchService.class, dungeonLaunchService);
+        serviceRegistry.register(MonsterEngine.class,        monsterEngine);
+        serviceRegistry.register(TrapEngine.class,           trapEngine);
+        serviceRegistry.register(BossEngine.class,           bossEngine);
+        serviceRegistry.register(GuiManager.class,           guiManager);
+
+        // Tick tasks
+        pluginScheduler.runSyncRepeating(new MonsterAITickTask(monsterEngine, dungeonInstanceManager)::run, 20L, 10L);
+        pluginScheduler.runSyncRepeating(new BossAITickTask(bossEngine, dungeonInstanceManager)::run, 20L, 10L);
+        pluginScheduler.runSyncRepeating(new TrapTickTask(trapEngine, dungeonInstanceManager)::run, 20L, 20L);
+        pluginScheduler.runSyncRepeating(new DungeonTickTask(waveManager, dungeonInstanceManager)::run, 20L, 20L);
+
+        pluginLogger.info("Gameplay systems initialised.");
+    }
+
+    private void loadLootTables() {
+        final ConfigurationSection raw = configManager.getLootConfig().raw();
+        final Map<LootRarity, Double> rarityChances = new EnumMap<>(LootRarity.class);
+        final ConfigurationSection rc = raw.getConfigurationSection("rarity-chances");
+        if (rc != null) {
+            for (final String key : rc.getKeys(false)) {
+                try {
+                    rarityChances.put(LootRarity.valueOf(key.toUpperCase()), rc.getDouble(key));
+                } catch (final IllegalArgumentException ignored) {
+                    // Unknown rarity key — skip.
+                }
+            }
+        }
+        final ConfigurationSection tables = raw.getConfigurationSection("loot-tables");
+        if (tables != null) {
+            for (final String id : tables.getKeys(false)) {
+                final ConfigurationSection s = tables.getConfigurationSection(id);
+                if (s != null) lootTableRegistry.register(LootTable.fromSection(id, s, rarityChances));
+            }
+        }
+        serviceRegistry.register(LootTableRegistry.class, lootTableRegistry);
+        pluginLogger.info("Loot tables registered: " + lootTableRegistry.getAllTables().size());
+    }
+
     private void initCommands() {
         final PartyCommand partyCommand = new PartyCommand(
                 partyManager, configManager.getMessagesConfig());
-        final var cmd = plugin.getCommand("party");
-        if (cmd != null) { cmd.setExecutor(partyCommand); cmd.setTabCompleter(partyCommand); }
-        pluginLogger.debug("Dungeon command — Milestone 5.");
+        final var partyCmd = plugin.getCommand("party");
+        if (partyCmd != null) { partyCmd.setExecutor(partyCommand); partyCmd.setTabCompleter(partyCommand); }
+
+        final DungeonCommand dungeonCommand = new DungeonCommand(
+                new CommandPermissionChecker(pluginLogger), dungeonLaunchService, dungeonLauncher,
+                dungeonInstanceManager, statisticsService, partyManager, themeRegistry, configManager);
+        final var dungeonCmd = plugin.getCommand("dungeon");
+        if (dungeonCmd != null) { dungeonCmd.setExecutor(dungeonCommand); dungeonCmd.setTabCompleter(dungeonCommand); }
+
+        pluginLogger.info("Commands registered.");
     }
 
     private void initListeners() {
@@ -226,18 +412,6 @@ public final class PluginBootstrap {
         pm.registerEvents(new PartyPlayerQuitListener(partyManager), plugin);
         pm.registerEvents(new PartyPlayerJoinListener(invitationManager), plugin);
         pluginLogger.info("Listeners registered.");
-    }
-
-    private void initEconomy() {
-        final VaultEconomyProvider vault = new VaultEconomyProvider(plugin);
-        if (vault.isAvailable()) {
-            serviceRegistry.register(com.ultimatedungeon.api.economy.IEconomyProvider.class, vault);
-            pluginLogger.info("Economy: Vault hooked.");
-        } else {
-            serviceRegistry.register(com.ultimatedungeon.api.economy.IEconomyProvider.class,
-                    new NoOpEconomyProvider());
-            pluginLogger.info("Economy: Vault absent.");
-        }
     }
 
     // ── Accessors ─────────────────────────────────────────────────────────────

@@ -1,15 +1,20 @@
 package com.ultimatedungeon.tasks;
 
+import com.ultimatedungeon.dungeon.instance.DungeonInstanceManager;
+import com.ultimatedungeon.monster.engine.WaveManager;
 import org.bukkit.scheduler.BukkitRunnable;
+import org.jetbrains.annotations.NotNull;
 
-/**
- * DungeonTickTask — scheduled task.
- * <p>Implemented in the milestone that delivers the owning system.</p>
- */
+/** Per-instance heartbeat: advances wave encounters when cleared. */
 public final class DungeonTickTask extends BukkitRunnable {
-
-    @Override
-    public void run() {
-        // Implemented in the relevant milestone.
+    private final WaveManager waveManager;
+    private final DungeonInstanceManager instances;
+    public DungeonTickTask(@NotNull final WaveManager waveManager,
+                           @NotNull final DungeonInstanceManager instances) {
+        this.waveManager = waveManager;
+        this.instances = instances;
+    }
+    @Override public void run() {
+        instances.getActiveInstances().forEach(i -> waveManager.poll(i.getInstanceId()));
     }
 }
