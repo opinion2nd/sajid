@@ -12,7 +12,7 @@ import java.util.Set;
 import java.util.UUID;
 
 /** SQLite implementation of {@link IPlayerStatsDao}. */
-public final class SqlitePlayerStatsDao extends AbstractDao implements IPlayerStatsDao {
+public class SqlitePlayerStatsDao extends AbstractDao implements IPlayerStatsDao {
 
     private static final Set<String> ALLOWED_INCREMENT_COLS = Set.of(
         "dungeons_completed", "bosses_defeated", "monsters_killed",

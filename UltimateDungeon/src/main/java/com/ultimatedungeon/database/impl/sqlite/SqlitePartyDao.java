@@ -12,7 +12,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 /** SQLite implementation of {@link IPartyDao}. */
-public final class SqlitePartyDao extends AbstractDao implements IPartyDao {
+public class SqlitePartyDao extends AbstractDao implements IPartyDao {
 
     public SqlitePartyDao(
             @NotNull final DatabaseConnectionFactory factory,

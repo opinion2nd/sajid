@@ -36,7 +36,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build plugin jar
-        run: ./gradlew shadowJar --no-daemon --stacktrace
+        run: ./gradlew shadowJar --no-daemon
 
       - name: Upload UltimateDungeon jar (Actions artifact)
         uses: actions/upload-artifact@v4

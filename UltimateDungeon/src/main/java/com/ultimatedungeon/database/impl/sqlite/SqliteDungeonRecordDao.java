@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.UUID;
 
 /** SQLite implementation of {@link IDungeonRecordDao}. */
-public final class SqliteDungeonRecordDao extends AbstractDao implements IDungeonRecordDao {
+public class SqliteDungeonRecordDao extends AbstractDao implements IDungeonRecordDao {
 
     public SqliteDungeonRecordDao(
             @NotNull final DatabaseConnectionFactory factory,

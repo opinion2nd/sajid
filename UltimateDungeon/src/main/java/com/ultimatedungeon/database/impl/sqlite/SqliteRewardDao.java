@@ -10,7 +10,7 @@ import java.sql.*;
 import java.util.UUID;
 
 /** SQLite implementation of {@link IRewardDao}. */
-public final class SqliteRewardDao extends AbstractDao implements IRewardDao {
+public class SqliteRewardDao extends AbstractDao implements IRewardDao {
 
     public SqliteRewardDao(
             @NotNull final DatabaseConnectionFactory factory,
