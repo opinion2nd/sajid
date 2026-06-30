@@ -33,13 +33,15 @@ public final class LootEntry implements ILootEntry {
     /** Reads an entry from a {@code entries:} list element, resolving its rarity chance. */
     @NotNull
     public static LootEntry fromMap(@NotNull final Map<?, ?> m, @NotNull final Map<LootRarity, Double> rarityChances) {
+        final Object rarityRaw = m.get("rarity");
         LootRarity rarity;
         try {
-            rarity = LootRarity.valueOf(String.valueOf(m.getOrDefault("rarity", "COMMON")).toUpperCase());
+            rarity = LootRarity.valueOf(String.valueOf(rarityRaw == null ? "COMMON" : rarityRaw).toUpperCase());
         } catch (final IllegalArgumentException ex) {
             rarity = LootRarity.COMMON;
         }
-        Material item = Material.matchMaterial(String.valueOf(m.getOrDefault("item", "STONE")).toUpperCase());
+        final Object itemRaw = m.get("item");
+        Material item = Material.matchMaterial(String.valueOf(itemRaw == null ? "STONE" : itemRaw).toUpperCase());
         if (item == null) item = Material.STONE;
         final int min = toInt(m.get("min"), 1);
         final int max = toInt(m.get("max"), 1);
