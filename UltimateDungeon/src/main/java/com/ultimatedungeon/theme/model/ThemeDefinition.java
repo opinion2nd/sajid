@@ -9,7 +9,7 @@ import java.util.List;
  * Complete definition of a dungeon theme — implements {@link ITheme} with
  * full palette, ambience, and monster pool.
  */
-public final class ThemeDefinition implements ITheme {
+public class ThemeDefinition implements ITheme {
 
     private final String           themeId;
     private final String           displayName;
