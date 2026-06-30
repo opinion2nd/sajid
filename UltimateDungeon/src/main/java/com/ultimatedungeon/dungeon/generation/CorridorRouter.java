@@ -125,7 +125,8 @@ public final class CorridorRouter {
     }
 
     private double chebyshevDist(@NotNull final RoomData a, @NotNull final RoomData b) {
-        final var ac = a.getCentre(), bc = b.getCentre();
+        final var ac = a.getCentre();
+        final var bc = b.getCentre();
         return Math.max(
                 Math.abs(bc.getBlockX() - ac.getBlockX()),
                 Math.abs(bc.getBlockZ() - ac.getBlockZ())
