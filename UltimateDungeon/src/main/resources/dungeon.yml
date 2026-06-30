@@ -1,0 +1,42 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# UltimateDungeon  |  dungeon.yml
+# Procedural generation parameters, room weights, and flow rules.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+config-version: 1
+
+generation:
+  dungeon-size:
+    min: 12
+    max: 20
+  corridor-length:
+    min: 5
+    max: 15
+  decoration-density: 0.6
+  secret-room-chance: 0.25
+  puzzle-frequency: 0.3
+  trap-frequency: 0.4
+  event-chance: 0.2
+
+# Relative probability weights for each room type during layout planning.
+# Higher weight = more frequent. Set to 0 to disable that room type.
+room-weights:
+  SPAWN: 1
+  COMBAT: 40
+  ELITE_COMBAT: 15
+  TREASURE: 10
+  PUZZLE: 10
+  PARKOUR: 8
+  TRAP: 15
+  SECRET: 5
+  MERCHANT: 5
+  EVENT: 8
+  MINI_BOSS: 3
+  BOSS: 1
+  REWARD: 1
+
+# How many dungeon instances may be active simultaneously.
+max-concurrent-instances: 10
+
+# Reward room access timeout after boss death (seconds).
+reward-room-timeout: 300

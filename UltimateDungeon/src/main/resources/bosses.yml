@@ -1,0 +1,39 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# UltimateDungeon  |  bosses.yml
+# All boss definitions — stats, phases, abilities, rewards, arena config.
+# Boss names and final ability implementations added in Milestone 4.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+config-version: 1
+
+bosses:
+  boss_1:
+    display-name: "<red><bold>Placeholder Boss One</bold></red>"
+    health: 500
+    arena-lock-block: OBSIDIAN
+    countdown-seconds: 10
+    bossbar:
+      color: RED
+      style: SEGMENTED_20
+    phases:
+      - threshold: 1.0
+        phase-id: phase_one
+      - threshold: 0.5
+        phase-id: phase_two
+      - threshold: 0.25
+        phase-id: phase_three
+    abilities:
+      ability_1: { damage: 8.0, cooldown-ticks: 60 }
+      ability_2: { damage: 12.0, cooldown-ticks: 100 }
+      ability_3: { damage: 6.0, cooldown-ticks: 40 }
+      ability_4: { damage: 0.0, cooldown-ticks: 200 }
+      ability_5: { damage: 20.0, cooldown-ticks: 300 }
+    rewards:
+      money: 500
+      experience: 1000
+      loot-table: boss_1_loot
+    dialogue:
+      enabled: true
+      spawn: "<red>You dare enter my domain?"
+      phase-two: "<red>You will regret this!"
+      death: "<gray>...it cannot end like this..."
