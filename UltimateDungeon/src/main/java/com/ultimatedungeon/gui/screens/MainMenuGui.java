@@ -35,7 +35,7 @@ public final class MainMenuGui extends AbstractGui {
 
     @Override
     public void open() {
-        inventory = Bukkit.createInventory(null, 27, MiniMessageUtil.parse("<dark_gray>UltimateDungeon"));
+        inventory = Bukkit.createInventory(null, 27, MiniMessageUtil.legacy("<dark_gray>UltimateDungeon"));
         final ItemStack filler = ItemBuilder.of(Material.GRAY_STAINED_GLASS_PANE).name(" ").build();
         for (int i = 0; i < inventory.getSize(); i++) inventory.setItem(i, filler);
         inventory.setItem(SLOT_SOLO, ItemBuilder.of(Material.IRON_SWORD)

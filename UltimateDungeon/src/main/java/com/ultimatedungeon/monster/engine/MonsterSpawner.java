@@ -57,7 +57,7 @@ public final class MonsterSpawner {
             return null;
         }
         living.setRemoveWhenFarAway(false);
-        living.customName(MiniMessageUtil.parse(def.getDisplayName()));
+        living.setCustomName(MiniMessageUtil.legacy(def.getDisplayName()));
         living.setCustomNameVisible(true);
         applyHealth(living, stats.health());
         applyEquipment(living, def.getEquipment());

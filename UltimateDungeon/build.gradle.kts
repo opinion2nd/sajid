@@ -47,6 +47,14 @@ dependencies {
     // Caffeine in-memory cache — shaded into the final jar.
     implementation("com.github.ben-manes.caffeine:caffeine:3.1.8")
 
+    // ── Text (Adventure / MiniMessage) ────────────────────────────────────────
+    // Bundled + relocated so MiniMessage works on plain Spigot/Bukkit (which do
+    // NOT ship Adventure), while Paper's own Adventure stays untouched. All text
+    // is serialized to legacy strings and sent via universal Bukkit APIs.
+    implementation("net.kyori:adventure-api:4.17.0")
+    implementation("net.kyori:adventure-text-minimessage:4.17.0")
+    implementation("net.kyori:adventure-text-serializer-legacy:4.17.0")
+
     // ── Static analysis annotations ──────────────────────────────────────────
     compileOnly("org.jetbrains:annotations:26.0.1")
 }
@@ -64,6 +72,8 @@ tasks.shadowJar {
     relocate("com.mysql",                "com.ultimatedungeon.libs.mysql")
     relocate("com.github.benmanes",      "com.ultimatedungeon.libs.caffeine")
     relocate("com.google.errorprone",    "com.ultimatedungeon.libs.errorprone")
+    // Relocate the bundled Adventure so it never clashes with Paper's own copy.
+    relocate("net.kyori",                "com.ultimatedungeon.libs.kyori")
 
     // No minimize(): the database drivers, HikariCP and Caffeine load classes
     // reflectively / via ServiceLoader, so minimization strips classes that are

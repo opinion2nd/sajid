@@ -3,6 +3,7 @@ package com.ultimatedungeon.puzzle.puzzles;
 import com.ultimatedungeon.api.puzzle.IPuzzle;
 import com.ultimatedungeon.puzzle.model.PuzzleDefinition;
 import com.ultimatedungeon.puzzle.model.PuzzleState;
+import com.ultimatedungeon.util.MiniMessageUtil;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
@@ -50,8 +51,8 @@ public abstract class AbstractPuzzle implements IPuzzle {
     protected void advance(@NotNull final Player player) {
         if (state != PuzzleState.ACTIVE) return;
         progress++;
-        player.sendActionBar(net.kyori.adventure.text.Component.text(
-                "Puzzle progress: " + progress + "/" + definition.requiredSteps()));
+        MiniMessageUtil.sendActionBar(player,
+                "<yellow>Puzzle progress: " + progress + "/" + definition.requiredSteps());
         if (progress >= definition.requiredSteps()) {
             solve();
         }
@@ -60,7 +61,7 @@ public abstract class AbstractPuzzle implements IPuzzle {
     /** Marks a wrong step; resets progress. */
     protected void fail(@NotNull final Player player) {
         progress = 0;
-        player.sendActionBar(net.kyori.adventure.text.Component.text("Wrong! The puzzle resets."));
+        MiniMessageUtil.sendActionBar(player, "<red>Wrong! The puzzle resets.");
     }
 
     protected void solve() {

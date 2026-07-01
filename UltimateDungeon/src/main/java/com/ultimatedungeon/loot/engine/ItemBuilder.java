@@ -2,8 +2,6 @@ package com.ultimatedungeon.loot.engine;
 
 import com.ultimatedungeon.loot.model.LootRarity;
 import com.ultimatedungeon.util.MiniMessageUtil;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -15,15 +13,15 @@ import java.util.List;
 /**
  * Fluent builder for loot and reward {@link ItemStack}s.
  *
- * <p>Renders display names and lore through MiniMessage, applies a rarity
- * colour, and can add an enchant glint without an actual enchantment via
- * Paper's glint override (falling back gracefully on older platforms).</p>
+ * <p>Renders display names and lore from MiniMessage into legacy text so items
+ * look correct on both Paper and Spigot, applies a rarity colour, and can add an
+ * enchant glint via Paper's glint override (silently skipped on older APIs).</p>
  */
 public final class ItemBuilder {
 
     private final ItemStack stack;
     private final ItemMeta meta;
-    private final List<Component> lore = new ArrayList<>();
+    private final List<String> lore = new ArrayList<>();
 
     private ItemBuilder(@NotNull final Material material, final int amount) {
         this.stack = new ItemStack(material, Math.max(1, amount));
@@ -43,14 +41,14 @@ public final class ItemBuilder {
     @NotNull
     public ItemBuilder name(@NotNull final String miniMessage) {
         if (meta != null) {
-            meta.displayName(MiniMessageUtil.parse(miniMessage).decoration(TextDecoration.ITALIC, false));
+            meta.setDisplayName(MiniMessageUtil.legacy(miniMessage));
         }
         return this;
     }
 
     @NotNull
     public ItemBuilder lore(@NotNull final String miniMessage) {
-        lore.add(MiniMessageUtil.parse(miniMessage).decoration(TextDecoration.ITALIC, false));
+        lore.add(MiniMessageUtil.legacy(miniMessage));
         return this;
     }
 
@@ -80,7 +78,7 @@ public final class ItemBuilder {
     @NotNull
     public ItemStack build() {
         if (meta != null) {
-            if (!lore.isEmpty()) meta.lore(lore);
+            if (!lore.isEmpty()) meta.setLore(lore);
             stack.setItemMeta(meta);
         }
         return stack;

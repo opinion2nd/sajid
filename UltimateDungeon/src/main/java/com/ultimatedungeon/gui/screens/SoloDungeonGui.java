@@ -33,7 +33,7 @@ public final class SoloDungeonGui extends AbstractGui {
 
     @Override
     public void open() {
-        inventory = Bukkit.createInventory(null, 27, MiniMessageUtil.parse("<dark_gray>Select a Theme"));
+        inventory = Bukkit.createInventory(null, 27, MiniMessageUtil.legacy("<dark_gray>Select a Theme"));
         final ItemStack filler = ItemBuilder.of(Material.BLACK_STAINED_GLASS_PANE).name(" ").build();
         for (int i = 0; i < inventory.getSize(); i++) inventory.setItem(i, filler);
         int slot = 10;

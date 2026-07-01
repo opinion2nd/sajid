@@ -118,7 +118,7 @@ public final class BossEngine {
         }
         final double maxHealth = def.getMaxHealth() * difficulty.healthMultiplier(difficultyId);
         applyHealth(boss, maxHealth);
-        boss.customName(MiniMessageUtil.parse(def.getDisplayName()));
+        boss.setCustomName(MiniMessageUtil.legacy(def.getDisplayName()));
         boss.setCustomNameVisible(true);
         boss.setRemoveWhenFarAway(false);
         boss.setGlowing(true);
@@ -126,7 +126,7 @@ public final class BossEngine {
 
         final List<IBossAbility> abilities = buildAbilities(def);
         final BossBarManager bar = new BossBarManager(
-                MiniMessageUtil.stripTags(def.getDisplayName()), def.getBarColor(), def.getBarStyle());
+                MiniMessageUtil.legacy(def.getDisplayName()), def.getBarColor(), def.getBarStyle());
         bar.show(arenaPlayers);
 
         final ActiveBoss activeBoss = new ActiveBoss(instanceId, def, boss,

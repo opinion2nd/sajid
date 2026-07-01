@@ -4,6 +4,9 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.minimessage.tag.resolver.Placeholder;
 import net.kyori.adventure.text.minimessage.tag.resolver.TagResolver;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
+import net.md_5.bungee.api.ChatMessageType;
+import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -11,165 +14,81 @@ import org.jetbrains.annotations.NotNull;
 import java.util.Map;
 
 /**
- * Utility for converting MiniMessage strings to Adventure Components and
- * sending them to players or command senders.
+ * Converts MiniMessage strings into legacy section-code text and delivers it
+ * through universal Bukkit APIs.
  *
- * <p>All user-facing text passes through this class. Placeholder substitution
- * uses Adventure's {@link TagResolver} API — never string concatenation, so
- * malicious player names cannot break message formatting.</p>
- *
- * <h3>Placeholder format in YAML</h3>
- * <pre>{@code
- * message: "<gold>Hello <player>!"
- * }</pre>
- * Tags like {@code <player>} are supplied as {@link Placeholder}s at send time.
+ * <p>The plugin bundles its own (relocated) copy of Adventure/MiniMessage, so
+ * MiniMessage formatting works identically on Paper <em>and</em> plain Spigot/
+ * Bukkit. Output is serialized to legacy {@code §} strings and sent via methods
+ * that exist on every platform ({@code sendMessage(String)},
+ * {@code sendTitle(...)}, and the Spigot chat API for action bars).</p>
  */
 public final class MiniMessageUtil {
 
     private static final MiniMessage MM = MiniMessage.miniMessage();
+    private static final LegacyComponentSerializer LEGACY = LegacyComponentSerializer.legacySection();
 
     private MiniMessageUtil() {}
 
     // ── Parsing ───────────────────────────────────────────────────────────────
 
-    /**
-     * Parses a raw MiniMessage string into an Adventure {@link Component}.
-     *
-     * @param raw the MiniMessage-formatted string
-     * @return the parsed component
-     */
+    /** Parses a MiniMessage string into a component (internal building block). */
     @NotNull
     public static Component parse(@NotNull final String raw) {
         return MM.deserialize(raw);
     }
 
-    /**
-     * Parses a MiniMessage string with named string placeholder substitutions.
-     *
-     * <p>Keys in {@code placeholders} correspond to tag names in the template
-     * (e.g. key {@code "player"} replaces {@code <player>} in the string).
-     * Values are inserted as literal unparsed text to prevent injection.</p>
-     *
-     * @param raw          the MiniMessage-formatted template
-     * @param placeholders map of tag name → replacement value
-     * @return the parsed component with placeholders resolved
-     */
     @NotNull
-    public static Component parse(
-            @NotNull final String              raw,
-            @NotNull final Map<String, String> placeholders
-    ) {
+    public static Component parse(@NotNull final String raw, @NotNull final Map<String, String> placeholders) {
         final TagResolver.Builder resolverBuilder = TagResolver.builder();
         for (final Map.Entry<String, String> entry : placeholders.entrySet()) {
-            resolverBuilder.resolver(
-                Placeholder.unparsed(entry.getKey(), entry.getValue())
-            );
+            resolverBuilder.resolver(Placeholder.unparsed(entry.getKey(), entry.getValue()));
         }
         return MM.deserialize(raw, resolverBuilder.build());
     }
 
-    /**
-     * Convenience overload for a single placeholder substitution.
-     *
-     * @param raw   the MiniMessage template
-     * @param key   placeholder tag name
-     * @param value replacement text (literal, not parsed)
-     * @return the parsed component
-     */
     @NotNull
-    public static Component parse(
-            @NotNull final String raw,
-            @NotNull final String key,
-            @NotNull final String value
-    ) {
+    public static Component parse(@NotNull final String raw, @NotNull final String key, @NotNull final String value) {
         return MM.deserialize(raw, Placeholder.unparsed(key, value));
     }
 
-    // ── Send helpers ──────────────────────────────────────────────────────────
+    // ── Legacy serialization (cross-platform text) ─────────────────────────────
 
-    /**
-     * Sends a parsed MiniMessage string to a {@link CommandSender}.
-     *
-     * @param sender the recipient
-     * @param raw    the MiniMessage-formatted string
-     */
-    public static void send(
-            @NotNull final CommandSender sender,
-            @NotNull final String        raw
-    ) {
-        sender.sendMessage(parse(raw));
+    /** Renders a MiniMessage string to a legacy {@code §}-code string. */
+    @NotNull
+    public static String legacy(@NotNull final String raw) {
+        return LEGACY.serialize(parse(raw));
     }
 
-    /**
-     * Sends a MiniMessage string with placeholder substitutions to a sender.
-     *
-     * @param sender       the recipient
-     * @param raw          the template
-     * @param placeholders substitution map
-     */
-    public static void send(
-            @NotNull final CommandSender       sender,
-            @NotNull final String              raw,
-            @NotNull final Map<String, String> placeholders
-    ) {
-        sender.sendMessage(parse(raw, placeholders));
+    /** Renders a MiniMessage string with placeholders to a legacy string. */
+    @NotNull
+    public static String legacy(@NotNull final String raw, @NotNull final Map<String, String> placeholders) {
+        return LEGACY.serialize(parse(raw, placeholders));
     }
 
-    /**
-     * Sends an action bar message to a player.
-     *
-     * @param player the recipient
-     * @param raw    the MiniMessage-formatted action bar text
-     */
-    public static void sendActionBar(
-            @NotNull final Player player,
-            @NotNull final String raw
-    ) {
-        player.sendActionBar(parse(raw));
+    // ── Send helpers (universal Bukkit APIs) ───────────────────────────────────
+
+    public static void send(@NotNull final CommandSender sender, @NotNull final String raw) {
+        sender.sendMessage(legacy(raw));
     }
 
-    /**
-     * Sends an action bar message with placeholder substitution.
-     *
-     * @param player       the recipient
-     * @param raw          the MiniMessage template
-     * @param placeholders substitution map
-     */
-    public static void sendActionBar(
-            @NotNull final Player              player,
-            @NotNull final String              raw,
-            @NotNull final Map<String, String> placeholders
-    ) {
-        player.sendActionBar(parse(raw, placeholders));
+    public static void send(@NotNull final CommandSender sender, @NotNull final String raw,
+                            @NotNull final Map<String, String> placeholders) {
+        sender.sendMessage(legacy(raw, placeholders));
     }
 
-    /**
-     * Sends a title + subtitle to a player.
-     *
-     * @param player      the recipient
-     * @param titleRaw    MiniMessage title text
-     * @param subtitleRaw MiniMessage subtitle text
-     * @param fadeIn      fade-in ticks
-     * @param stay        stay ticks
-     * @param fadeOut     fade-out ticks
-     */
-    public static void sendTitle(
-            @NotNull final Player player,
-            @NotNull final String titleRaw,
-            @NotNull final String subtitleRaw,
-            final int             fadeIn,
-            final int             stay,
-            final int             fadeOut
-    ) {
-        player.showTitle(net.kyori.adventure.title.Title.title(
-            parse(titleRaw),
-            parse(subtitleRaw),
-            net.kyori.adventure.title.Title.Times.times(
-                net.kyori.adventure.util.Ticks.duration(fadeIn),
-                net.kyori.adventure.util.Ticks.duration(stay),
-                net.kyori.adventure.util.Ticks.duration(fadeOut)
-            )
-        ));
+    public static void sendActionBar(@NotNull final Player player, @NotNull final String raw) {
+        player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(legacy(raw)));
+    }
+
+    public static void sendActionBar(@NotNull final Player player, @NotNull final String raw,
+                                     @NotNull final Map<String, String> placeholders) {
+        player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(legacy(raw, placeholders)));
+    }
+
+    public static void sendTitle(@NotNull final Player player, @NotNull final String titleRaw,
+                                 @NotNull final String subtitleRaw, final int fadeIn, final int stay, final int fadeOut) {
+        player.sendTitle(legacy(titleRaw), legacy(subtitleRaw), fadeIn, stay, fadeOut);
     }
 
     /** Strips all MiniMessage tags and returns plain text. */
