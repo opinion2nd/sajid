@@ -23,13 +23,17 @@ public final class RoomGraph {
     private String                            spawnRoomId;
     private String                            bossRoomId;
     private String                            rewardRoomId;
+    private final List<String>                bossRoomIds = new ArrayList<>();
 
     // ── Mutation ───────────────────────────────────────────────────────────────
 
     public void addRoom(@NotNull final RoomData room) {
         rooms.put(room.getRoomId(), room);
         if (room.getType() == RoomType.SPAWN)  spawnRoomId  = room.getRoomId();
-        if (room.getType() == RoomType.BOSS)   bossRoomId   = room.getRoomId();
+        if (room.getType() == RoomType.BOSS) {
+            if (bossRoomId == null) bossRoomId = room.getRoomId();
+            bossRoomIds.add(room.getRoomId());
+        }
         if (room.getType() == RoomType.REWARD) rewardRoomId = room.getRoomId();
     }
 
@@ -54,6 +58,8 @@ public final class RoomGraph {
     @Nullable public RoomData  getSpawnRoom()  { return spawnRoomId  != null ? rooms.get(spawnRoomId)  : null; }
     @Nullable public RoomData  getBossRoom()   { return bossRoomId   != null ? rooms.get(bossRoomId)   : null; }
     @Nullable public RoomData  getRewardRoom() { return rewardRoomId != null ? rooms.get(rewardRoomId) : null; }
+    /** All boss-room ids (a dungeon can have several, each with its own boss). */
+    @NotNull public List<String> getBossRoomIds() { return Collections.unmodifiableList(bossRoomIds); }
 
     /**
      * Returns all rooms of a specific type.

@@ -21,6 +21,10 @@ public final class AIBehaviorTree {
     private final FlankingBehavior flanking = new FlankingBehavior();
     private final GroupCoordinationBehavior coordination = new GroupCoordinationBehavior(8.0);
     private final RangedEngagementBehavior ranged = new RangedEngagementBehavior(8.0);
+    private final ChaseBehavior chase = new ChaseBehavior();
+
+    /** Beyond this range flanking nudges are suppressed so they don't fight navigation. */
+    private static final double FLANK_RANGE = 5.0;
 
     private final double engageRadius;
     private final boolean rangedType;
@@ -37,6 +41,7 @@ public final class AIBehaviorTree {
         if (monster instanceof final Mob mob) {
             mob.setTarget(target);
             coordination.shareTarget(monster, target, allies);
+            if (!rangedType) chase.chase(mob, target);
         }
 
         if (retreat.shouldRetreat(monster)) {
@@ -45,8 +50,15 @@ public final class AIBehaviorTree {
         }
         if (rangedType) {
             ranged.maintainDistance(monster, target);
-        } else {
+        } else if (monster.getLocation().distanceSquared(target.getLocation()) <= FLANK_RANGE * FLANK_RANGE) {
+            // Only spread out once in close quarters, so the sideways nudge never
+            // pushes a chasing mob off its navigation path into a wall.
             flanking.flank(monster, target, monster.getEntityId() % 2 == 0);
         }
+    }
+
+    /** Prunes chase state for mobs that have despawned. */
+    public void retainChaseState(@NotNull final java.util.Set<java.util.UUID> alive) {
+        chase.retain(alive);
     }
 }

@@ -28,11 +28,22 @@ public final class TrapDefinition {
     private final long activationDelayTicks;
     private final double knockback;
     private final List<StatusEffectSpec> statusEffects;
+    // ── TNT-family tuning (ignored by non-TNT traps) ──────────────────────────
+    private final int fuseTicks;
+    private final int tntCount;
+    private final double tntSpread;
+    private final double tntHeight;
+    private final int chainFuseStep;
+    private final double tntPower;
+    private final String baitBlock;
 
     private TrapDefinition(final String id, final String displayName, final TrapTriggerType triggerType,
                            final double baseDamage, final long cooldownTicks, final double triggerRadius,
                            final long activationDelayTicks, final double knockback,
-                           final List<StatusEffectSpec> statusEffects) {
+                           final List<StatusEffectSpec> statusEffects,
+                           final int fuseTicks, final int tntCount, final double tntSpread,
+                           final double tntHeight, final int chainFuseStep, final double tntPower,
+                           final String baitBlock) {
         this.id = id;
         this.displayName = displayName;
         this.triggerType = triggerType;
@@ -42,6 +53,13 @@ public final class TrapDefinition {
         this.activationDelayTicks = activationDelayTicks;
         this.knockback = knockback;
         this.statusEffects = statusEffects;
+        this.fuseTicks = fuseTicks;
+        this.tntCount = tntCount;
+        this.tntSpread = tntSpread;
+        this.tntHeight = tntHeight;
+        this.chainFuseStep = chainFuseStep;
+        this.tntPower = tntPower;
+        this.baitBlock = baitBlock;
     }
 
     @NotNull
@@ -71,7 +89,14 @@ public final class TrapDefinition {
                 s.getDouble("trigger-radius", 1.0),
                 s.getLong("activation-delay-ticks", 0L),
                 s.getDouble("knockback", 0.0),
-                effects);
+                effects,
+                s.getInt("fuse-ticks", 30),
+                Math.max(1, s.getInt("tnt-count", 1)),
+                s.getDouble("tnt-spread", 0.0),
+                s.getDouble("tnt-height", 0.0),
+                Math.max(0, s.getInt("chain-fuse-step", 0)),
+                s.getDouble("tnt-power", 2.0),
+                s.getString("bait-block", null));
     }
 
     @SuppressWarnings("deprecation")
@@ -92,4 +117,11 @@ public final class TrapDefinition {
     public long getActivationDelayTicks() { return activationDelayTicks; }
     public double getKnockback() { return knockback; }
     @NotNull public List<StatusEffectSpec> getStatusEffects() { return statusEffects; }
+    public int getFuseTicks() { return fuseTicks; }
+    public int getTntCount() { return tntCount; }
+    public double getTntSpread() { return tntSpread; }
+    public double getTntHeight() { return tntHeight; }
+    public int getChainFuseStep() { return chainFuseStep; }
+    public double getTntPower() { return tntPower; }
+    @org.jetbrains.annotations.Nullable public String getBaitBlock() { return baitBlock; }
 }

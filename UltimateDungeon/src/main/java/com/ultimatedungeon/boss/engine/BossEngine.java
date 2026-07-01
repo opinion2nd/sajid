@@ -119,6 +119,10 @@ public final class BossEngine {
         }
         final double maxHealth = def.getMaxHealth() * difficulty.healthMultiplier(difficultyId);
         applyHealth(boss, maxHealth);
+        // Track against the health the entity ACTUALLY received — the server may
+        // clamp very large max-health values, and using the clamped figure keeps
+        // the boss bar starting at a true 100% with no desync.
+        final double effectiveMax = readMaxHealth(boss, maxHealth);
         boss.setCustomName(MiniMessageUtil.legacy(def.getDisplayName()));
         boss.setCustomNameVisible(true);
         boss.setRemoveWhenFarAway(false);
@@ -131,7 +135,7 @@ public final class BossEngine {
         bar.show(arenaPlayers);
 
         final ActiveBoss activeBoss = new ActiveBoss(instanceId, def, boss,
-                new BossHealthTracker(boss, maxHealth), bar,
+                new BossHealthTracker(boss, effectiveMax), bar,
                 new BossStateMachine(def.getPhases()), new BossAI(abilities));
         active.computeIfAbsent(instanceId, k -> new java.util.concurrent.CopyOnWriteArrayList<>())
                 .add(activeBoss);
@@ -234,7 +238,7 @@ public final class BossEngine {
         return switch (index % 5) {
             case 0 -> new AreaDenialAbility(spec.id(), dmg, spec.cooldownTicks(), range);
             case 1 -> new ProjectileAbility(spec.id(), dmg, spec.cooldownTicks(), range);
-            case 2 -> new SummonAbility(spec.id(), dmg, spec.cooldownTicks(), range);
+            case 2 -> new ShockwaveAbility(spec.id(), dmg, spec.cooldownTicks(), range);
             case 3 -> new MobilityAbility(spec.id(), dmg, spec.cooldownTicks(), range);
             default -> new EnvironmentAbility(spec.id(), dmg, spec.cooldownTicks(), range);
         };
@@ -260,5 +264,17 @@ public final class BossEngine {
         } catch (final IllegalArgumentException ex) {
             logger.debug("Could not set boss health: " + ex.getMessage());
         }
+    }
+
+    /** Reads back the entity's real max health, falling back to {@code requested}. */
+    @SuppressWarnings("deprecation")
+    private double readMaxHealth(@NotNull final LivingEntity boss, final double requested) {
+        try {
+            final double actual = boss.getMaxHealth();
+            if (actual > 0.0) return actual;
+        } catch (final Throwable ignored) {
+            // Attribute unavailable — fall back to the requested figure.
+        }
+        return Math.max(1.0, requested);
     }
 }

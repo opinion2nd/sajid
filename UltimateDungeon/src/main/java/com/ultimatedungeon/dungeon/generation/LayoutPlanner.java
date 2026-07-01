@@ -81,96 +81,149 @@ public final class LayoutPlanner {
             final long                      seed,
             final int                       level
     ) {
-        // Dungeon size scales with level but stays compact so block placement
-        // never stalls a small server: level 1 ~4-6 rooms, level 5 ~8-10.
-        final int lvl    = Math.max(1, level);
-        final int min    = 4 + lvl;                     // L1=5  L5=9  (>=5 for validator)
-        final int max    = 6 + lvl;                     // L1=7  L5=11
-        final int targetRooms = RandomUtil.randomInt(min, max);
+        // Size and boss-room count scale with level. Boss rooms: L1/L2 = 1,
+        // L3 = 2, L4 = 3, L5 = 4 — each holds exactly one boss, placed far apart.
+        final int lvl        = Math.max(1, Math.min(5, level));
+        final int bossRooms  = lvl <= 2 ? 1 : lvl - 1;
+        final int roomCount  = RandomUtil.randomInt(3 + lvl * 3, 5 + lvl * 3); // L1 6-8 … L5 18-20
+        final int normalGoal = Math.max(3, roomCount - bossRooms - 1);
 
-        logger.debug("LayoutPlanner: planning " + targetRooms + " rooms (seed=" + seed + ")");
+        logger.debug("LayoutPlanner: planning ~" + roomCount + " rooms, " + bossRooms
+                + " boss room(s) (level " + lvl + ", seed=" + seed + ")");
 
-        final RoomGraph      graph         = new RoomGraph();
-        final List<RoomData> placedRooms   = new ArrayList<>();
-        final List<int[]>    occupiedGrid  = new ArrayList<>(); // [gridX, gridZ]
+        final RoomGraph      graph        = new RoomGraph();
+        final List<RoomData> placed       = new ArrayList<>();
+        final List<int[]>    cells        = new ArrayList<>();  // [gx, gz]
+        final List<Integer>  parentIdx    = new ArrayList<>();  // spanning-tree parent per room
 
-        // ── Step 1: Place the spawn room at grid origin ────────────────────────
         final Location base = new Location(world, 0, FLOOR_Y, 0);
-        final RoomData spawnRoom = placeRoom(RoomType.SPAWN, world, base, 0, 0);
-        graph.addRoom(spawnRoom);
-        placedRooms.add(spawnRoom);
-        occupiedGrid.add(new int[]{0, 0});
 
-        // ── Step 2: Expand room-by-room ────────────────────────────────────────
+        // Spawn room.
+        addRoom(graph, placed, cells, parentIdx, placeRoom(RoomType.SPAWN, world, base, 0, 0),
+                new int[]{0, 0}, -1);
+
+        // Grow a branching tree of normal/special rooms (random walk off any
+        // existing non-boss room), which yields corridors, branches and dead
+        // ends rather than a solid grid.
         int attempts = 0;
-        while (placedRooms.size() < targetRooms - 2 && attempts < targetRooms * 5) {
+        while (placed.size() < normalGoal && attempts < normalGoal * 15) {
             attempts++;
-
-            // Pick a random existing room to expand from
-            final RoomData parent = RandomUtil.randomElement(placedRooms);
-            final int[] parentGrid = occupiedGrid.get(placedRooms.indexOf(parent));
-
-            // Try a random direction
-            final int[] dir    = randomDirection();
-            final int   gx     = parentGrid[0] + dir[0];
-            final int   gz     = parentGrid[1] + dir[1];
-
-            if (isGridOccupied(occupiedGrid, gx, gz)) continue;
-
-            final RoomType type = pickRoomType(graph, placedRooms.size(), targetRooms);
-            final RoomData newRoom = placeRoom(type, world, base, gx, gz);
-            graph.addRoom(newRoom);
-            placedRooms.add(newRoom);
-            occupiedGrid.add(new int[]{gx, gz});
+            final int pIdx = RandomUtil.randomInt(0, placed.size() - 1);
+            final int[] pg = cells.get(pIdx);
+            final int[] dir = randomDirection();
+            final int gx = pg[0] + dir[0];
+            final int gz = pg[1] + dir[1];
+            if (isGridOccupied(cells, gx, gz)) continue;
+            final RoomType type = pickRoomType(graph, placed.size(), roomCount);
+            addRoom(graph, placed, cells, parentIdx, placeRoom(type, world, base, gx, gz),
+                    new int[]{gx, gz}, pIdx);
         }
 
-        // ── Step 3: Guarantee required rooms in free, non-overlapping cells ────
-        if (graph.getBossRoomId() == null) {
-            final int[] cell = freeAdjacentCell(occupiedGrid);
-            final int gx = cell != null ? cell[0] : occupiedGrid.size();
-            final int gz = cell != null ? cell[1] : 0;
-            final RoomData bossRoom = placeRoom(RoomType.BOSS, world, base, gx, gz);
-            graph.addRoom(bossRoom);
-            placedRooms.add(bossRoom);
-            occupiedGrid.add(new int[]{gx, gz});
-        }
-        if (graph.getRewardRoomId() == null) {
-            final int[] cell = freeAdjacentCell(occupiedGrid);
-            final int gx = cell != null ? cell[0] : occupiedGrid.size();
-            final int gz = cell != null ? cell[1] : 1;
-            final RoomData rewardRoom = placeRoom(RoomType.REWARD, world, base, gx, gz);
-            graph.addRoom(rewardRoom);
-            placedRooms.add(rewardRoom);
-            occupiedGrid.add(new int[]{gx, gz});
+        // Boss rooms — each in a free cell far from spawn and from the others.
+        final List<int[]> bossCells = new ArrayList<>();
+        for (int b = 0; b < bossRooms; b++) {
+            final int[] cell = farFreeCell(cells, bossCells);
+            if (cell == null) break;
+            final int neigh = occupiedNeighbourIndex(cell, cells);
+            addRoom(graph, placed, cells, parentIdx,
+                    placeRoom(RoomType.BOSS, world, base, cell[0], cell[1]), cell, neigh);
+            bossCells.add(cell);
         }
 
-        // Connect every grid-adjacent pair of rooms with a short, wall-to-wall
-        // corridor. Because rooms grow outward cell-by-cell the grid is one
-        // connected blob, so this both guarantees connectivity and keeps every
-        // corridor a clean straight road across the gap — never a tunnel driven
-        // through a room's interior.
-        connectGridAdjacent(world, graph, placedRooms, occupiedGrid);
+        // Reward room adjacent to the blob.
+        final int[] rewardCell = freeAdjacentCell(cells);
+        if (rewardCell != null) {
+            final int neigh = occupiedNeighbourIndex(rewardCell, cells);
+            addRoom(graph, placed, cells, parentIdx,
+                    placeRoom(RoomType.REWARD, world, base, rewardCell[0], rewardCell[1]), rewardCell, neigh);
+        }
 
-        logger.debug("LayoutPlanner: placed " + graph.getRoomCount() + " rooms.");
+        // Corridors: spanning tree from parent links, then a few extra loops.
+        for (int i = 1; i < placed.size(); i++) {
+            final int p = parentIdx.get(i);
+            if (p >= 0 && p < placed.size()) {
+                graph.addConnection(bridgeCells(world, placed.get(i), placed.get(p),
+                        cells.get(i), cells.get(p)));
+            }
+        }
+        addLoops(world, graph, placed, cells, Math.max(1, roomCount / 6));
+
+        logger.debug("LayoutPlanner: placed " + graph.getRoomCount() + " rooms, "
+                + graph.getBossRoomIds().size() + " boss room(s).");
         return graph;
     }
 
-    /** Adds wall-to-wall corridors between rooms sitting in adjacent grid cells. */
-    private void connectGridAdjacent(@NotNull final org.bukkit.World world, @NotNull final RoomGraph graph,
-                                     @NotNull final List<RoomData> rooms, @NotNull final List<int[]> cells) {
-        final java.util.Map<Long, RoomData> byCell = new java.util.HashMap<>();
-        for (int i = 0; i < rooms.size(); i++) {
-            byCell.put(cellKey(cells.get(i)[0], cells.get(i)[1]), rooms.get(i));
+    private void addRoom(@NotNull final RoomGraph graph, @NotNull final List<RoomData> placed,
+                         @NotNull final List<int[]> cells, @NotNull final List<Integer> parentIdx,
+                         @NotNull final RoomData room, @NotNull final int[] cell, final int parent) {
+        graph.addRoom(room);
+        placed.add(room);
+        cells.add(cell);
+        parentIdx.add(parent);
+    }
+
+    /** Bridges two grid-adjacent rooms, deriving the axis/direction from their cells. */
+    @NotNull
+    private RoomConnection bridgeCells(@NotNull final org.bukkit.World world, @NotNull final RoomData a,
+                                       @NotNull final RoomData b, @NotNull final int[] ca, @NotNull final int[] cb) {
+        final int dx = cb[0] - ca[0];
+        if (dx == 1)  return bridge(world, a, b, true);   // b is +X of a
+        if (dx == -1) return bridge(world, b, a, true);   // a is +X of b
+        final int dz = cb[1] - ca[1];
+        if (dz == 1)  return bridge(world, a, b, false);  // b is +Z of a
+        return bridge(world, b, a, false);                // a is +Z of b
+    }
+
+    /** Adds up to {@code count} extra corridors between grid-adjacent rooms for loops. */
+    private void addLoops(@NotNull final org.bukkit.World world, @NotNull final RoomGraph graph,
+                          @NotNull final List<RoomData> placed, @NotNull final List<int[]> cells, final int count) {
+        for (int k = 0; k < count && placed.size() > 2; k++) {
+            final int i = RandomUtil.randomInt(0, placed.size() - 1);
+            final int[] c = cells.get(i);
+            final int[] dir = randomDirection();
+            final int j = indexOfCell(cells, c[0] + dir[0], c[1] + dir[1]);
+            if (j < 0) continue;
+            if (placed.get(i).getConnectedRoomIds().contains(placed.get(j).getRoomId())) continue;
+            graph.addConnection(bridgeCells(world, placed.get(i), placed.get(j), cells.get(i), cells.get(j)));
         }
-        for (int i = 0; i < rooms.size(); i++) {
-            final int gx = cells.get(i)[0];
-            final int gz = cells.get(i)[1];
-            final RoomData self = rooms.get(i);
-            final RoomData east  = byCell.get(cellKey(gx + 1, gz)); // neighbour to +X
-            final RoomData south = byCell.get(cellKey(gx, gz + 1)); // neighbour to +Z
-            if (east  != null) graph.addConnection(bridge(world, self, east,  true));
-            if (south != null) graph.addConnection(bridge(world, self, south, false));
+    }
+
+    /** Finds a free cell adjacent to the blob, farthest from spawn and other boss cells. */
+    @org.jetbrains.annotations.Nullable
+    private int[] farFreeCell(@NotNull final List<int[]> occupied, @NotNull final List<int[]> avoid) {
+        final int[][] dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+        int[] best = null;
+        double bestScore = Double.NEGATIVE_INFINITY;
+        for (final int[] c : occupied) {
+            for (final int[] d : dirs) {
+                final int nx = c[0] + d[0];
+                final int nz = c[1] + d[1];
+                if (isGridOccupied(occupied, nx, nz)) continue;
+                double score = Math.hypot(nx, nz); // distance from spawn (0,0)
+                double minAvoid = Double.MAX_VALUE;
+                for (final int[] a : avoid) minAvoid = Math.min(minAvoid, Math.hypot(nx - a[0], nz - a[1]));
+                if (!avoid.isEmpty()) score += minAvoid * 2.0;
+                if (score > bestScore) { bestScore = score; best = new int[]{nx, nz}; }
+            }
         }
+        return best;
+    }
+
+    /** Index of an occupied cell grid-adjacent to {@code cell}, or 0 (spawn) as fallback. */
+    private int occupiedNeighbourIndex(@NotNull final int[] cell, @NotNull final List<int[]> cells) {
+        final int[][] dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+        for (final int[] d : dirs) {
+            final int idx = indexOfCell(cells, cell[0] + d[0], cell[1] + d[1]);
+            if (idx >= 0) return idx;
+        }
+        return 0;
+    }
+
+    private int indexOfCell(@NotNull final List<int[]> cells, final int gx, final int gz) {
+        for (int i = 0; i < cells.size(); i++) {
+            if (cells.get(i)[0] == gx && cells.get(i)[1] == gz) return i;
+        }
+        return -1;
     }
 
     /**
@@ -241,43 +294,26 @@ public final class LayoutPlanner {
             final int                placed,
             final int                total
     ) {
-        // Early-game: more combat
-        if (placed < 3) return RoomType.COMBAT;
+        // The first couple of rooms are calm so players ease in.
+        if (placed < 2) return RandomUtil.random() < 0.5 ? RoomType.COMBAT : RoomType.NORMAL;
 
-        // Probability-weighted injection of special rooms
-        final double roll = RandomUtil.random();
-        if (roll < dungeonConfig.getPuzzleFrequency()
-                && graph.getRoomsOfType(RoomType.PUZZLE).size() < 3)
-            return RoomType.PUZZLE;
-        if (roll < dungeonConfig.getTrapFrequency()
-                && graph.getRoomsOfType(RoomType.TRAP).size() < 4)
-            return RoomType.TRAP;
-        // One parkour challenge room per dungeon.
-        if (roll < 0.25 && graph.getRoomsOfType(RoomType.PARKOUR).isEmpty() && placed > 2)
-            return RoomType.PARKOUR;
-        if (roll < dungeonConfig.getSecretRoomChance()
-                && graph.getRoomsOfType(RoomType.SECRET).isEmpty())
-            return RoomType.SECRET;
-        if (roll < dungeonConfig.getEventChance()
-                && graph.getRoomsOfType(RoomType.EVENT).size() < 2)
-            return RoomType.EVENT;
+        final boolean mid = placed > total / 3;
+        // Each special type is rolled independently and capped, so the mix is
+        // varied and random — and crucially NOT every room is a combat/wave room.
+        if (graph.getRoomsOfType(RoomType.PUZZLE).size() < 2 && chance(0.12)) return RoomType.PUZZLE;
+        if (graph.getRoomsOfType(RoomType.TRAP).size() < 3 && chance(0.16)) return RoomType.TRAP;
+        if (graph.getRoomsOfType(RoomType.PARKOUR).isEmpty() && chance(0.14)) return RoomType.PARKOUR;
+        if (graph.getRoomsOfType(RoomType.SECRET).size() < 2 && chance(0.13)) return RoomType.SECRET;
+        if (graph.getRoomsOfType(RoomType.TREASURE).size() < 2 && chance(0.14)) return RoomType.TREASURE;
+        if (graph.getRoomsOfType(RoomType.EVENT).size() < 2 && chance(0.10)) return RoomType.EVENT;
+        if (mid && graph.getRoomsOfType(RoomType.ELITE_COMBAT).size() < 2 && chance(0.18)) return RoomType.ELITE_COMBAT;
+        if (mid && graph.getRoomsOfType(RoomType.MINI_BOSS).isEmpty() && chance(0.10)) return RoomType.MINI_BOSS;
 
-        // Mid-game: inject elite and mini-boss
-        if (placed > total / 2) {
-            if (graph.getRoomsOfType(RoomType.ELITE_COMBAT).size() < 2)
-                return RoomType.ELITE_COMBAT;
-            if (graph.getRoomsOfType(RoomType.MINI_BOSS).isEmpty() && roll < 0.15)
-                return RoomType.MINI_BOSS;
-        }
-
-        // Inject a treasure and merchant room somewhere
-        if (graph.getRoomsOfType(RoomType.TREASURE).isEmpty() && placed > 4)
-            return RoomType.TREASURE;
-        if (graph.getRoomsOfType(RoomType.MERCHANT).isEmpty() && placed > 6)
-            return RoomType.MERCHANT;
-
-        return RoomType.COMBAT;
+        // Otherwise a roughly even split of combat and plain (empty) rooms.
+        return RandomUtil.random() < 0.5 ? RoomType.COMBAT : RoomType.NORMAL;
     }
+
+    private boolean chance(final double p) { return RandomUtil.random() < p; }
 
     /** Finds a free cell adjacent to any already-placed room, or {@code null}. */
     @org.jetbrains.annotations.Nullable

@@ -101,19 +101,33 @@ public final class WaveManager {
         session.currentWave++;
         final WavesConfig.LevelWaves roster = waves.forLevel(session.level);
         final int count = waves.getBasePerWave() + waves.getPerWaveGrowth() * (session.currentWave - 1);
-        final Location centre = session.room.getCentre();
 
         session.currentMonsters.clear();
         for (int i = 0; i < count; i++) {
             final EntityType type = roster.mobs().get(ThreadLocalRandom.current().nextInt(roster.mobs().size()));
-            final Location loc = centre.clone().add(
-                    ThreadLocalRandom.current().nextInt(-3, 4), 0,
-                    ThreadLocalRandom.current().nextInt(-3, 4));
+            final Location loc = interiorSpawn(session.room);
             final LivingEntity e = engine.spawnWaveMob(instanceId, type, roster.healthMultiplier(), loc);
             if (e != null) session.currentMonsters.add(e);
         }
         logger.debug("Spawned wave " + session.currentWave + "/" + session.totalWaves
                 + " (" + session.currentMonsters.size() + " mobs, level " + session.level
                 + ") for instance " + instanceId);
+    }
+
+    /**
+     * Picks a random spawn point strictly inside the room's floor, keeping a
+     * two-block margin from every wall so mobs never spawn embedded in or on top
+     * of the sealing blocks. The Y is one block above the floor so the mob drops
+     * onto solid ground rather than suffocating.
+     */
+    @NotNull
+    private Location interiorSpawn(@NotNull final RoomData room) {
+        final Location origin = room.getOrigin();
+        final int margin = 2;
+        final int usableW = Math.max(1, room.getWidth() - margin * 2);
+        final int usableD = Math.max(1, room.getDepth() - margin * 2);
+        final int dx = margin + ThreadLocalRandom.current().nextInt(usableW);
+        final int dz = margin + ThreadLocalRandom.current().nextInt(usableD);
+        return origin.add(dx + 0.5, 1, dz + 0.5);
     }
 }

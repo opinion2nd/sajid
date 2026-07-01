@@ -234,6 +234,7 @@ public final class PluginBootstrap {
         roomRegistry.register(new PuzzleRoomTemplate());
         roomRegistry.register(new TrapRoomTemplate());
         roomRegistry.register(new ParkourRoomTemplate());
+        roomRegistry.register(new NormalRoomTemplate());
         roomRegistry.register(new SecretRoomTemplate());
         roomRegistry.register(new MerchantRoomTemplate());
         roomRegistry.register(new EventRoomTemplate());
@@ -362,12 +363,19 @@ public final class PluginBootstrap {
             rewardRoomService.grant(players, "completion_bonus_loot");
         });
 
-        // Boss death → complete the dungeon
+        // Boss death → open the room; complete the dungeon only when EVERY boss
+        // room has been cleared (dungeons can have up to four separate bosses).
+        final java.util.Map<java.util.UUID, Integer> bossKills = new java.util.concurrent.ConcurrentHashMap<>();
         bossEngine.setDeathHook((instanceId, bossId) -> {
-            arenaCleanup.cleanup(instanceId);
-            roomSealer.unsealInstance(instanceId); // open the boss room's bedrock exits
+            arenaLockdown.unlock(instanceId);
+            roomSealer.unsealInstance(instanceId); // open this boss room's bedrock exits
             final var instance = dungeonInstanceManager.getInstance(instanceId);
-            if (instance instanceof final DungeonInstance di) {
+            if (!(instance instanceof final DungeonInstance di)) return;
+            final int totalBossRooms = di.getRoomGraph() != null
+                    ? Math.max(1, di.getRoomGraph().getBossRoomIds().size()) : 1;
+            final int killed = bossKills.merge(instanceId, 1, Integer::sum);
+            if (killed >= totalBossRooms) {
+                bossKills.remove(instanceId);
                 dungeonEndHandler.onComplete(di, bossId);
             }
         });

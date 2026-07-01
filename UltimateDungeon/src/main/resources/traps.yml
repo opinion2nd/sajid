@@ -89,3 +89,100 @@ traps:
     knockback: 0.3
     status-effects:
       - { effect: SLOWNESS, duration-ticks: 80, amplifier: 1 }
+
+  # ── TNT family ─────────────────────────────────────────────────────────────
+  # Real primed TNT; the dungeon protection listener strips block damage so these
+  # hurt and fling players without cratering the arena. Fully configurable via
+  # fuse-ticks / tnt-count / tnt-spread / tnt-height / chain-fuse-step / tnt-power.
+
+  PressurePlateTnt:
+    display-name: "Pressure-Plate Charge"
+    trigger-type: PLAYER_MOVEMENT
+    base-damage: 8.0
+    cooldown-ticks: 160
+    trigger-radius: 1.2
+    knockback: 0.0
+    fuse-ticks: 8          # near-instant once stepped on
+    tnt-count: 1
+    tnt-power: 2.2
+    status-effects: []
+
+  TripwireTnt:
+    display-name: "Tripwire Charge"
+    trigger-type: PLAYER_MOVEMENT
+    base-damage: 7.0
+    cooldown-ticks: 160
+    trigger-radius: 1.5
+    knockback: 0.0
+    fuse-ticks: 15
+    tnt-count: 2
+    tnt-spread: 1.5
+    tnt-power: 2.0
+    status-effects: []
+
+  DelayedTnt:
+    display-name: "Delayed Charge"
+    trigger-type: PLAYER_MOVEMENT
+    base-damage: 9.0
+    cooldown-ticks: 180
+    trigger-radius: 1.5
+    knockback: 0.0
+    fuse-ticks: 45         # time to sprint clear
+    tnt-count: 1
+    tnt-power: 2.6
+    status-effects: []
+
+  FallingTnt:
+    display-name: "Ceiling Charge"
+    trigger-type: PLAYER_MOVEMENT
+    base-damage: 8.0
+    cooldown-ticks: 180
+    trigger-radius: 2.0
+    knockback: 0.0
+    fuse-ticks: 40
+    tnt-count: 2
+    tnt-spread: 1.0
+    tnt-height: 3.0        # drops from just below the ceiling onto the floor
+    tnt-power: 2.2
+    status-effects: []
+
+  ChainTnt:
+    display-name: "Chain Charge"
+    trigger-type: PLAYER_MOVEMENT
+    base-damage: 9.0
+    cooldown-ticks: 220
+    trigger-radius: 2.0
+    knockback: 0.0
+    fuse-ticks: 12
+    tnt-count: 5
+    tnt-spread: 3.0
+    chain-fuse-step: 6     # ripple detonation across the cluster
+    tnt-power: 2.0
+    status-effects: []
+
+  FakeChestTnt:
+    display-name: "Trapped Chest"
+    trigger-type: PLAYER_MOVEMENT
+    base-damage: 10.0
+    cooldown-ticks: 240
+    trigger-radius: 1.6
+    knockback: 0.0
+    fuse-ticks: 6          # snaps the moment you reach for the loot
+    tnt-count: 1
+    tnt-power: 2.8
+    bait-block: CHEST
+    status-effects: []
+
+  CorridorAmbushTnt:
+    display-name: "Corridor Ambush"
+    trigger-type: PLAYER_MOVEMENT
+    base-damage: 8.0
+    cooldown-ticks: 240
+    trigger-radius: 2.5
+    knockback: 0.0
+    fuse-ticks: 18
+    tnt-count: 4
+    tnt-spread: 4.0
+    chain-fuse-step: 4
+    tnt-power: 1.8
+    status-effects: []

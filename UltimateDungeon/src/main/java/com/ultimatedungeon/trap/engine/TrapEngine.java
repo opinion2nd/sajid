@@ -60,6 +60,14 @@ public final class TrapEngine {
         factory.put("ExplosiveTrap", ExplosiveTrap::new);
         factory.put("MovingObstacleTrap", MovingObstacleTrap::new);
         factory.put("HiddenTrap", HiddenTrap::new);
+        // TNT family — one configurable implementation, seven tuned flavours.
+        factory.put("PressurePlateTnt", TntTrap::new);
+        factory.put("TripwireTnt", TntTrap::new);
+        factory.put("DelayedTnt", TntTrap::new);
+        factory.put("FallingTnt", TntTrap::new);
+        factory.put("ChainTnt", TntTrap::new);
+        factory.put("FakeChestTnt", TntTrap::new);
+        factory.put("CorridorAmbushTnt", TntTrap::new);
     }
 
     private void loadDefinitions(@NotNull final TrapsConfig config) {

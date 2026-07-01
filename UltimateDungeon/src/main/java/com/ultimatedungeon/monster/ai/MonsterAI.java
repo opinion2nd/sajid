@@ -5,7 +5,10 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * Drives monster behaviour each AI tick by running an {@link AIBehaviorTree}
@@ -23,8 +26,11 @@ public final class MonsterAI {
         for (final LivingEntity m : monsters) {
             if (m != null && !m.isDead() && m.isValid()) live.add(m);
         }
+        final Set<UUID> alive = new HashSet<>(live.size());
         for (final LivingEntity monster : live) {
+            alive.add(monster.getUniqueId());
             behaviourTree.tick(monster, live);
         }
+        behaviourTree.retainChaseState(alive);
     }
 }

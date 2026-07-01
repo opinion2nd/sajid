@@ -110,6 +110,12 @@ public final class RoomEnterListener implements Listener {
         final RoomData room = roomAt(graph, to);
         if (room == null) return;
 
+        // Parkour completion is checked on every move (not just on room entry) so
+        // reaching the finish pad mid-course is always caught.
+        if (room.getType() == RoomType.PARKOUR && !room.isCleared()) {
+            checkParkourFinish(room, player);
+        }
+
         final String last = currentRoom.get(player.getUniqueId());
         if (room.getRoomId().equals(last)) return;
         currentRoom.put(player.getUniqueId(), room.getRoomId());
@@ -182,22 +188,13 @@ public final class RoomEnterListener implements Listener {
             final List<String> bosses = theme != null ? theme.getBossPool() : List.of();
             if (bosses.isEmpty()) return;
             arenaLockdown.lock(id, room);
-            final int bossCount = bossCountForLevel(level);
-            final List<Player> arena = playersInRoom(room);
-            for (int i = 0; i < bossCount; i++) {
-                // Random boss each slot so the fight varies every run.
-                final String bossId = bosses.get(ThreadLocalRandom.current().nextInt(bosses.size()));
-                final Location spot = room.getCentre().clone().add(
-                        (i - (bossCount - 1) / 2.0) * 3.0, 0, 0);
-                bossEngine.spawnBoss(id, bossId, spot, difficultyId, arena);
-            }
+            // Exactly ONE boss per boss room — random from the pool, no support mobs.
+            final String bossId = bosses.get(ThreadLocalRandom.current().nextInt(bosses.size()));
+            bossEngine.spawnBoss(id, bossId, room.getCentre(), difficultyId, playersInRoom(room));
         } else {
             waveManager.start(id, room, level, () -> onWaveRoomCleared(id, room));
         }
     }
-
-    /** Bosses per level: level 1 → 1, up to level 5 → 5. */
-    private int bossCountForLevel(final int level) { return Math.max(1, level); }
 
     /** Fires when a wave room's final wave is cleared: reward, announce, open the room. */
     private void onWaveRoomCleared(@NotNull final UUID instanceId, @NotNull final RoomData room) {
@@ -210,6 +207,25 @@ public final class RoomEnterListener implements Listener {
         }
         if (!inRoom.isEmpty()) {
             rewardDistributor.distributeAll(inRoom, RewardEvent.WAVE_COMPLETION);
+        }
+    }
+
+    /**
+     * Completes a parkour course when a player stands on its gold finish pad:
+     * marks the room cleared, rewards the finisher and plays a flourish.
+     */
+    private void checkParkourFinish(@NotNull final RoomData room, @NotNull final Player player) {
+        final Location below = player.getLocation().clone().subtract(0, 1, 0);
+        if (below.getBlock().getType() != com.ultimatedungeon.room.templates.ParkourRoomTemplate.FINISH_PAD) {
+            return;
+        }
+        room.setCleared();
+        rewardDistributor.distributeAll(List.of(player), RewardEvent.TREASURE_ROOM);
+        MiniMessageUtil.send(player, "<gold><bold>Parkour complete!</bold> <gray>Claim your reward.");
+        player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.3f);
+        if (player.getWorld() != null) {
+            player.getWorld().spawnParticle(Particle.HAPPY_VILLAGER,
+                    player.getLocation().add(0, 1, 0), 24, 0.6, 0.8, 0.6, 0.1);
         }
     }
 
