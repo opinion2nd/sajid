@@ -98,31 +98,35 @@ public final class RoomPlacer {
         // from the door location — never assume the default overworld.
         final org.bukkit.World world = from.getWorld() != null
                 ? from.getWorld() : org.bukkit.Bukkit.getWorlds().get(0);
+        // Doors sit one block above the room floor (room centre). Carve the
+        // corridor floor flush with the room floor so players walk straight
+        // through the doorway instead of hitting a one-block step.
+        final int floorY = from.getBlockY() - 1;
 
         if (conn.getAxis() == RoomConnection.Axis.X) {
             // Carve along X first, then Z elbow
             final int startX = Math.min(from.getBlockX(), to.getBlockX());
             final int endX   = Math.max(from.getBlockX(), to.getBlockX());
             for (int x = startX; x <= endX; x++) {
-                carveCorridorColumn(world, x, from.getBlockY(), from.getBlockZ(), palette);
+                carveCorridorColumn(world, x, floorY, from.getBlockZ(), palette);
             }
             // Z elbow
             final int startZ = Math.min(from.getBlockZ(), to.getBlockZ());
             final int endZ   = Math.max(from.getBlockZ(), to.getBlockZ());
             for (int z = startZ; z <= endZ; z++) {
-                carveCorridorColumn(world, to.getBlockX(), from.getBlockY(), z, palette);
+                carveCorridorColumn(world, to.getBlockX(), floorY, z, palette);
             }
         } else {
             // Carve along Z first, then X elbow
             final int startZ = Math.min(from.getBlockZ(), to.getBlockZ());
             final int endZ   = Math.max(from.getBlockZ(), to.getBlockZ());
             for (int z = startZ; z <= endZ; z++) {
-                carveCorridorColumn(world, from.getBlockX(), from.getBlockY(), z, palette);
+                carveCorridorColumn(world, from.getBlockX(), floorY, z, palette);
             }
             final int startX = Math.min(from.getBlockX(), to.getBlockX());
             final int endX   = Math.max(from.getBlockX(), to.getBlockX());
             for (int x = startX; x <= endX; x++) {
-                carveCorridorColumn(world, x, from.getBlockY(), to.getBlockZ(), palette);
+                carveCorridorColumn(world, x, floorY, to.getBlockZ(), palette);
             }
         }
     }

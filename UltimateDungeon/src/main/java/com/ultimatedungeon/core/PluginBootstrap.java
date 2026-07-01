@@ -439,7 +439,10 @@ public final class PluginBootstrap {
         // Gameplay activation & safety listeners
         pm.registerEvents(new com.ultimatedungeon.listeners.room.RoomEnterListener(
                 dungeonInstanceManager, waveManager, trapEngine, puzzleEngine, bossEngine,
-                arenaLockdown, arenaCountdown, dynamicEventEngine, rewardDistributor), plugin);
+                arenaLockdown, arenaCountdown, dynamicEventEngine, rewardDistributor,
+                difficultyService), plugin);
+        pm.registerEvents(new com.ultimatedungeon.listeners.protection.DungeonProtectionListener(
+                dungeonWorldManager), plugin);
         pm.registerEvents(new com.ultimatedungeon.listeners.trap.TrapTriggerListener(
                 trapEngine, dungeonInstanceManager), plugin);
         pm.registerEvents(new com.ultimatedungeon.listeners.player.PlayerDeathInDungeonListener(

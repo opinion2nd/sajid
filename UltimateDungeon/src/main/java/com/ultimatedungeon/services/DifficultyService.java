@@ -37,4 +37,5 @@ public final class DifficultyService {
     public double spawnRateMultiplier(@NotNull final String id){ return resolve(id).spawnRateMultiplier(); }
     public double trapDamageMultiplier(@NotNull final String id){ return resolve(id).trapDamageMultiplier(); }
     public int    lootTierBonus(@NotNull final String id)     { return resolve(id).lootTierBonus(); }
+    public int    level(@NotNull final String id)             { return Math.max(1, resolve(id).level()); }
 }

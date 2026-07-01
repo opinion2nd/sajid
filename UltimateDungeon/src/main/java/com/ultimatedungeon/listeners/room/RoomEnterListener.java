@@ -15,8 +15,11 @@ import com.ultimatedungeon.rewards.engine.RewardDistributor;
 import com.ultimatedungeon.rewards.model.RewardEvent;
 import com.ultimatedungeon.room.model.RoomData;
 import com.ultimatedungeon.room.model.RoomGraph;
+import com.ultimatedungeon.room.model.RoomType;
+import com.ultimatedungeon.services.DifficultyService;
 import com.ultimatedungeon.theme.model.ThemeDefinition;
 import com.ultimatedungeon.trap.engine.TrapEngine;
+import com.ultimatedungeon.util.MiniMessageUtil;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
@@ -32,7 +35,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Detects when a player first enters a dungeon room and activates it: combat
@@ -41,8 +43,6 @@ import java.util.concurrent.ThreadLocalRandom;
  */
 public final class RoomEnterListener implements Listener {
 
-    private static final int WAVE_COUNT = 2;
-    private static final int PER_WAVE = 4;
     private static final int TRAPS_PER_ROOM = 4;
 
     private final DungeonInstanceManager instanceManager;
@@ -54,6 +54,7 @@ public final class RoomEnterListener implements Listener {
     private final ArenaCountdownManager arenaCountdown;
     private final DynamicEventEngine dynamicEventEngine;
     private final RewardDistributor rewardDistributor;
+    private final DifficultyService difficulty;
 
     private final Map<UUID, String> currentRoom = new ConcurrentHashMap<>();
 
@@ -65,7 +66,8 @@ public final class RoomEnterListener implements Listener {
                              @NotNull final ArenaLockdownManager arenaLockdown,
                              @NotNull final ArenaCountdownManager arenaCountdown,
                              @NotNull final DynamicEventEngine dynamicEventEngine,
-                             @NotNull final RewardDistributor rewardDistributor) {
+                             @NotNull final RewardDistributor rewardDistributor,
+                             @NotNull final DifficultyService difficulty) {
         this.instanceManager = instanceManager;
         this.waveManager = waveManager;
         this.trapEngine = trapEngine;
@@ -75,7 +77,13 @@ public final class RoomEnterListener implements Listener {
         this.arenaCountdown = arenaCountdown;
         this.dynamicEventEngine = dynamicEventEngine;
         this.rewardDistributor = rewardDistributor;
+        this.difficulty = difficulty;
     }
+
+    /** Waves grow with the dungeon level: level 1 → 2 waves, level 4 → 5 waves. */
+    private int waveCount(final int level) { return 1 + Math.max(1, level); }
+    /** Monsters per wave grow with level: level 1 → 4, level 4 → 7. */
+    private int perWave(final int level)   { return 3 + Math.max(1, level); }
 
     @EventHandler
     public void onMove(@NotNull final PlayerMoveEvent event) {
@@ -95,51 +103,87 @@ public final class RoomEnterListener implements Listener {
         if (room.getRoomId().equals(last)) return;
         currentRoom.put(player.getUniqueId(), room.getRoomId());
 
-        if (room.isEntered()) return; // already activated by someone
+        if (room.isEntered()) {
+            // Re-entering a combat room that has already been beaten: tell the
+            // player it is done rather than silently doing nothing — waves never
+            // respawn in a cleared room.
+            if (room.isCleared() && isWaveRoom(room.getType())) {
+                MiniMessageUtil.send(player,
+                        "<green>✔ This room is already cleared — the wave is complete.");
+            }
+            return;
+        }
         room.setEntered();
         activate(instance, room);
     }
 
+    private boolean isWaveRoom(@NotNull final RoomType type) {
+        return type == RoomType.COMBAT || type == RoomType.ELITE_COMBAT
+                || type == RoomType.MINI_BOSS || type == RoomType.EVENT;
+    }
+
     private void activate(@NotNull final DungeonInstance instance, @NotNull final RoomData room) {
         final UUID id = instance.getInstanceId();
-        final String difficulty = instance.getContext().getRequest().getDifficultyId();
+        final String difficultyId = instance.getContext().getRequest().getDifficultyId();
+        final int level = difficulty.level(difficultyId);
         final ThemeDefinition theme = instance.getTheme();
         final List<String> monsters = theme != null ? theme.getMonsterPool() : List.of();
 
         switch (room.getType()) {
             case COMBAT, ELITE_COMBAT, MINI_BOSS -> {
                 if (!monsters.isEmpty()) {
-                    waveManager.start(id, room, monsters, WAVE_COUNT, PER_WAVE, difficulty, room::setCleared);
+                    waveManager.start(id, room, monsters, waveCount(level), perWave(level),
+                            difficultyId, () -> onWaveRoomCleared(room));
                 }
             }
             case EVENT -> {
                 final List<Player> inRoom = playersInRoom(room);
-                final boolean fired = dynamicEventEngine.trigger(id, room, inRoom, monsters, difficulty);
+                final boolean fired = dynamicEventEngine.trigger(id, room, inRoom, monsters, difficultyId);
                 if (!fired && !monsters.isEmpty()) {
-                    waveManager.start(id, room, monsters, WAVE_COUNT, PER_WAVE, difficulty, room::setCleared);
+                    waveManager.start(id, room, monsters, waveCount(level), perWave(level),
+                            difficultyId, () -> onWaveRoomCleared(room));
                 }
             }
             case SECRET -> discoverSecret(room);
-            case TRAP -> trapEngine.placeInRoom(id, room, TRAPS_PER_ROOM, difficulty);
+            case TRAP -> trapEngine.placeInRoom(id, room, TRAPS_PER_ROOM, difficultyId);
             case PUZZLE -> puzzleEngine.startPuzzle(id, new ColorSequencePuzzle(), room::setCleared);
             case BOSS -> {
                 final List<String> bosses = theme != null ? theme.getBossPool() : List.of();
                 if (bosses.isEmpty()) return;
-                final String bossId = bosses.get(ThreadLocalRandom.current().nextInt(bosses.size()));
-                final BossDefinition def = bossEngine.getDefinition(bossId);
+                final BossDefinition def = bossEngine.getDefinition(bosses.get(0));
                 final int seconds = def != null ? def.getCountdownSeconds() : 10;
                 final var world = room.getCentre().getWorld();
                 if (world == null) return;
-                // Pre-fight countdown, then spawn the boss and seal the arena.
+                // Spawn one boss per dungeon level (level 1 → 1 boss, level 4 → 4).
+                final int bossCount = Math.max(1, level);
+                // Pre-fight countdown, then seal the arena and spawn the bosses.
                 arenaCountdown.start(seconds, world.getPlayers(), () -> {
                     if (world.getPlayers().stream().noneMatch(p -> room.contains(p.getLocation()))) {
                         return; // countdown safety: everyone left, do not spawn
                     }
                     arenaLockdown.lock(id, room);
-                    bossEngine.spawnBoss(id, bossId, room.getCentre(), difficulty, world.getPlayers());
+                    for (int i = 0; i < bossCount; i++) {
+                        final String bossId = bosses.get(i % bosses.size());
+                        final Location spot = room.getCentre().clone().add(
+                                (i - (bossCount - 1) / 2.0) * 3.0, 0, 0);
+                        bossEngine.spawnBoss(id, bossId, spot, difficultyId, world.getPlayers());
+                    }
                 });
             }
             default -> { /* spawn, treasure, merchant, parkour, reward — no auto-activation */ }
+        }
+    }
+
+    /** Fires when a wave room's final wave is cleared: reward + announce to occupants. */
+    private void onWaveRoomCleared(@NotNull final RoomData room) {
+        room.setCleared();
+        final List<Player> inRoom = playersInRoom(room);
+        for (final Player p : inRoom) {
+            MiniMessageUtil.send(p, "<green><bold>Wave cleared!</bold> <gray>The room is secured.");
+            p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.1f);
+        }
+        if (!inRoom.isEmpty()) {
+            rewardDistributor.distributeAll(inRoom, RewardEvent.WAVE_COMPLETION);
         }
     }
 

@@ -17,6 +17,7 @@ public final class DifficultyConfig {
     public record DifficultyPreset(
         @NotNull String id,
         @NotNull String displayName,
+        int    level,
         double healthMultiplier,
         double damageMultiplier,
         double cooldownMultiplier,
@@ -37,6 +38,7 @@ public final class DifficultyConfig {
                 map.put(id, new DifficultyPreset(
                     id,
                     ps.getString("display-name", id),
+                    ps.getInt("level", 1),
                     ps.getDouble("health-multiplier", 1.0),
                     ps.getDouble("damage-multiplier", 1.0),
                     ps.getDouble("cooldown-multiplier", 1.0),
@@ -57,7 +59,7 @@ public final class DifficultyConfig {
     @NotNull
     public DifficultyPreset getPresetOrDefault(@NotNull final String id) {
         return presets.getOrDefault(id, new DifficultyPreset(
-            "normal", "Normal", 1.0, 1.0, 1.0, 1.0, 0, 1.0
+            "normal", "Normal", 1, 1.0, 1.0, 1.0, 1.0, 0, 1.0
         ));
     }
 
