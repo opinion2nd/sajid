@@ -45,6 +45,7 @@ public final class DungeonLauncher {
     private final NotificationService    notifications;
     private final StatisticsService      statistics;
     private final DungeonCleanupService  cleanupService;
+    private final com.ultimatedungeon.dungeon.world.DungeonWorldManager worldManager;
     private final MessagesConfig         messages;
     private final PluginLogger           logger;
 
@@ -65,6 +66,7 @@ public final class DungeonLauncher {
                            @NotNull final NotificationService notifications,
                            @NotNull final StatisticsService statistics,
                            @NotNull final DungeonCleanupService cleanupService,
+                           @NotNull final com.ultimatedungeon.dungeon.world.DungeonWorldManager worldManager,
                            @NotNull final MessagesConfig messages,
                            @NotNull final PluginLogger logger) {
         this.pipeline = pipeline;
@@ -74,6 +76,7 @@ public final class DungeonLauncher {
         this.notifications = notifications;
         this.statistics = statistics;
         this.cleanupService = cleanupService;
+        this.worldManager = worldManager;
         this.messages = messages;
         this.logger = logger;
     }
@@ -195,6 +198,8 @@ public final class DungeonLauncher {
         instanceManager.removeInstance(id);
         instancePlayers.remove(id);
         instanceRecordId.remove(id);
+        // Tear down this instance's isolated world so nothing is left behind.
+        worldManager.destroyInstanceWorld(id);
     }
 
     private void sendHome(@NotNull final Player player) {

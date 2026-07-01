@@ -346,7 +346,7 @@ public final class PluginBootstrap {
         final DungeonCleanupService cleanupService = new DungeonCleanupService(pluginLogger);
         dungeonLauncher = new DungeonLauncher(generationPipeline, dungeonInstanceManager, sessionManager,
                 teleportService, notificationService, statisticsService, cleanupService,
-                configManager.getMessagesConfig(), pluginLogger);
+                dungeonWorldManager, configManager.getMessagesConfig(), pluginLogger);
         dungeonEndHandler     = new DungeonEndHandler(dungeonLauncher);
         dungeonFailureHandler = new DungeonFailureHandler(dungeonLauncher);
 

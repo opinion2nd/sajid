@@ -2,21 +2,27 @@ package com.ultimatedungeon.monster.engine;
 
 import com.ultimatedungeon.core.PluginLogger;
 import com.ultimatedungeon.room.model.RoomData;
+import org.bukkit.entity.LivingEntity;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Drives wave-based combat encounters for a room.
+ * Drives wave-based combat encounters for a room, strictly one wave at a time.
  *
- * <p>A session spawns one wave at a time; when {@link #poll} detects the current
- * wave is cleared it spawns the next, and runs the completion callback once all
- * waves are done. The owning tick task calls {@link #poll} periodically.</p>
+ * <p>Each session tracks the exact monsters it spawned for the current wave. The
+ * next wave is only spawned once <em>those</em> monsters are all dead — never
+ * based on an instance-wide count — and only after a short inter-wave delay. This
+ * prevents every wave from pouring out at once.</p>
  */
 public final class WaveManager {
+
+    /** Delay between a wave being cleared and the next wave spawning (ms). */
+    private static final long INTER_WAVE_DELAY_MS = 2_000L;
 
     /** Mutable state for one active wave encounter. */
     private static final class WaveSession {
@@ -27,6 +33,11 @@ public final class WaveManager {
         final String difficultyId;
         final Runnable onComplete;
         int currentWave;
+        /** The living entities spawned for the current wave. */
+        final List<LivingEntity> currentMonsters = new ArrayList<>();
+        /** When set, the earliest time (ms) the next wave may spawn. */
+        long nextWaveAtMs;
+        boolean awaitingNext;
 
         WaveSession(final RoomData room, final List<String> pool, final int totalWaves,
                     final int perWave, final String difficultyId, final Runnable onComplete) {
@@ -61,19 +72,32 @@ public final class WaveManager {
         spawnWave(instanceId, session);
     }
 
-    /** Checks whether the current wave is cleared and advances or completes. */
+    /** Advances the encounter: spawns the next wave only once the current one is dead. */
     public void poll(@NotNull final UUID instanceId) {
         final WaveSession session = sessions.get(instanceId);
         if (session == null) return;
-        if (engine.aliveCount(instanceId) > 0) return;
+
+        // Only this wave's monsters gate progression — not the whole instance.
+        session.currentMonsters.removeIf(e -> e == null || e.isDead() || !e.isValid());
+        if (!session.currentMonsters.isEmpty()) return; // current wave still fighting
 
         if (session.currentWave >= session.totalWaves) {
             sessions.remove(instanceId);
             session.room.setCleared();
             session.onComplete.run();
-        } else {
-            spawnWave(instanceId, session);
+            return;
         }
+
+        // Brief gap between waves so they never appear all at once.
+        final long now = System.currentTimeMillis();
+        if (!session.awaitingNext) {
+            session.awaitingNext = true;
+            session.nextWaveAtMs = now + INTER_WAVE_DELAY_MS;
+            return;
+        }
+        if (now < session.nextWaveAtMs) return;
+        session.awaitingNext = false;
+        spawnWave(instanceId, session);
     }
 
     public boolean hasActiveEncounter(@NotNull final UUID instanceId) {
@@ -86,12 +110,14 @@ public final class WaveManager {
 
     private void spawnWave(@NotNull final UUID instanceId, @NotNull final WaveSession session) {
         session.currentWave++;
-        final java.util.List<String> ids = new java.util.ArrayList<>();
+        final List<String> ids = new ArrayList<>();
         for (int i = 0; i < session.perWave; i++) {
             ids.add(session.pool.get(i % session.pool.size()));
         }
-        engine.spawnGroup(instanceId, ids, session.room.getCentre(), session.difficultyId);
+        session.currentMonsters.clear();
+        session.currentMonsters.addAll(
+                engine.spawnGroup(instanceId, ids, session.room.getCentre(), session.difficultyId));
         logger.debug("Spawned wave " + session.currentWave + "/" + session.totalWaves
-                + " for instance " + instanceId);
+                + " (" + session.currentMonsters.size() + " monsters) for instance " + instanceId);
     }
 }

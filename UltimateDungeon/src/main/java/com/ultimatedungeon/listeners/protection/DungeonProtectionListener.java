@@ -31,8 +31,8 @@ public final class DungeonProtectionListener implements Listener {
     }
 
     private boolean protectedWorld(@NotNull final World world) {
-        final World dungeon = worldManager.getDungeonWorld();
-        return dungeon != null && world.equals(dungeon);
+        // Every dungeon world (shared fallback + per-instance) is named ud_dungeon*.
+        return world.getName().startsWith("ud_dungeon");
     }
 
     private boolean exempt(@NotNull final Player player) {

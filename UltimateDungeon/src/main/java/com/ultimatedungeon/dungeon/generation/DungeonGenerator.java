@@ -88,11 +88,21 @@ public final class DungeonGenerator implements IDungeonGenerator {
         final CompletableFuture<IDungeonInstance> future = new CompletableFuture<>();
         final UUID instanceId = UUID.randomUUID();
 
+        // Each dungeon gets its own isolated world so instances never overlap.
+        // World creation must happen on the main thread (we are on it here).
+        final World world = resolveWorld(instanceId);
+        if (world == null) {
+            future.completeExceptionally(
+                    new IllegalStateException("No world available for dungeon generation."));
+            return future;
+        }
+
         scheduler.runAsync(() -> {
             try {
                 final long startMs = System.currentTimeMillis();
-                final GenerationResult result = generateInternal(request, instanceId, startMs);
+                final GenerationResult result = generateInternal(request, instanceId, world, startMs);
                 if (result == null) {
+                    discardWorld(instanceId);
                     future.completeExceptionally(
                             new IllegalStateException("Dungeon generation failed after "
                                     + MAX_RETRIES + " attempts."));
@@ -116,11 +126,13 @@ public final class DungeonGenerator implements IDungeonGenerator {
                         future.complete(instance);
                     } catch (final Exception e) {
                         logger.severe("Error during block placement for " + instanceId, e);
+                        if (worldManager != null) worldManager.destroyInstanceWorld(instanceId);
                         future.completeExceptionally(e);
                     }
                 });
             } catch (final Exception e) {
                 logger.severe("Error during async generation for " + instanceId, e);
+                discardWorld(instanceId);
                 future.completeExceptionally(e);
             }
         });
@@ -133,17 +145,12 @@ public final class DungeonGenerator implements IDungeonGenerator {
     private GenerationResult generateInternal(
             @NotNull final DungeonGenerationRequest request,
             @NotNull final UUID                     instanceId,
+            @NotNull final World                    world,
             final long                              startMs
     ) {
         final ThemeDefinition theme = resolveTheme(request.getThemeId());
         if (theme == null) {
             logger.severe("Unknown theme ID: " + request.getThemeId());
-            return null;
-        }
-
-        final World world = resolveWorld(request);
-        if (world == null) {
-            logger.severe("No world available for dungeon generation.");
             return null;
         }
 
@@ -182,11 +189,17 @@ public final class DungeonGenerator implements IDungeonGenerator {
                 .findFirst().orElse(null);
     }
 
-    private World resolveWorld(@NotNull final DungeonGenerationRequest request) {
-        // Prefer the isolated dungeon world; fall back to the default world only
-        // if world isolation is unavailable.
-        if (worldManager != null && worldManager.getDungeonWorld() != null) {
-            return worldManager.getDungeonWorld();
+    /** Destroys a failed instance's world back on the main thread. */
+    private void discardWorld(@NotNull final UUID instanceId) {
+        if (worldManager == null) return;
+        scheduler.runSync(() -> worldManager.destroyInstanceWorld(instanceId));
+    }
+
+    /** Creates this instance's own isolated world (main thread), or falls back. */
+    private World resolveWorld(@NotNull final UUID instanceId) {
+        if (worldManager != null) {
+            final World w = worldManager.createInstanceWorld(instanceId);
+            if (w != null) return w;
         }
         return Bukkit.getWorlds().isEmpty() ? null : Bukkit.getWorlds().get(0);
     }

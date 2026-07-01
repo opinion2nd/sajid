@@ -36,4 +36,10 @@ public final class DungeonWorldFactory {
     public World createShared() {
         return provider.getOrCreateVoidWorld(sharedWorldName());
     }
+
+    /** Creates (or returns) an isolated void world with the given name. */
+    @Nullable
+    public World createNamed(@NotNull final String name) {
+        return provider.getOrCreateVoidWorld(name);
+    }
 }
