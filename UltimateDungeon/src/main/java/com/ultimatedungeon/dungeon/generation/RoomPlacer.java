@@ -29,11 +29,6 @@ import org.jetbrains.annotations.NotNull;
  */
 public final class RoomPlacer {
 
-    /** Corridor width (blocks) — 3 gives comfortable player movement. */
-    private static final int CORRIDOR_WIDTH  = 3;
-    /** Corridor height (blocks). */
-    private static final int CORRIDOR_HEIGHT = 4;
-
     private final RoomRegistry roomRegistry;
     private final PluginLogger logger;
 
@@ -85,8 +80,10 @@ public final class RoomPlacer {
     }
 
     /**
-     * Carves a straight 3×4 corridor between two room centres.
-     * Determines the dominant axis and carves along it, then elbows.
+     * Carves an L-shaped corridor between two room centres as two straight
+     * halls. Each hall is walled only on the sides <em>perpendicular</em> to its
+     * travel direction, so a hall never overwrites its own path — the bug that
+     * previously left corridors sealed.
      */
     private void placeCorridorBlocks(
             @NotNull final RoomConnection   conn,
@@ -104,62 +101,66 @@ public final class RoomPlacer {
         final int floorY = from.getBlockY() - 1;
 
         if (conn.getAxis() == RoomConnection.Axis.X) {
-            // Carve along X first, then Z elbow
-            final int startX = Math.min(from.getBlockX(), to.getBlockX());
-            final int endX   = Math.max(from.getBlockX(), to.getBlockX());
-            for (int x = startX; x <= endX; x++) {
-                carveCorridorColumn(world, x, floorY, from.getBlockZ(), palette);
-            }
-            // Z elbow
-            final int startZ = Math.min(from.getBlockZ(), to.getBlockZ());
-            final int endZ   = Math.max(from.getBlockZ(), to.getBlockZ());
-            for (int z = startZ; z <= endZ; z++) {
-                carveCorridorColumn(world, to.getBlockX(), floorY, z, palette);
+            carveHall(world, true,  from.getBlockZ(), from.getBlockX(), to.getBlockX(), floorY, palette);
+            if (from.getBlockZ() != to.getBlockZ()) {
+                carveHall(world, false, to.getBlockX(), from.getBlockZ(), to.getBlockZ(), floorY, palette);
             }
         } else {
-            // Carve along Z first, then X elbow
-            final int startZ = Math.min(from.getBlockZ(), to.getBlockZ());
-            final int endZ   = Math.max(from.getBlockZ(), to.getBlockZ());
-            for (int z = startZ; z <= endZ; z++) {
-                carveCorridorColumn(world, from.getBlockX(), floorY, z, palette);
-            }
-            final int startX = Math.min(from.getBlockX(), to.getBlockX());
-            final int endX   = Math.max(from.getBlockX(), to.getBlockX());
-            for (int x = startX; x <= endX; x++) {
-                carveCorridorColumn(world, x, floorY, to.getBlockZ(), palette);
+            carveHall(world, false, from.getBlockX(), from.getBlockZ(), to.getBlockZ(), floorY, palette);
+            if (from.getBlockX() != to.getBlockX()) {
+                carveHall(world, true,  to.getBlockZ(), from.getBlockX(), to.getBlockX(), floorY, palette);
             }
         }
     }
 
     /**
-     * Carves a 3-wide, 4-tall column centred on {@code (x, y, z)}.
-     * Floor = primary, walls = secondary, ceiling = ceiling, interior = air.
+     * Carves one straight hall: a 3-wide, 2-tall walkable passage with a floor,
+     * ceiling and side walls on the two perpendicular edges.
+     *
+     * @param alongX     {@code true} = the hall runs along X (perpendicular = Z)
+     * @param perpFixed  the fixed perpendicular coordinate (centre line)
+     * @param travelFrom start of the travel range (either order)
+     * @param travelTo   end of the travel range (either order)
+     * @param floorY     world Y of the hall floor (flush with room floors)
      */
-    private void carveCorridorColumn(
-            @NotNull final org.bukkit.World world,
-            final int                     x,
-            final int                     y,
-            final int                     z,
+    private void carveHall(
+            @NotNull final org.bukkit.World  world,
+            final boolean                    alongX,
+            final int                        perpFixed,
+            final int                        travelFrom,
+            final int                        travelTo,
+            final int                        floorY,
             @NotNull final ThemeBlockPalette palette
     ) {
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dz = -1; dz <= 1; dz++) {
-                for (int dy = 0; dy < CORRIDOR_HEIGHT; dy++) {
-                    final org.bukkit.Location loc =
-                            new org.bukkit.Location(world, x + dx, y + dy, z + dz);
-                    final Material mat;
-                    if (dy == 0)               mat = palette.getFloor();
-                    else if (dy == CORRIDOR_HEIGHT - 1) {
-                        // Light the corridor ceiling periodically so it is walkable.
-                        mat = (dx == 0 && dz == 0 && (x + z) % 6 == 0)
-                                ? Material.GLOWSTONE : palette.getCeiling();
-                    }
-                    else if (dx == -1 || dx == 1 || dz == -1 || dz == 1) mat = palette.getSecondary();
-                    else                       mat = Material.AIR;
-                    BlockUtil.setBlock(loc, mat);
-                }
+        final int start = Math.min(travelFrom, travelTo);
+        final int end   = Math.max(travelFrom, travelTo);
+        for (int t = start; t <= end; t++) {
+            for (int p = -2; p <= 2; p++) {
+                final int x = alongX ? t : perpFixed + p;
+                final int z = alongX ? perpFixed + p : t;
+                final boolean edge = (p == -2 || p == 2);
+                setColumn(world, x, z, floorY, edge, t, palette);
             }
         }
+    }
+
+    /** Places a single corridor column: floor, two-tall body, ceiling. */
+    private void setColumn(
+            @NotNull final org.bukkit.World  world,
+            final int                        x,
+            final int                        z,
+            final int                        floorY,
+            final boolean                    edge,
+            final int                        travel,
+            @NotNull final ThemeBlockPalette palette
+    ) {
+        BlockUtil.setBlock(new org.bukkit.Location(world, x, floorY, z), palette.getFloor());
+        final Material body = edge ? palette.getSecondary() : Material.AIR;
+        BlockUtil.setBlock(new org.bukkit.Location(world, x, floorY + 1, z), body);
+        BlockUtil.setBlock(new org.bukkit.Location(world, x, floorY + 2, z), body);
+        // Light the ceiling periodically so corridors are not pitch black.
+        final Material ceiling = (!edge && travel % 6 == 0) ? Material.GLOWSTONE : palette.getCeiling();
+        BlockUtil.setBlock(new org.bukkit.Location(world, x, floorY + 3, z), ceiling);
     }
 
     private void buildHollowBoxFallback(
