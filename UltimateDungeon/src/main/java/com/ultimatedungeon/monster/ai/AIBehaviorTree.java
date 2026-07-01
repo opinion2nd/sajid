@@ -56,9 +56,4 @@ public final class AIBehaviorTree {
             flanking.flank(monster, target, monster.getEntityId() % 2 == 0);
         }
     }
-
-    /** Prunes chase state for mobs that have despawned. */
-    public void retainChaseState(@NotNull final java.util.Set<java.util.UUID> alive) {
-        chase.retain(alive);
-    }
 }

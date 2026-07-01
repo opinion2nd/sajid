@@ -27,6 +27,17 @@ public final class BossBarManager {
         bar.addPlayer(player);
     }
 
+    /**
+     * Reconciles the bar's viewers with {@code players}: anyone who entered the
+     * arena late starts seeing the bar, anyone who left the world stops.
+     */
+    public void syncViewers(@NotNull final Collection<? extends Player> players) {
+        for (final Player current : bar.getPlayers()) {
+            if (!players.contains(current)) bar.removePlayer(current);
+        }
+        players.forEach(bar::addPlayer); // addPlayer is a no-op for existing viewers
+    }
+
     public void setProgress(final double ratio) {
         bar.setProgress(Math.max(0.0, Math.min(1.0, ratio)));
     }

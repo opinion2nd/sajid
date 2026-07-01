@@ -7,7 +7,6 @@ import org.bukkit.util.Vector;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -21,8 +20,11 @@ import java.util.concurrent.ConcurrentHashMap;
  * and, when a mob has clearly wedged itself, gives it a forward-and-up hop to
  * clear one-block lips, door frames and corners it would otherwise stick on.</p>
  *
- * <p>Per-mob state is keyed by entity UUID; {@link #retain(Set)} prunes entries
- * for mobs that have despawned so the map never grows unbounded.</p>
+ * <p>Per-mob state is keyed by entity UUID. One ChaseBehavior serves every
+ * dungeon instance, so stale entries are expired by age (a periodic sweep of
+ * entries untouched for {@code EXPIRE_MS}) rather than by comparing against any
+ * single instance's alive list — which would wrongly wipe other instances'
+ * state when several dungeons run concurrently.</p>
  */
 public final class ChaseBehavior {
 
@@ -36,19 +38,27 @@ public final class ChaseBehavior {
     private static final double MELEE_RANGE = 2.2;
     /** Navigation speed multiplier; >1 so dungeon mobs press the attack. */
     private static final double CHASE_SPEED = 1.3;
+    /** State entries untouched this long belong to despawned mobs — drop them. */
+    private static final long EXPIRE_MS = 60_000L;
+    /** How often the expiry sweep runs. */
+    private static final long SWEEP_INTERVAL_MS = 10_000L;
 
     private static final class State {
         double lastX, lastY, lastZ;
         int stuckTicks;
         int repathCooldown;
         boolean primed;
+        long touchedAt;
     }
 
     private final Map<UUID, State> states = new ConcurrentHashMap<>();
+    private volatile long nextSweepAt;
 
     /** Drives {@code mob} toward {@code target}, re-pathing and unsticking as needed. */
     public void chase(@NotNull final Mob mob, @NotNull final Player target) {
+        sweepExpired();
         final State st = states.computeIfAbsent(mob.getUniqueId(), k -> new State());
+        st.touchedAt = System.currentTimeMillis();
         final Location loc = mob.getLocation();
 
         final double distSq = loc.distanceSquared(target.getLocation());
@@ -91,10 +101,12 @@ public final class ChaseBehavior {
         }
     }
 
-    /** Drops per-mob state for any UUID not in {@code alive}. */
-    public void retain(@NotNull final Set<UUID> alive) {
-        if (states.isEmpty()) return;
-        states.keySet().removeIf(id -> !alive.contains(id));
+    /** Periodically drops state entries that haven't been touched in a while. */
+    private void sweepExpired() {
+        final long now = System.currentTimeMillis();
+        if (now < nextSweepAt) return;
+        nextSweepAt = now + SWEEP_INTERVAL_MS;
+        states.values().removeIf(st -> now - st.touchedAt > EXPIRE_MS);
     }
 
     private void rememberPosition(@NotNull final State st, @NotNull final Location loc) {

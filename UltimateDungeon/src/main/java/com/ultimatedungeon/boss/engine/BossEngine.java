@@ -158,6 +158,8 @@ public final class BossEngine {
             }
             final double ratio = boss.health.getHealthRatio();
             boss.bossBar.setProgress(ratio);
+            // Late arrivals see the bar too; players who left the world drop off.
+            boss.bossBar.syncViewers(arenaPlayers(boss));
 
             final BossPhaseData newPhase = boss.stateMachine.update(ratio);
             if (newPhase != null && boss.def.hasDialogue("phase-two")
