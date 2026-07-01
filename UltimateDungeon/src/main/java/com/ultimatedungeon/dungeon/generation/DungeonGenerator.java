@@ -165,8 +165,8 @@ public final class DungeonGenerator implements IDungeonGenerator {
             // the upper bound, overflowing MAX+1 to MIN and throwing on every
             // attempt (which fails all generation).
             final long seed = java.util.concurrent.ThreadLocalRandom.current().nextInt();
+            // LayoutPlanner now builds the (wall-to-wall) corridors itself.
             final RoomGraph graph = layoutPlanner.plan(world, theme, seed, level);
-            corridorRouter.route(graph);
 
             if (validator.validate(graph)) {
                 final long elapsed = System.currentTimeMillis() - startMs;

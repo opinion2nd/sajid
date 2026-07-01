@@ -179,10 +179,23 @@ public final class DungeonLauncher {
 
     /** Removes a single player from their dungeon (e.g. /dungeon leave). */
     public void leave(@NotNull final Player player) {
+        final var inst = instanceManager.getInstanceForPlayer(player);
+        final UUID instanceId = inst != null ? inst.getInstanceId() : null;
+
         sendHome(player);
         sessionManager.removeSession(player);
         instanceManager.disassociatePlayer(player);
         for (final Set<UUID> set : instancePlayers.values()) set.remove(player.getUniqueId());
+
+        // If that was the last player, tear the whole instance down so the boss
+        // bar, monsters and isolated world do not linger.
+        if (instanceId != null) {
+            final Set<UUID> remaining = instancePlayers.get(instanceId);
+            if ((remaining == null || remaining.isEmpty())
+                    && inst instanceof final DungeonInstance di) {
+                teardown(di, List.of());
+            }
+        }
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────

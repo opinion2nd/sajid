@@ -2,6 +2,7 @@ package com.ultimatedungeon.dungeon.generation;
 
 import com.ultimatedungeon.config.files.DungeonConfig;
 import com.ultimatedungeon.core.PluginLogger;
+import com.ultimatedungeon.room.model.RoomConnection;
 import com.ultimatedungeon.room.model.RoomData;
 import com.ultimatedungeon.room.model.RoomGraph;
 import com.ultimatedungeon.room.model.RoomType;
@@ -145,8 +146,67 @@ public final class LayoutPlanner {
             occupiedGrid.add(new int[]{gx, gz});
         }
 
+        // Connect every grid-adjacent pair of rooms with a short, wall-to-wall
+        // corridor. Because rooms grow outward cell-by-cell the grid is one
+        // connected blob, so this both guarantees connectivity and keeps every
+        // corridor a clean straight road across the gap — never a tunnel driven
+        // through a room's interior.
+        connectGridAdjacent(world, graph, placedRooms, occupiedGrid);
+
         logger.debug("LayoutPlanner: placed " + graph.getRoomCount() + " rooms.");
         return graph;
+    }
+
+    /** Adds wall-to-wall corridors between rooms sitting in adjacent grid cells. */
+    private void connectGridAdjacent(@NotNull final org.bukkit.World world, @NotNull final RoomGraph graph,
+                                     @NotNull final List<RoomData> rooms, @NotNull final List<int[]> cells) {
+        final java.util.Map<Long, RoomData> byCell = new java.util.HashMap<>();
+        for (int i = 0; i < rooms.size(); i++) {
+            byCell.put(cellKey(cells.get(i)[0], cells.get(i)[1]), rooms.get(i));
+        }
+        for (int i = 0; i < rooms.size(); i++) {
+            final int gx = cells.get(i)[0];
+            final int gz = cells.get(i)[1];
+            final RoomData self = rooms.get(i);
+            final RoomData east  = byCell.get(cellKey(gx + 1, gz)); // neighbour to +X
+            final RoomData south = byCell.get(cellKey(gx, gz + 1)); // neighbour to +Z
+            if (east  != null) graph.addConnection(bridge(world, self, east,  true));
+            if (south != null) graph.addConnection(bridge(world, self, south, false));
+        }
+    }
+
+    /**
+     * Builds a corridor whose ends sit on the two rooms' facing walls, so the
+     * carved road only spans the gap between them.
+     *
+     * @param alongX {@code true} = {@code b} is the +X neighbour of {@code a}
+     */
+    @NotNull
+    private RoomConnection bridge(@NotNull final org.bukkit.World world, @NotNull final RoomData a,
+                                  @NotNull final RoomData b, final boolean alongX) {
+        final int doorY = a.getCentre().getBlockY();
+        final Location start;
+        final Location end;
+        if (alongX) {
+            final int aEast = a.getOrigin().getBlockX() + a.getWidth() - 1; // a's +X wall
+            final int bWest = b.getOrigin().getBlockX();                    // b's -X wall
+            final int z = a.getCentre().getBlockZ();
+            start = new Location(world, aEast, doorY, z);
+            end   = new Location(world, bWest, doorY, z);
+            return new RoomConnection(a.getRoomId(), b.getRoomId(), start, end,
+                    RoomConnection.Axis.X, Math.abs(bWest - aEast));
+        }
+        final int aSouth = a.getOrigin().getBlockZ() + a.getDepth() - 1;    // a's +Z wall
+        final int bNorth = b.getOrigin().getBlockZ();                       // b's -Z wall
+        final int x = a.getCentre().getBlockX();
+        start = new Location(world, x, doorY, aSouth);
+        end   = new Location(world, x, doorY, bNorth);
+        return new RoomConnection(a.getRoomId(), b.getRoomId(), start, end,
+                RoomConnection.Axis.Z, Math.abs(bNorth - aSouth));
+    }
+
+    private long cellKey(final int gx, final int gz) {
+        return (((long) gx) << 32) ^ (gz & 0xffffffffL);
     }
 
     // ── Private helpers ───────────────────────────────────────────────────────

@@ -167,8 +167,9 @@ public final class RoomEnterListener implements Listener {
                 // Spawn one boss per dungeon level (level 1 → 1 boss, level 4 → 4).
                 final int bossCount = Math.max(1, level);
                 // Pre-fight countdown, then seal the arena and spawn the bosses.
-                arenaCountdown.start(seconds, world.getPlayers(), () -> {
-                    if (world.getPlayers().stream().noneMatch(p -> room.contains(p.getLocation()))) {
+                arenaCountdown.start(seconds, playersInRoom(room), () -> {
+                    final List<Player> arena = playersInRoom(room);
+                    if (arena.isEmpty()) {
                         return; // countdown safety: everyone left, do not spawn
                     }
                     arenaLockdown.lock(id, room);
@@ -176,7 +177,7 @@ public final class RoomEnterListener implements Listener {
                         final String bossId = bosses.get(i % bosses.size());
                         final Location spot = room.getCentre().clone().add(
                                 (i - (bossCount - 1) / 2.0) * 3.0, 0, 0);
-                        bossEngine.spawnBoss(id, bossId, spot, difficultyId, world.getPlayers());
+                        bossEngine.spawnBoss(id, bossId, spot, difficultyId, arena);
                     }
                 });
             }

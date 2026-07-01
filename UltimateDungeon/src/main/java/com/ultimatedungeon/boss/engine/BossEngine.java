@@ -64,7 +64,8 @@ public final class BossEngine {
     private final NamespacedKey bossKey;
 
     private final Map<String, BossDefinition> definitions = new LinkedHashMap<>();
-    private final Map<UUID, ActiveBoss> active = new ConcurrentHashMap<>();
+    /** All live bosses per instance — a dungeon can have several at once. */
+    private final Map<UUID, java.util.List<ActiveBoss>> active = new ConcurrentHashMap<>();
 
     /** Fired when a boss dies: (instanceId, bossId). */
     private BiConsumer<UUID, String> onBossDeath = (i, b) -> {};
@@ -132,7 +133,8 @@ public final class BossEngine {
         final ActiveBoss activeBoss = new ActiveBoss(instanceId, def, boss,
                 new BossHealthTracker(boss, maxHealth), bar,
                 new BossStateMachine(def.getPhases()), new BossAI(abilities));
-        active.put(instanceId, activeBoss);
+        active.computeIfAbsent(instanceId, k -> new java.util.concurrent.CopyOnWriteArrayList<>())
+                .add(activeBoss);
 
         announce(arenaPlayers, def, "spawn");
         logger.info("Boss spawned: " + bossId + " for instance " + instanceId);
@@ -141,31 +143,36 @@ public final class BossEngine {
 
     /** Per-tick update: BossBar, phase transitions, ability rotation and death. */
     public void tick(@NotNull final UUID instanceId) {
-        final ActiveBoss boss = active.get(instanceId);
-        if (boss == null || boss.dead) return;
+        final java.util.List<ActiveBoss> list = active.get(instanceId);
+        if (list == null || list.isEmpty()) return;
 
-        if (boss.health.isDead()) {
-            handleDeath(boss);
-            return;
-        }
-        final double ratio = boss.health.getHealthRatio();
-        boss.bossBar.setProgress(ratio);
+        for (final ActiveBoss boss : list) {
+            if (boss.dead) continue;
+            if (boss.health.isDead()) {
+                handleDeath(boss);
+                continue;
+            }
+            final double ratio = boss.health.getHealthRatio();
+            boss.bossBar.setProgress(ratio);
 
-        final BossPhaseData newPhase = boss.stateMachine.update(ratio);
-        if (newPhase != null && boss.def.hasDialogue("phase-two")
-                && boss.stateMachine.getCurrentPhaseIndex() > 0) {
-            announce(arenaPlayers(boss), boss.def, "phase-two");
+            final BossPhaseData newPhase = boss.stateMachine.update(ratio);
+            if (newPhase != null && boss.def.hasDialogue("phase-two")
+                    && boss.stateMachine.getCurrentPhaseIndex() > 0) {
+                announce(arenaPlayers(boss), boss.def, "phase-two");
+            }
+            boss.ai.tick(boss.entity);
         }
-        boss.ai.tick(boss.entity);
     }
 
     public boolean hasActiveBoss(@NotNull final UUID instanceId) {
-        return active.containsKey(instanceId) && !active.get(instanceId).dead;
+        final java.util.List<ActiveBoss> list = active.get(instanceId);
+        return list != null && list.stream().anyMatch(b -> !b.dead);
     }
 
     public void cleanup(@NotNull final UUID instanceId) {
-        final ActiveBoss boss = active.remove(instanceId);
-        if (boss != null) {
+        final java.util.List<ActiveBoss> list = active.remove(instanceId);
+        if (list == null) return;
+        for (final ActiveBoss boss : list) {
             boss.bossBar.remove();
             if (!boss.entity.isDead()) boss.entity.remove();
         }
@@ -178,9 +185,17 @@ public final class BossEngine {
         boss.bossBar.remove();
         announce(arenaPlayers(boss), boss.def, "death");
         spawnVictoryFireworks(boss.entity.getLocation());
-        active.remove(boss.instanceId);
-        onBossDeath.accept(boss.instanceId, boss.def.getId());
+        if (!boss.entity.isDead()) boss.entity.remove();
+
+        final java.util.List<ActiveBoss> list = active.get(boss.instanceId);
+        if (list != null) list.remove(boss);
         logger.info("Boss defeated: " + boss.def.getId() + " in instance " + boss.instanceId);
+
+        // Only finish the encounter once every boss in the instance is dead.
+        if (list == null || list.isEmpty()) {
+            active.remove(boss.instanceId);
+            onBossDeath.accept(boss.instanceId, boss.def.getId());
+        }
     }
 
     private void spawnVictoryFireworks(@NotNull final org.bukkit.Location loc) {

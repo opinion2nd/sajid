@@ -343,7 +343,8 @@ public final class PluginBootstrap {
         arenaCleanup  = new ArenaCleanupService(arenaLockdown, bossEngine, pluginLogger);
 
         // Lifecycle
-        final DungeonCleanupService cleanupService = new DungeonCleanupService(pluginLogger);
+        final DungeonCleanupService cleanupService = new DungeonCleanupService(
+                arenaCleanup, monsterEngine, waveManager, pluginLogger);
         dungeonLauncher = new DungeonLauncher(generationPipeline, dungeonInstanceManager, sessionManager,
                 teleportService, notificationService, statisticsService, cleanupService,
                 dungeonWorldManager, configManager.getMessagesConfig(), pluginLogger);
