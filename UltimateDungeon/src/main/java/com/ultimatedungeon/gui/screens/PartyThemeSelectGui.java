@@ -14,15 +14,15 @@ import org.jetbrains.annotations.NotNull;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Theme picker for solo runs; picking a theme opens the difficulty picker. */
-public final class SoloDungeonGui extends AbstractGui {
+/** Theme picker for party runs; picking a theme opens the party difficulty picker. */
+public final class PartyThemeSelectGui extends AbstractGui {
 
     private static final int FIRST_SLOT = 10;
 
     private final GuiServices services;
     private final List<ITheme> themes = new ArrayList<>();
 
-    public SoloDungeonGui(@NotNull final Player viewer, @NotNull final GuiServices services) {
+    public PartyThemeSelectGui(@NotNull final Player viewer, @NotNull final GuiServices services) {
         super(viewer);
         this.services = services;
         this.themes.addAll(services.themeRegistry().getAllThemes());
@@ -30,7 +30,7 @@ public final class SoloDungeonGui extends AbstractGui {
 
     @Override
     public void open() {
-        inventory = Bukkit.createInventory(null, 27, MiniMessageUtil.legacy("<dark_gray>Select a Theme"));
+        inventory = Bukkit.createInventory(null, 27, MiniMessageUtil.legacy("<dark_gray>Party — Select Theme"));
         final ItemStack filler = ItemBuilder.of(Material.BLACK_STAINED_GLASS_PANE).name(" ").build();
         for (int i = 0; i < inventory.getSize(); i++) inventory.setItem(i, filler);
         int slot = FIRST_SLOT;
@@ -52,7 +52,7 @@ public final class SoloDungeonGui extends AbstractGui {
         final int index = slot - FIRST_SLOT;
         if (index < 0 || index >= themes.size()) return;
         viewer.closeInventory();
-        new DifficultySelectGui(viewer, services, themes.get(index).getThemeId()).open();
+        new DifficultySelectGui(viewer, services, themes.get(index).getThemeId(), "party").open();
     }
 
     @NotNull

@@ -128,6 +128,7 @@ public final class PluginBootstrap {
     private DungeonFailureHandler dungeonFailureHandler;
     private DungeonLaunchService dungeonLaunchService;
     private GuiManager           guiManager;
+    private com.ultimatedungeon.gui.framework.GuiServices guiServices;
 
     public PluginBootstrap(@NotNull final UltimateDungeon plugin) {
         this.plugin = plugin;
@@ -357,6 +358,9 @@ public final class PluginBootstrap {
                 configManager.getMessagesConfig(), pluginLogger);
 
         guiManager = new GuiManager(pluginLogger);
+        guiServices = new com.ultimatedungeon.gui.framework.GuiServices(
+                guiManager, themeRegistry, configManager.getDifficultyConfig(), partyManager,
+                dungeonInstanceManager, invitationManager, readyCheckManager);
 
         serviceRegistry.register(DungeonLauncher.class,      dungeonLauncher);
         serviceRegistry.register(DungeonLaunchService.class, dungeonLaunchService);
@@ -406,7 +410,7 @@ public final class PluginBootstrap {
 
         final DungeonCommand dungeonCommand = new DungeonCommand(
                 new CommandPermissionChecker(pluginLogger), dungeonLaunchService, dungeonLauncher,
-                dungeonInstanceManager, statisticsService, partyManager, themeRegistry, configManager, guiManager);
+                dungeonInstanceManager, statisticsService, partyManager, themeRegistry, configManager, guiServices);
         final var dungeonCmd = plugin.getCommand("dungeon");
         if (dungeonCmd != null) { dungeonCmd.setExecutor(dungeonCommand); dungeonCmd.setTabCompleter(dungeonCommand); }
 

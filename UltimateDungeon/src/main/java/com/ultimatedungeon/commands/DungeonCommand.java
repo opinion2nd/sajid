@@ -7,7 +7,7 @@ import com.ultimatedungeon.config.ConfigManager;
 import com.ultimatedungeon.config.files.MessagesConfig;
 import com.ultimatedungeon.dungeon.instance.DungeonInstanceManager;
 import com.ultimatedungeon.dungeon.lifecycle.DungeonLauncher;
-import com.ultimatedungeon.gui.framework.GuiManager;
+import com.ultimatedungeon.gui.framework.GuiServices;
 import com.ultimatedungeon.gui.screens.MainMenuGui;
 import com.ultimatedungeon.party.manager.PartyManager;
 import com.ultimatedungeon.services.DungeonLaunchService;
@@ -23,8 +23,7 @@ import org.jetbrains.annotations.NotNull;
  */
 public final class DungeonCommand extends AbstractCommand {
 
-    private final GuiManager guiManager;
-    private final ThemeRegistry themeRegistry;
+    private final GuiServices guiServices;
 
     public DungeonCommand(@NotNull final CommandPermissionChecker permissionChecker,
                           @NotNull final DungeonLaunchService launchService,
@@ -34,10 +33,9 @@ public final class DungeonCommand extends AbstractCommand {
                           @NotNull final PartyManager partyManager,
                           @NotNull final ThemeRegistry themeRegistry,
                           @NotNull final ConfigManager configManager,
-                          @NotNull final GuiManager guiManager) {
+                          @NotNull final GuiServices guiServices) {
         super(permissionChecker);
-        this.guiManager = guiManager;
-        this.themeRegistry = themeRegistry;
+        this.guiServices = guiServices;
         final MessagesConfig messages = configManager.getMessagesConfig();
         register(new DungeonSoloSubCommand(launchService, themeRegistry, configManager.getDifficultyConfig()));
         register(new DungeonPartySubCommand(launchService, partyManager, themeRegistry, configManager.getDifficultyConfig()));
@@ -50,7 +48,7 @@ public final class DungeonCommand extends AbstractCommand {
     @Override
     protected void sendUsage(@NotNull final CommandSender sender) {
         if (sender instanceof final Player player) {
-            new MainMenuGui(player, guiManager, themeRegistry).open();
+            new MainMenuGui(player, guiServices).open();
             return;
         }
         sender.sendMessage("§6Usage: §e/dungeon [solo|party|leave|stats|reload|admin]");
