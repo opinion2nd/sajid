@@ -14,15 +14,21 @@ public final class DungeonCleanupService {
     private final ArenaCleanupService arenaCleanup;
     private final MonsterEngine monsterEngine;
     private final WaveManager waveManager;
+    private final RoomSealer roomSealer;
+    private final EncounterCountdownManager encounterCountdown;
     private final PluginLogger logger;
 
     public DungeonCleanupService(@NotNull final ArenaCleanupService arenaCleanup,
                                  @NotNull final MonsterEngine monsterEngine,
                                  @NotNull final WaveManager waveManager,
+                                 @NotNull final RoomSealer roomSealer,
+                                 @NotNull final EncounterCountdownManager encounterCountdown,
                                  @NotNull final PluginLogger logger) {
         this.arenaCleanup = arenaCleanup;
         this.monsterEngine = monsterEngine;
         this.waveManager = waveManager;
+        this.roomSealer = roomSealer;
+        this.encounterCountdown = encounterCountdown;
         this.logger = logger;
     }
 
@@ -34,6 +40,8 @@ public final class DungeonCleanupService {
         arenaCleanup.cleanup(id);
         monsterEngine.despawnAll(id);
         waveManager.cancel(id);
+        encounterCountdown.cancelInstance(id);
+        roomSealer.clearInstance(id);
         instance.cleanup();
         logger.debug("Dungeon instance cleaned up: " + id);
     }

@@ -20,8 +20,8 @@ public final class PuzzleRoomTemplate extends AbstractRoomTemplate {
         super("puzzle", RoomType.PUZZLE, 10);
     }
 
-    @Override public int getWidth() { return 15; }
-    @Override public int getDepth() { return 15; }
+    @Override public int getWidth() { return 11; }
+    @Override public int getDepth() { return 11; }
 
     @Override
     protected void decorateRoom(

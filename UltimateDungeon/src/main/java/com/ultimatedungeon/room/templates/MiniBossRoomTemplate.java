@@ -20,8 +20,8 @@ public final class MiniBossRoomTemplate extends AbstractRoomTemplate {
         super("mini_boss", RoomType.MINI_BOSS, 3);
     }
 
-    @Override public int getWidth() { return 21; }
-    @Override public int getDepth() { return 21; }
+    @Override public int getWidth() { return 13; }
+    @Override public int getDepth() { return 13; }
 
     @Override
     protected void decorateRoom(

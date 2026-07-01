@@ -20,8 +20,8 @@ public final class EventRoomTemplate extends AbstractRoomTemplate {
         super("event", RoomType.EVENT, 8);
     }
 
-    @Override public int getWidth() { return 17; }
-    @Override public int getDepth() { return 17; }
+    @Override public int getWidth() { return 11; }
+    @Override public int getDepth() { return 11; }
 
     @Override
     protected void decorateRoom(

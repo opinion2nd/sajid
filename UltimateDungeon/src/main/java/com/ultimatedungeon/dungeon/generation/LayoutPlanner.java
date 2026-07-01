@@ -47,7 +47,7 @@ public final class LayoutPlanner {
      * largest room) and every room centre lands on a uniform {@code CELL} grid —
      * which keeps corridors perfectly axis-aligned between neighbours.
      */
-    private static final int CELL = 32;
+    private static final int CELL = 18;
     /** Ground level every room floor sits on. */
     private static final int FLOOR_Y = 64;
 
@@ -81,14 +81,12 @@ public final class LayoutPlanner {
             final long                      seed,
             final int                       level
     ) {
-        // Dungeon size scales with level: level 1 is small, level 4 is large.
-        // Clamped to the configured absolute min/max so config still bounds it.
+        // Dungeon size scales with level but stays compact so block placement
+        // never stalls a small server: level 1 ~4-6 rooms, level 5 ~8-10.
         final int lvl    = Math.max(1, level);
-        final int lvlMin = 5 + lvl * 2;                 // L1=7  L2=9  L3=11 L4=13
-        final int lvlMax = 8 + lvl * 3;                 // L1=11 L2=14 L3=17 L4=20
-        final int min    = Math.max(dungeonConfig.getDungeonSizeMin() - 5, lvlMin);
-        final int max    = Math.min(dungeonConfig.getDungeonSizeMax(), lvlMax);
-        final int targetRooms = RandomUtil.randomInt(Math.min(min, max), Math.max(min, max));
+        final int min    = 4 + lvl;                     // L1=5  L5=9  (>=5 for validator)
+        final int max    = 6 + lvl;                     // L1=7  L5=11
+        final int targetRooms = RandomUtil.randomInt(min, max);
 
         logger.debug("LayoutPlanner: planning " + targetRooms + " rooms (seed=" + seed + ")");
 

@@ -20,8 +20,8 @@ public final class TrapRoomTemplate extends AbstractRoomTemplate {
         super("trap", RoomType.TRAP, 15);
     }
 
-    @Override public int getWidth() { return 13; }
-    @Override public int getDepth() { return 15; }
+    @Override public int getWidth() { return 11; }
+    @Override public int getDepth() { return 11; }
 
     @Override
     protected void decorateRoom(

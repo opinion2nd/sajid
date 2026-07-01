@@ -20,8 +20,8 @@ public final class EliteCombatRoomTemplate extends AbstractRoomTemplate {
         super("elite_combat", RoomType.ELITE_COMBAT, 15);
     }
 
-    @Override public int getWidth() { return 19; }
-    @Override public int getDepth() { return 19; }
+    @Override public int getWidth() { return 13; }
+    @Override public int getDepth() { return 13; }
 
     @Override
     protected void decorateRoom(

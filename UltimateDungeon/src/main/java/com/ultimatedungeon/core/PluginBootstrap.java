@@ -123,6 +123,8 @@ public final class PluginBootstrap {
     private com.ultimatedungeon.dungeon.hazard.HazardEngine hazardEngine;
     private com.ultimatedungeon.dungeon.event.DynamicEventEngine dynamicEventEngine;
     private com.ultimatedungeon.dungeon.lifecycle.WaveResetManager waveResetManager;
+    private com.ultimatedungeon.dungeon.instance.RoomSealer roomSealer;
+    private com.ultimatedungeon.dungeon.instance.EncounterCountdownManager encounterCountdown;
     private ArenaLockdownManager arenaLockdown;
     private com.ultimatedungeon.boss.arena.ArenaCountdownManager arenaCountdown;
     private ArenaCleanupService  arenaCleanup;
@@ -340,10 +342,12 @@ public final class PluginBootstrap {
         arenaLockdown = new ArenaLockdownManager(pluginLogger);
         arenaCountdown = new com.ultimatedungeon.boss.arena.ArenaCountdownManager(pluginScheduler, pluginLogger);
         arenaCleanup  = new ArenaCleanupService(arenaLockdown, bossEngine, pluginLogger);
+        roomSealer    = new com.ultimatedungeon.dungeon.instance.RoomSealer();
+        encounterCountdown = new com.ultimatedungeon.dungeon.instance.EncounterCountdownManager(pluginScheduler);
 
         // Lifecycle
         final DungeonCleanupService cleanupService = new DungeonCleanupService(
-                arenaCleanup, monsterEngine, waveManager, pluginLogger);
+                arenaCleanup, monsterEngine, waveManager, roomSealer, encounterCountdown, pluginLogger);
         dungeonLauncher = new DungeonLauncher(generationPipeline, dungeonInstanceManager, sessionManager,
                 teleportService, notificationService, statisticsService, cleanupService,
                 dungeonWorldManager, configManager.getMessagesConfig(), pluginLogger);
@@ -360,6 +364,7 @@ public final class PluginBootstrap {
         // Boss death → complete the dungeon
         bossEngine.setDeathHook((instanceId, bossId) -> {
             arenaCleanup.cleanup(instanceId);
+            roomSealer.unsealInstance(instanceId); // open the boss room's bedrock exits
             final var instance = dungeonInstanceManager.getInstance(instanceId);
             if (instance instanceof final DungeonInstance di) {
                 dungeonEndHandler.onComplete(di, bossId);
@@ -449,7 +454,8 @@ public final class PluginBootstrap {
                 dungeonInstanceManager, waveManager, trapEngine, puzzleEngine, bossEngine,
                 arenaLockdown, arenaCountdown, dynamicEventEngine, rewardDistributor,
                 difficultyService, waveResetManager,
-                configManager.getDungeonConfig().getWaveResetSeconds()), plugin);
+                configManager.getDungeonConfig().getWaveResetSeconds(),
+                roomSealer, encounterCountdown), plugin);
         pm.registerEvents(new com.ultimatedungeon.listeners.protection.DungeonProtectionListener(
                 dungeonWorldManager), plugin);
         pm.registerEvents(new com.ultimatedungeon.listeners.trap.TrapTriggerListener(

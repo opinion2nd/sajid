@@ -45,3 +45,13 @@ difficulties:
     spawn-rate-multiplier: 1.75
     loot-tier-bonus: 2
     trap-damage-multiplier: 2.0
+
+  inferno:
+    level: 5
+    display-name: "Inferno"
+    health-multiplier: 2.75
+    damage-multiplier: 2.25
+    cooldown-multiplier: 0.5
+    spawn-rate-multiplier: 2.25
+    loot-tier-bonus: 3
+    trap-damage-multiplier: 2.75

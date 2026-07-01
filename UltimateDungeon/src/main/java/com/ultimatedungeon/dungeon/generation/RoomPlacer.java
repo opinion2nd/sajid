@@ -51,6 +51,12 @@ public final class RoomPlacer {
             @NotNull final RoomGraph        graph,
             @NotNull final ThemeBlockPalette palette
     ) {
+        // Load every chunk the dungeon touches up-front, in one clean pass. If we
+        // don't, each block set in a not-yet-loaded chunk triggers a synchronous
+        // chunk load mid-loop, and thousands of those stall the main thread until
+        // the server watchdog fires. Loading once first avoids that entirely.
+        preloadChunks(graph);
+
         // Place rooms
         for (final RoomData room : graph.getRooms()) {
             placeRoom(room, palette);
@@ -61,6 +67,27 @@ public final class RoomPlacer {
         }
         logger.debug("RoomPlacer: placed " + graph.getRoomCount()
                 + " rooms and " + graph.getConnections().size() + " corridors.");
+    }
+
+    /** Force-loads every chunk in the dungeon's bounding box before any block is set. */
+    private void preloadChunks(@NotNull final RoomGraph graph) {
+        org.bukkit.World world = null;
+        int minX = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE;
+        int minZ = Integer.MAX_VALUE, maxZ = Integer.MIN_VALUE;
+        for (final RoomData room : graph.getRooms()) {
+            final org.bukkit.Location o = room.getOrigin();
+            if (o.getWorld() != null) world = o.getWorld();
+            minX = Math.min(minX, o.getBlockX() - 3);
+            maxX = Math.max(maxX, o.getBlockX() + room.getWidth() + 3);
+            minZ = Math.min(minZ, o.getBlockZ() - 3);
+            maxZ = Math.max(maxZ, o.getBlockZ() + room.getDepth() + 3);
+        }
+        if (world == null) return;
+        for (int cx = minX >> 4; cx <= (maxX >> 4); cx++) {
+            for (int cz = minZ >> 4; cz <= (maxZ >> 4); cz++) {
+                world.getChunkAt(cx, cz); // loads (and, for a void world, cheaply generates)
+            }
+        }
     }
 
     // ── Private ───────────────────────────────────────────────────────────────
