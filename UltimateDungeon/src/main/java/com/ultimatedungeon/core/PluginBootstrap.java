@@ -122,6 +122,7 @@ public final class PluginBootstrap {
     private BossEngine           bossEngine;
     private com.ultimatedungeon.dungeon.hazard.HazardEngine hazardEngine;
     private com.ultimatedungeon.dungeon.event.DynamicEventEngine dynamicEventEngine;
+    private com.ultimatedungeon.dungeon.lifecycle.WaveResetManager waveResetManager;
     private ArenaLockdownManager arenaLockdown;
     private com.ultimatedungeon.boss.arena.ArenaCountdownManager arenaCountdown;
     private ArenaCleanupService  arenaCleanup;
@@ -237,7 +238,6 @@ public final class PluginBootstrap {
         roomRegistry.register(new MiniBossRoomTemplate());
         roomRegistry.register(new BossRoomTemplate());
         roomRegistry.register(new RewardRoomTemplate());
-        roomRegistry.register(new com.ultimatedungeon.room.templates.MazeRoomTemplate());
         serviceRegistry.register(RoomRegistry.class, roomRegistry);
         pluginLogger.info("Room templates registered: " + roomRegistry.getTemplateCount());
 
@@ -248,9 +248,10 @@ public final class PluginBootstrap {
         dungeonWorldManager.initialise();
         serviceRegistry.register(DungeonWorldManager.class, dungeonWorldManager);
 
+        difficultyService = new DifficultyService(configManager.getDifficultyConfig(), pluginLogger);
         dungeonGenerator = new DungeonGenerator(
                 configManager.getDungeonConfig(), themeRegistry,
-                roomRegistry, pluginScheduler, pluginLogger);
+                roomRegistry, pluginScheduler, difficultyService, pluginLogger);
         dungeonGenerator.setWorldManager(dungeonWorldManager);
         serviceRegistry.register(DungeonGenerator.class, dungeonGenerator);
 
@@ -301,7 +302,9 @@ public final class PluginBootstrap {
     }
 
     private void initGameplay() {
-        difficultyService   = new DifficultyService(configManager.getDifficultyConfig(), pluginLogger);
+        if (difficultyService == null) {
+            difficultyService = new DifficultyService(configManager.getDifficultyConfig(), pluginLogger);
+        }
         notificationService = new NotificationService(pluginLogger);
         teleportService     = new PlayerTeleportService(pluginLogger);
         statisticsService   = new StatisticsService(databaseManager, pluginScheduler, pluginLogger);
@@ -379,11 +382,15 @@ public final class PluginBootstrap {
         serviceRegistry.register(BossEngine.class,           bossEngine);
         serviceRegistry.register(GuiManager.class,           guiManager);
 
+        waveResetManager = new com.ultimatedungeon.dungeon.lifecycle.WaveResetManager(
+                dungeonInstanceManager, pluginLogger);
+
         // Tick tasks
         pluginScheduler.runSyncRepeating(new MonsterAITickTask(monsterEngine, dungeonInstanceManager)::run, 20L, 10L);
         pluginScheduler.runSyncRepeating(new BossAITickTask(bossEngine, dungeonInstanceManager)::run, 20L, 10L);
         pluginScheduler.runSyncRepeating(new TrapTickTask(trapEngine, dungeonInstanceManager)::run, 20L, 20L);
         pluginScheduler.runSyncRepeating(new DungeonTickTask(waveManager, dungeonInstanceManager)::run, 20L, 20L);
+        pluginScheduler.runSyncRepeating(waveResetManager::tick, 20L, 20L);
         if (hazardEngine.isActive()) {
             pluginScheduler.runSyncRepeating(
                     new com.ultimatedungeon.tasks.HazardTickTask(hazardEngine, dungeonInstanceManager)::run,
@@ -441,7 +448,8 @@ public final class PluginBootstrap {
         pm.registerEvents(new com.ultimatedungeon.listeners.room.RoomEnterListener(
                 dungeonInstanceManager, waveManager, trapEngine, puzzleEngine, bossEngine,
                 arenaLockdown, arenaCountdown, dynamicEventEngine, rewardDistributor,
-                difficultyService), plugin);
+                difficultyService, waveResetManager,
+                configManager.getDungeonConfig().getWaveResetSeconds()), plugin);
         pm.registerEvents(new com.ultimatedungeon.listeners.protection.DungeonProtectionListener(
                 dungeonWorldManager), plugin);
         pm.registerEvents(new com.ultimatedungeon.listeners.trap.TrapTriggerListener(

@@ -46,6 +46,7 @@ public final class DungeonGenerator implements IDungeonGenerator {
     private final DecorationPainter    decorationPainter;
     private final GenerationValidator  validator;
     private final PluginScheduler      scheduler;
+    private final com.ultimatedungeon.services.DifficultyService difficulty;
     private final PluginLogger         logger;
 
     /** Optional isolated-world manager; when set, dungeons build in the dungeon world. */
@@ -56,12 +57,14 @@ public final class DungeonGenerator implements IDungeonGenerator {
             @NotNull final ThemeRegistry       themeRegistry,
             @NotNull final RoomRegistry        roomRegistry,
             @NotNull final PluginScheduler     scheduler,
+            @NotNull final com.ultimatedungeon.services.DifficultyService difficulty,
             @NotNull final PluginLogger        logger
     ) {
         this.dungeonConfig     = dungeonConfig;
         this.themeRegistry     = themeRegistry;
         this.roomRegistry      = roomRegistry;
         this.scheduler         = scheduler;
+        this.difficulty        = difficulty;
         this.logger            = logger;
         this.layoutPlanner     = new LayoutPlanner(dungeonConfig, roomRegistry, logger);
         this.corridorRouter    = new CorridorRouter(dungeonConfig, logger);
@@ -144,6 +147,9 @@ public final class DungeonGenerator implements IDungeonGenerator {
             return null;
         }
 
+        // Dungeon level drives its size: level 1 is small, level 4 is large.
+        final int level = difficulty.level(request.getDifficultyId());
+
         for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
             logger.debug("Generation attempt " + attempt + "/" + MAX_RETRIES
                     + " for instance " + instanceId);
@@ -152,11 +158,13 @@ public final class DungeonGenerator implements IDungeonGenerator {
             // the upper bound, overflowing MAX+1 to MIN and throwing on every
             // attempt (which fails all generation).
             final long seed = java.util.concurrent.ThreadLocalRandom.current().nextInt();
-            final RoomGraph graph = layoutPlanner.plan(world, theme, seed);
+            final RoomGraph graph = layoutPlanner.plan(world, theme, seed, level);
             corridorRouter.route(graph);
 
             if (validator.validate(graph)) {
                 final long elapsed = System.currentTimeMillis() - startMs;
+                logger.info("Layout OK [connectivity-model v2]: " + graph.getRoomCount()
+                        + " rooms, level " + level + ", all reachable from spawn.");
                 return new GenerationResult(instanceId, graph, theme, elapsed);
             }
             logger.debug("Layout invalid on attempt " + attempt + ", retrying...");

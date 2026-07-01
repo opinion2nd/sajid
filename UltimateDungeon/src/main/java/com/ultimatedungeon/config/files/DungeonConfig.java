@@ -24,6 +24,7 @@ public final class DungeonConfig {
     private final double eventChance;
     private final int  maxConcurrentInstances;
     private final int  rewardRoomTimeoutSeconds;
+    private final int  waveResetSeconds;
     private final Map<RoomType, Integer> roomWeights;
     private final HazardSettings hazardSettings;
     private final DynamicEventSettings dynamicEventSettings;
@@ -40,6 +41,7 @@ public final class DungeonConfig {
         eventChance              = cfg.getDouble("generation.event-chance", 0.2);
         maxConcurrentInstances   = cfg.getInt("max-concurrent-instances", 10);
         rewardRoomTimeoutSeconds = cfg.getInt("reward-room-timeout", 300);
+        waveResetSeconds         = cfg.getInt("wave-reset-seconds", 60);
 
         roomWeights = new EnumMap<>(RoomType.class);
         final ConfigurationSection weightsSection = cfg.getConfigurationSection("room-weights");
@@ -73,6 +75,7 @@ public final class DungeonConfig {
     public double getEventChance()               { return eventChance; }
     public int    getMaxConcurrentInstances()    { return maxConcurrentInstances; }
     public int    getRewardRoomTimeoutSeconds()  { return rewardRoomTimeoutSeconds; }
+    public int    getWaveResetSeconds()          { return waveResetSeconds; }
     @NotNull public Map<RoomType, Integer> getRoomWeights() { return roomWeights; }
     public int    getRoomWeight(@NotNull final RoomType type) {
         return roomWeights.getOrDefault(type, 0);

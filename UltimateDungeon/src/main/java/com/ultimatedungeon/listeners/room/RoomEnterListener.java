@@ -55,6 +55,8 @@ public final class RoomEnterListener implements Listener {
     private final DynamicEventEngine dynamicEventEngine;
     private final RewardDistributor rewardDistributor;
     private final DifficultyService difficulty;
+    private final com.ultimatedungeon.dungeon.lifecycle.WaveResetManager waveResets;
+    private final int waveResetSeconds;
 
     private final Map<UUID, String> currentRoom = new ConcurrentHashMap<>();
 
@@ -67,7 +69,9 @@ public final class RoomEnterListener implements Listener {
                              @NotNull final ArenaCountdownManager arenaCountdown,
                              @NotNull final DynamicEventEngine dynamicEventEngine,
                              @NotNull final RewardDistributor rewardDistributor,
-                             @NotNull final DifficultyService difficulty) {
+                             @NotNull final DifficultyService difficulty,
+                             @NotNull final com.ultimatedungeon.dungeon.lifecycle.WaveResetManager waveResets,
+                             final int waveResetSeconds) {
         this.instanceManager = instanceManager;
         this.waveManager = waveManager;
         this.trapEngine = trapEngine;
@@ -78,6 +82,8 @@ public final class RoomEnterListener implements Listener {
         this.dynamicEventEngine = dynamicEventEngine;
         this.rewardDistributor = rewardDistributor;
         this.difficulty = difficulty;
+        this.waveResets = waveResets;
+        this.waveResetSeconds = waveResetSeconds;
     }
 
     /** Waves grow with the dungeon level: level 1 → 2 waves, level 4 → 5 waves. */
@@ -104,12 +110,16 @@ public final class RoomEnterListener implements Listener {
         currentRoom.put(player.getUniqueId(), room.getRoomId());
 
         if (room.isEntered()) {
-            // Re-entering a combat room that has already been beaten: tell the
-            // player it is done rather than silently doing nothing — waves never
-            // respawn in a cleared room.
+            // Re-entering a cleared wave room: show how long until it re-arms.
             if (room.isCleared() && isWaveRoom(room.getType())) {
-                MiniMessageUtil.send(player,
-                        "<green>✔ This room is already cleared — the wave is complete.");
+                if (waveResets.isCoolingDown(room)) {
+                    MiniMessageUtil.send(player,
+                            "<gray>Wave complete — this room resets in <yellow>"
+                                    + waveResets.remainingSeconds(room) + "s<gray>.");
+                } else {
+                    MiniMessageUtil.send(player,
+                            "<green>✔ Wave complete in this room.");
+                }
             }
             return;
         }
@@ -133,7 +143,7 @@ public final class RoomEnterListener implements Listener {
             case COMBAT, ELITE_COMBAT, MINI_BOSS -> {
                 if (!monsters.isEmpty()) {
                     waveManager.start(id, room, monsters, waveCount(level), perWave(level),
-                            difficultyId, () -> onWaveRoomCleared(room));
+                            difficultyId, () -> onWaveRoomCleared(id, room));
                 }
             }
             case EVENT -> {
@@ -141,7 +151,7 @@ public final class RoomEnterListener implements Listener {
                 final boolean fired = dynamicEventEngine.trigger(id, room, inRoom, monsters, difficultyId);
                 if (!fired && !monsters.isEmpty()) {
                     waveManager.start(id, room, monsters, waveCount(level), perWave(level),
-                            difficultyId, () -> onWaveRoomCleared(room));
+                            difficultyId, () -> onWaveRoomCleared(id, room));
                 }
             }
             case SECRET -> discoverSecret(room);
@@ -174,8 +184,8 @@ public final class RoomEnterListener implements Listener {
         }
     }
 
-    /** Fires when a wave room's final wave is cleared: reward + announce to occupants. */
-    private void onWaveRoomCleared(@NotNull final RoomData room) {
+    /** Fires when a wave room's final wave is cleared: reward, announce, start reset cooldown. */
+    private void onWaveRoomCleared(@NotNull final UUID instanceId, @NotNull final RoomData room) {
         room.setCleared();
         final List<Player> inRoom = playersInRoom(room);
         for (final Player p : inRoom) {
@@ -185,6 +195,8 @@ public final class RoomEnterListener implements Listener {
         if (!inRoom.isEmpty()) {
             rewardDistributor.distributeAll(inRoom, RewardEvent.WAVE_COMPLETION);
         }
+        // Arm the reset timer + countdown hologram; the room re-runs after it lapses.
+        waveResets.startCooldown(instanceId, room, waveResetSeconds);
     }
 
     /** Grants secret-room loot to everyone inside and plays a discovery flourish. */

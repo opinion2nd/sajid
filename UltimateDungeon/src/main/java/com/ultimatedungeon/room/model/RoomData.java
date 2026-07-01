@@ -105,4 +105,6 @@ public final class RoomData {
     public boolean           isEntered()  { return entered; }
     public void              setCleared() { this.cleared = true; }
     public void              setEntered() { this.entered = true; }
+    /** Clears the entered/cleared flags so a wave room can be run again after its reset. */
+    public void              reset()      { this.entered = false; this.cleared = false; }
 }

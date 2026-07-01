@@ -77,12 +77,17 @@ public final class LayoutPlanner {
     public RoomGraph plan(
             @NotNull final org.bukkit.World world,
             @NotNull final ThemeDefinition  theme,
-            final long                      seed
+            final long                      seed,
+            final int                       level
     ) {
-        final int targetRooms = RandomUtil.randomInt(
-                dungeonConfig.getDungeonSizeMin(),
-                dungeonConfig.getDungeonSizeMax()
-        );
+        // Dungeon size scales with level: level 1 is small, level 4 is large.
+        // Clamped to the configured absolute min/max so config still bounds it.
+        final int lvl    = Math.max(1, level);
+        final int lvlMin = 5 + lvl * 2;                 // L1=7  L2=9  L3=11 L4=13
+        final int lvlMax = 8 + lvl * 3;                 // L1=11 L2=14 L3=17 L4=20
+        final int min    = Math.max(dungeonConfig.getDungeonSizeMin() - 5, lvlMin);
+        final int max    = Math.min(dungeonConfig.getDungeonSizeMax(), lvlMax);
+        final int targetRooms = RandomUtil.randomInt(Math.min(min, max), Math.max(min, max));
 
         logger.debug("LayoutPlanner: planning " + targetRooms + " rooms (seed=" + seed + ")");
 
@@ -195,9 +200,6 @@ public final class LayoutPlanner {
         if (roll < dungeonConfig.getEventChance()
                 && graph.getRoomsOfType(RoomType.EVENT).size() < 2)
             return RoomType.EVENT;
-        // One maze per dungeon for a proper explore-and-navigate section.
-        if (roll < 0.2 && graph.getRoomsOfType(RoomType.MAZE).isEmpty() && placed > 3)
-            return RoomType.MAZE;
 
         // Mid-game: inject elite and mini-boss
         if (placed > total / 2) {
