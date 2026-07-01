@@ -27,6 +27,7 @@ room-weights:
   TREASURE: 10
   PUZZLE: 10
   TRAP: 15
+  PARKOUR: 8
   SECRET: 5
   MERCHANT: 5
   EVENT: 8

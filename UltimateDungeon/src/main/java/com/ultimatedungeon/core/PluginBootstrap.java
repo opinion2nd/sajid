@@ -233,6 +233,7 @@ public final class PluginBootstrap {
         roomRegistry.register(new TreasureRoomTemplate());
         roomRegistry.register(new PuzzleRoomTemplate());
         roomRegistry.register(new TrapRoomTemplate());
+        roomRegistry.register(new ParkourRoomTemplate());
         roomRegistry.register(new SecretRoomTemplate());
         roomRegistry.register(new MerchantRoomTemplate());
         roomRegistry.register(new EventRoomTemplate());

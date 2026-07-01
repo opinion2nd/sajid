@@ -252,6 +252,9 @@ public final class LayoutPlanner {
         if (roll < dungeonConfig.getTrapFrequency()
                 && graph.getRoomsOfType(RoomType.TRAP).size() < 4)
             return RoomType.TRAP;
+        // One parkour challenge room per dungeon.
+        if (roll < 0.25 && graph.getRoomsOfType(RoomType.PARKOUR).isEmpty() && placed > 2)
+            return RoomType.PARKOUR;
         if (roll < dungeonConfig.getSecretRoomChance()
                 && graph.getRoomsOfType(RoomType.SECRET).isEmpty())
             return RoomType.SECRET;
