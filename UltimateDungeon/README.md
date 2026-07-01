@@ -8,8 +8,10 @@ configuration.
 
 ## Requirements
 
-- **Server:** Paper 1.21.x (Purpur, Pufferfish and Spigot also supported;
-  Folia is detected and degrades gracefully).
+- **Server:** **Bukkit, Spigot, Paper, Purpur, Pufferfish** on Minecraft
+  **1.21 – 1.21.11**. (Adventure/MiniMessage is bundled and relocated, so
+  formatting works even on plain Spigot/Bukkit.) Folia is detected but not yet
+  fully supported.
 - **Java:** 21+
 - **Optional:** [Vault](https://www.spigotmc.org/resources/vault.34315/) for
   money rewards (a no-op economy is used when Vault is absent).
