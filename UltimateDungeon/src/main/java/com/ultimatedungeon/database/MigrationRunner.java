@@ -166,7 +166,7 @@ public final class MigrationRunner {
             @NotNull final MigrationScript   script
     ) throws SQLException {
         logger.info("Applying migration: " + script.name());
-        final String sql = loadScript(script.name());
+        final String sql = adaptSql(loadScript(script.name()), conn);
 
         final boolean autoCommit = conn.getAutoCommit();
         conn.setAutoCommit(false);
@@ -183,6 +183,29 @@ public final class MigrationRunner {
         } finally {
             conn.setAutoCommit(autoCommit);
         }
+    }
+
+    /**
+     * Rewrites the engine-neutral schema into engine-specific DDL.
+     *
+     * <p>The {@code @AUTO_PK@} token stands for an auto-incrementing primary key,
+     * which has incompatible syntax across engines: SQLite requires
+     * {@code INTEGER PRIMARY KEY AUTOINCREMENT} while MySQL uses
+     * {@code BIGINT PRIMARY KEY AUTO_INCREMENT}.</p>
+     */
+    @NotNull
+    private String adaptSql(@NotNull final String sql, @NotNull final Connection conn) {
+        boolean sqlite = true;
+        try {
+            final String product = conn.getMetaData().getDatabaseProductName();
+            sqlite = product == null || product.toLowerCase().contains("sqlite");
+        } catch (final SQLException ignored) {
+            // Default to SQLite (the plugin's default engine) on metadata failure.
+        }
+        final String pk = sqlite
+                ? "INTEGER PRIMARY KEY AUTOINCREMENT"
+                : "BIGINT PRIMARY KEY AUTO_INCREMENT";
+        return sql.replace("@AUTO_PK@", pk);
     }
 
     /**

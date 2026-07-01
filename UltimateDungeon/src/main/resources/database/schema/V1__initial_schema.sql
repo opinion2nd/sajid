@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS ud_player_stats (
 );
 
 CREATE TABLE IF NOT EXISTS ud_dungeon_records (
-    id              BIGINT        NOT NULL PRIMARY KEY AUTOINCREMENT,
+    id              @AUTO_PK@,
     player_uuid     VARCHAR(36)   NOT NULL,
     theme           VARCHAR(32)   NOT NULL,
     difficulty      VARCHAR(32)   NOT NULL,
@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS ud_dungeon_records (
 );
 
 CREATE TABLE IF NOT EXISTS ud_reward_log (
-    id              BIGINT        NOT NULL PRIMARY KEY AUTOINCREMENT,
+    id              @AUTO_PK@,
     player_uuid     VARCHAR(36)   NOT NULL,
     reward_type     VARCHAR(32)   NOT NULL,
     reward_event    VARCHAR(32)   NOT NULL,
@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS ud_reward_log (
 );
 
 CREATE TABLE IF NOT EXISTS ud_party_log (
-    id              BIGINT        NOT NULL PRIMARY KEY AUTOINCREMENT,
+    id              @AUTO_PK@,
     leader_uuid     VARCHAR(36)   NOT NULL,
     member_uuids    TEXT          NOT NULL,
     dungeon_id      BIGINT                 DEFAULT NULL,
