@@ -13,7 +13,6 @@ import com.ultimatedungeon.room.model.RoomGraph;
 import com.ultimatedungeon.room.registry.RoomRegistry;
 import com.ultimatedungeon.theme.model.ThemeDefinition;
 import com.ultimatedungeon.theme.registry.ThemeRegistry;
-import com.ultimatedungeon.util.RandomUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.jetbrains.annotations.NotNull;
@@ -149,7 +148,10 @@ public final class DungeonGenerator implements IDungeonGenerator {
             logger.debug("Generation attempt " + attempt + "/" + MAX_RETRIES
                     + " for instance " + instanceId);
 
-            final long seed = RandomUtil.randomInt(Integer.MIN_VALUE, Integer.MAX_VALUE);
+            // Full-range int seed. Do NOT use randomInt(MIN, MAX): it adds 1 to
+            // the upper bound, overflowing MAX+1 to MIN and throwing on every
+            // attempt (which fails all generation).
+            final long seed = java.util.concurrent.ThreadLocalRandom.current().nextInt();
             final RoomGraph graph = layoutPlanner.plan(world, theme, seed);
             corridorRouter.route(graph);
 
