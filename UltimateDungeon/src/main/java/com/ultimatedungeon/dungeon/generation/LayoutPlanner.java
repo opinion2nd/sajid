@@ -7,7 +7,6 @@ import com.ultimatedungeon.room.model.RoomGraph;
 import com.ultimatedungeon.room.model.RoomType;
 import com.ultimatedungeon.room.registry.RoomRegistry;
 import com.ultimatedungeon.room.templates.AbstractRoomTemplate;
-import com.ultimatedungeon.theme.model.ThemeBlockPalette;
 import com.ultimatedungeon.theme.model.ThemeDefinition;
 import com.ultimatedungeon.util.RandomUtil;
 import org.bukkit.Location;
@@ -41,8 +40,15 @@ import java.util.UUID;
  */
 public final class LayoutPlanner {
 
-    /** Spacing between room bounding boxes — reserved for corridors. */
-    private static final int ROOM_SEPARATION = 5;
+    /**
+     * Fixed cell size on the layout grid. Every room is centred inside its own
+     * cell, so rooms can never overlap (as long as {@code CELL} exceeds the
+     * largest room) and every room centre lands on a uniform {@code CELL} grid —
+     * which keeps corridors perfectly axis-aligned between neighbours.
+     */
+    private static final int CELL = 32;
+    /** Ground level every room floor sits on. */
+    private static final int FLOOR_Y = 64;
 
     private final DungeonConfig dungeonConfig;
     private final RoomRegistry  roomRegistry;
@@ -84,9 +90,9 @@ public final class LayoutPlanner {
         final List<RoomData> placedRooms   = new ArrayList<>();
         final List<int[]>    occupiedGrid  = new ArrayList<>(); // [gridX, gridZ]
 
-        // ── Step 1: Place the spawn room at the origin ─────────────────────────
-        final Location spawnOrigin  = new Location(world, 0, 64, 0);
-        final RoomData spawnRoom    = placeRoom(RoomType.SPAWN, spawnOrigin);
+        // ── Step 1: Place the spawn room at grid origin ────────────────────────
+        final Location base = new Location(world, 0, FLOOR_Y, 0);
+        final RoomData spawnRoom = placeRoom(RoomType.SPAWN, world, base, 0, 0);
         graph.addRoom(spawnRoom);
         placedRooms.add(spawnRoom);
         occupiedGrid.add(new int[]{0, 0});
@@ -108,37 +114,30 @@ public final class LayoutPlanner {
             if (isGridOccupied(occupiedGrid, gx, gz)) continue;
 
             final RoomType type = pickRoomType(graph, placedRooms.size(), targetRooms);
-            final Location loc  = gridToWorld(world, spawnOrigin, gx, gz, parent, type);
-
-            final RoomData newRoom = placeRoom(type, loc);
+            final RoomData newRoom = placeRoom(type, world, base, gx, gz);
             graph.addRoom(newRoom);
             placedRooms.add(newRoom);
             occupiedGrid.add(new int[]{gx, gz});
         }
 
-        // ── Step 3: Guarantee required rooms ──────────────────────────────────
+        // ── Step 3: Guarantee required rooms in free, non-overlapping cells ────
         if (graph.getBossRoomId() == null) {
-            final RoomData last    = placedRooms.get(placedRooms.size() - 1);
-            final int[]    lastGrd = occupiedGrid.get(placedRooms.size() - 1);
-            final int[]    dir     = randomDirection();
-            final int      gx      = lastGrd[0] + dir[0];
-            final int      gz      = lastGrd[1] + dir[1];
-            final Location loc     = gridToWorld(world, spawnOrigin, gx, gz, last, RoomType.BOSS);
-            final RoomData bossRoom = placeRoom(RoomType.BOSS, loc);
+            final int[] cell = freeAdjacentCell(occupiedGrid);
+            final int gx = cell != null ? cell[0] : occupiedGrid.size();
+            final int gz = cell != null ? cell[1] : 0;
+            final RoomData bossRoom = placeRoom(RoomType.BOSS, world, base, gx, gz);
             graph.addRoom(bossRoom);
             placedRooms.add(bossRoom);
             occupiedGrid.add(new int[]{gx, gz});
         }
         if (graph.getRewardRoomId() == null) {
-            final RoomData boss    = graph.getBossRoom();
-            final int      bossIdx = placedRooms.indexOf(boss);
-            final int[]    bossGrd = bossIdx >= 0 ? occupiedGrid.get(bossIdx) : new int[]{0, 1};
-            final Location loc     = gridToWorld(world, spawnOrigin,
-                    bossGrd[0], bossGrd[1] + 1, boss, RoomType.REWARD);
-            final RoomData rewardRoom = placeRoom(RoomType.REWARD, loc);
+            final int[] cell = freeAdjacentCell(occupiedGrid);
+            final int gx = cell != null ? cell[0] : occupiedGrid.size();
+            final int gz = cell != null ? cell[1] : 1;
+            final RoomData rewardRoom = placeRoom(RoomType.REWARD, world, base, gx, gz);
             graph.addRoom(rewardRoom);
             placedRooms.add(rewardRoom);
-            occupiedGrid.add(new int[]{bossGrd[0], bossGrd[1] + 1});
+            occupiedGrid.add(new int[]{gx, gz});
         }
 
         logger.debug("LayoutPlanner: placed " + graph.getRoomCount() + " rooms.");
@@ -147,11 +146,23 @@ public final class LayoutPlanner {
 
     // ── Private helpers ───────────────────────────────────────────────────────
 
+    /**
+     * Creates a room of {@code type} centred inside grid cell {@code (gx, gz)}.
+     * Centring keeps every room's centre on the uniform {@code CELL} grid so
+     * corridors between neighbours are always straight and aligned.
+     */
     @NotNull
-    private RoomData placeRoom(@NotNull final RoomType type, @NotNull final Location origin) {
+    private RoomData placeRoom(@NotNull final RoomType type, @NotNull final org.bukkit.World world,
+                               @NotNull final Location base, final int gx, final int gz) {
         final var template = roomRegistry.selectForType(type);
-        final int w = template != null ? ((AbstractRoomTemplate) template).getWidth()  : 15;
-        final int d = template != null ? ((AbstractRoomTemplate) template).getDepth()  : 15;
+        final AbstractRoomTemplate at =
+                (template instanceof final AbstractRoomTemplate a) ? a : null;
+        final int w = at != null ? at.getWidth() : 15;
+        final int d = at != null ? at.getDepth() : 15;
+        final Location origin = new Location(world,
+                base.getBlockX() + (long) gx * CELL + (CELL - w) / 2.0,
+                FLOOR_Y,
+                base.getBlockZ() + (long) gz * CELL + (CELL - d) / 2.0);
         return new RoomData(
                 UUID.randomUUID().toString().substring(0, 8),
                 type, origin, w, 7, d);
@@ -205,25 +216,18 @@ public final class LayoutPlanner {
         return RoomType.COMBAT;
     }
 
-    /** Converts a grid cell to a world Location with room-size spacing. */
-    @NotNull
-    private Location gridToWorld(
-            @NotNull final org.bukkit.World world,
-            @NotNull final Location         spawnOrigin,
-            final int                       gx,
-            final int                       gz,
-            @NotNull final RoomData         parent,
-            @NotNull final RoomType         type
-    ) {
-        // Room size approximation — use average to space rooms cleanly
-        final int cellW = parent.getWidth()  + ROOM_SEPARATION;
-        final int cellD = parent.getDepth()  + ROOM_SEPARATION;
-        return new Location(
-                world,
-                spawnOrigin.getBlockX() + (long) gx * cellW,
-                64,
-                spawnOrigin.getBlockZ() + (long) gz * cellD
-        );
+    /** Finds a free cell adjacent to any already-placed room, or {@code null}. */
+    @org.jetbrains.annotations.Nullable
+    private int[] freeAdjacentCell(@NotNull final List<int[]> grid) {
+        final int[][] dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+        for (final int[] cell : grid) {
+            for (final int[] dir : dirs) {
+                final int nx = cell[0] + dir[0];
+                final int nz = cell[1] + dir[1];
+                if (!isGridOccupied(grid, nx, nz)) return new int[]{nx, nz};
+            }
+        }
+        return null;
     }
 
     /** Returns a random cardinal direction as [dx, dz]. */
