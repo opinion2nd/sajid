@@ -58,11 +58,25 @@ public final class DungeonLaunchService {
     public boolean launchSolo(@NotNull final Player player,
                               @NotNull final String themeId,
                               @NotNull final String difficultyId) {
-        if (!validate(player, themeId, difficultyId)) return false;
+        // The theme is fixed by the dungeon level (level 1 = first theme … level 5
+        // = fifth), so each level is a visually distinct dungeon.
+        final String theme = themeForLevel(difficultyId);
+        if (!validate(player, theme, difficultyId)) return false;
         cooldowns.setCooldown(player, ENTRY_COOLDOWN_KEY, ENTRY_COOLDOWN_MS);
         final DungeonGenerationRequest request = new DungeonGenerationRequest(
-                player.getUniqueId(), themeId, difficultyId, false, null);
+                player.getUniqueId(), theme, difficultyId, false, null);
         return launcher.launch(request, List.of(player));
+    }
+
+    /** Resolves the fixed theme id for the given difficulty's level. */
+    @NotNull
+    private String themeForLevel(@NotNull final String difficultyId) {
+        final java.util.List<com.ultimatedungeon.api.theme.ITheme> themes =
+                new java.util.ArrayList<>(themeRegistry.getAllThemes());
+        if (themes.isEmpty()) return "ancient_ruins";
+        final int level = difficultyService.level(difficultyId);
+        final int idx = Math.min(themes.size() - 1, Math.max(0, level - 1));
+        return themes.get(idx).getThemeId();
     }
 
     /** Validates and launches a party dungeon for a leader and members. */
@@ -80,7 +94,7 @@ public final class DungeonLaunchService {
         }
         members.forEach(m -> cooldowns.setCooldown(m, ENTRY_COOLDOWN_KEY, ENTRY_COOLDOWN_MS));
         final DungeonGenerationRequest request = new DungeonGenerationRequest(
-                leader.getUniqueId(), themeId, difficultyId, true, partyId);
+                leader.getUniqueId(), themeForLevel(difficultyId), difficultyId, true, partyId);
         return launcher.launch(request, List.copyOf(members));
     }
 
