@@ -125,7 +125,7 @@ public final class BossEngine {
         boss.setGlowing(true);
         boss.getPersistentDataContainer().set(bossKey, PersistentDataType.STRING, bossId);
 
-        final List<IBossAbility> abilities = buildAbilities(def);
+        final List<IBossAbility> abilities = buildAbilities(def, difficulty.damageMultiplier(difficultyId));
         final BossBarManager bar = new BossBarManager(
                 MiniMessageUtil.legacy(def.getDisplayName()), def.getBarColor(), def.getBarStyle());
         bar.show(arenaPlayers);
@@ -217,24 +217,26 @@ public final class BossEngine {
     }
 
     @NotNull
-    private List<IBossAbility> buildAbilities(@NotNull final BossDefinition def) {
+    private List<IBossAbility> buildAbilities(@NotNull final BossDefinition def, final double damageMult) {
         final List<IBossAbility> abilities = new ArrayList<>();
         int index = 0;
         for (final BossDefinition.AbilitySpec spec : def.getAbilities()) {
-            abilities.add(create(index++, spec));
+            abilities.add(create(index++, spec, Math.max(0.5, damageMult)));
         }
         return abilities;
     }
 
     @NotNull
-    private IBossAbility create(final int index, @NotNull final BossDefinition.AbilitySpec spec) {
+    private IBossAbility create(final int index, @NotNull final BossDefinition.AbilitySpec spec,
+                                final double damageMult) {
         final double range = spec.range() > 0 ? spec.range() : 8.0;
+        final double dmg = spec.damage() * damageMult;
         return switch (index % 5) {
-            case 0 -> new AreaDenialAbility(spec.id(), spec.damage(), spec.cooldownTicks(), range);
-            case 1 -> new ProjectileAbility(spec.id(), spec.damage(), spec.cooldownTicks(), range);
-            case 2 -> new SummonAbility(spec.id(), spec.damage(), spec.cooldownTicks(), range);
-            case 3 -> new MobilityAbility(spec.id(), spec.damage(), spec.cooldownTicks(), range);
-            default -> new EnvironmentAbility(spec.id(), spec.damage(), spec.cooldownTicks(), range);
+            case 0 -> new AreaDenialAbility(spec.id(), dmg, spec.cooldownTicks(), range);
+            case 1 -> new ProjectileAbility(spec.id(), dmg, spec.cooldownTicks(), range);
+            case 2 -> new SummonAbility(spec.id(), dmg, spec.cooldownTicks(), range);
+            case 3 -> new MobilityAbility(spec.id(), dmg, spec.cooldownTicks(), range);
+            default -> new EnvironmentAbility(spec.id(), dmg, spec.cooldownTicks(), range);
         };
     }
 
