@@ -5,16 +5,21 @@ import com.ultimatedungeon.boss.arena.ArenaCountdownManager;
 import com.ultimatedungeon.boss.arena.ArenaLockdownManager;
 import com.ultimatedungeon.boss.engine.BossEngine;
 import com.ultimatedungeon.boss.model.BossDefinition;
+import com.ultimatedungeon.dungeon.event.DynamicEventEngine;
 import com.ultimatedungeon.dungeon.instance.DungeonInstance;
 import com.ultimatedungeon.dungeon.instance.DungeonInstanceManager;
 import com.ultimatedungeon.monster.engine.WaveManager;
 import com.ultimatedungeon.puzzle.engine.PuzzleEngine;
 import com.ultimatedungeon.puzzle.puzzles.ColorSequencePuzzle;
+import com.ultimatedungeon.rewards.engine.RewardDistributor;
+import com.ultimatedungeon.rewards.model.RewardEvent;
 import com.ultimatedungeon.room.model.RoomData;
 import com.ultimatedungeon.room.model.RoomGraph;
 import com.ultimatedungeon.theme.model.ThemeDefinition;
 import com.ultimatedungeon.trap.engine.TrapEngine;
 import org.bukkit.Location;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -22,6 +27,7 @@ import org.bukkit.event.player.PlayerMoveEvent;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -46,6 +52,8 @@ public final class RoomEnterListener implements Listener {
     private final BossEngine bossEngine;
     private final ArenaLockdownManager arenaLockdown;
     private final ArenaCountdownManager arenaCountdown;
+    private final DynamicEventEngine dynamicEventEngine;
+    private final RewardDistributor rewardDistributor;
 
     private final Map<UUID, String> currentRoom = new ConcurrentHashMap<>();
 
@@ -55,7 +63,9 @@ public final class RoomEnterListener implements Listener {
                              @NotNull final PuzzleEngine puzzleEngine,
                              @NotNull final BossEngine bossEngine,
                              @NotNull final ArenaLockdownManager arenaLockdown,
-                             @NotNull final ArenaCountdownManager arenaCountdown) {
+                             @NotNull final ArenaCountdownManager arenaCountdown,
+                             @NotNull final DynamicEventEngine dynamicEventEngine,
+                             @NotNull final RewardDistributor rewardDistributor) {
         this.instanceManager = instanceManager;
         this.waveManager = waveManager;
         this.trapEngine = trapEngine;
@@ -63,6 +73,8 @@ public final class RoomEnterListener implements Listener {
         this.bossEngine = bossEngine;
         this.arenaLockdown = arenaLockdown;
         this.arenaCountdown = arenaCountdown;
+        this.dynamicEventEngine = dynamicEventEngine;
+        this.rewardDistributor = rewardDistributor;
     }
 
     @EventHandler
@@ -95,11 +107,19 @@ public final class RoomEnterListener implements Listener {
         final List<String> monsters = theme != null ? theme.getMonsterPool() : List.of();
 
         switch (room.getType()) {
-            case COMBAT, ELITE_COMBAT, MINI_BOSS, EVENT -> {
+            case COMBAT, ELITE_COMBAT, MINI_BOSS -> {
                 if (!monsters.isEmpty()) {
                     waveManager.start(id, room, monsters, WAVE_COUNT, PER_WAVE, difficulty, room::setCleared);
                 }
             }
+            case EVENT -> {
+                final List<Player> inRoom = playersInRoom(room);
+                final boolean fired = dynamicEventEngine.trigger(id, room, inRoom, monsters, difficulty);
+                if (!fired && !monsters.isEmpty()) {
+                    waveManager.start(id, room, monsters, WAVE_COUNT, PER_WAVE, difficulty, room::setCleared);
+                }
+            }
+            case SECRET -> discoverSecret(room);
             case TRAP -> trapEngine.placeInRoom(id, room, TRAPS_PER_ROOM, difficulty);
             case PUZZLE -> puzzleEngine.startPuzzle(id, new ColorSequencePuzzle(), room::setCleared);
             case BOSS -> {
@@ -119,8 +139,36 @@ public final class RoomEnterListener implements Listener {
                     bossEngine.spawnBoss(id, bossId, room.getCentre(), difficulty, world.getPlayers());
                 });
             }
-            default -> { /* spawn, treasure, merchant, secret, parkour, reward — no auto-activation */ }
+            default -> { /* spawn, treasure, merchant, parkour, reward — no auto-activation */ }
         }
+    }
+
+    /** Grants secret-room loot to everyone inside and plays a discovery flourish. */
+    private void discoverSecret(@NotNull final RoomData room) {
+        final List<Player> inRoom = playersInRoom(room);
+        if (!inRoom.isEmpty()) {
+            rewardDistributor.distributeAll(inRoom, RewardEvent.SECRET_ROOM);
+            for (final Player p : inRoom) {
+                p.playSound(p.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_CHIME, 1.0f, 1.2f);
+                if (p.getWorld() != null) {
+                    p.getWorld().spawnParticle(Particle.HAPPY_VILLAGER,
+                            p.getLocation().add(0, 1, 0), 20, 0.6, 0.8, 0.6, 0.1);
+                }
+            }
+        }
+        room.setCleared();
+    }
+
+    /** @return the players currently standing inside {@code room}. */
+    @NotNull
+    private List<Player> playersInRoom(@NotNull final RoomData room) {
+        final List<Player> result = new ArrayList<>();
+        final Location centre = room.getCentre();
+        if (centre.getWorld() == null) return result;
+        for (final Player p : centre.getWorld().getPlayers()) {
+            if (room.contains(p.getLocation())) result.add(p);
+        }
+        return result;
     }
 
     @Nullable

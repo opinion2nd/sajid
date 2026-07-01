@@ -1,5 +1,7 @@
 package com.ultimatedungeon.config.files;
 
+import com.ultimatedungeon.dungeon.event.DynamicEventSettings;
+import com.ultimatedungeon.dungeon.hazard.HazardSettings;
 import com.ultimatedungeon.room.model.RoomType;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -23,6 +25,8 @@ public final class DungeonConfig {
     private final int  maxConcurrentInstances;
     private final int  rewardRoomTimeoutSeconds;
     private final Map<RoomType, Integer> roomWeights;
+    private final HazardSettings hazardSettings;
+    private final DynamicEventSettings dynamicEventSettings;
 
     public DungeonConfig(@NotNull final FileConfiguration cfg) {
         dungeonSizeMin           = cfg.getInt("generation.dungeon-size.min", 12);
@@ -53,6 +57,9 @@ public final class DungeonConfig {
         for (final RoomType type : RoomType.values()) {
             roomWeights.putIfAbsent(type, 0);
         }
+
+        hazardSettings       = new HazardSettings(cfg.getConfigurationSection("hazards"));
+        dynamicEventSettings = new DynamicEventSettings(cfg.getConfigurationSection("dynamic-events"));
     }
 
     public int    getDungeonSizeMin()            { return dungeonSizeMin; }
@@ -70,4 +77,6 @@ public final class DungeonConfig {
     public int    getRoomWeight(@NotNull final RoomType type) {
         return roomWeights.getOrDefault(type, 0);
     }
+    @NotNull public HazardSettings       getHazardSettings()       { return hazardSettings; }
+    @NotNull public DynamicEventSettings getDynamicEventSettings() { return dynamicEventSettings; }
 }

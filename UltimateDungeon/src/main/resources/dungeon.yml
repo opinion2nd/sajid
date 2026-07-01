@@ -35,6 +35,58 @@ room-weights:
   BOSS: 1
   REWARD: 1
 
+# Ambient environmental hazards applied while players stand in a hazardous room.
+# A profile is applied on a repeating tick to every player inside a room whose
+# type is listed under room-hazards. All values are configurable.
+hazards:
+  enabled: true
+  tick-interval-ticks: 40
+  # Room type -> hazard profile id.
+  room-hazards:
+    TRAP: spikes
+    EVENT: miasma
+  profiles:
+    spikes:
+      damage: 2.0
+      potion-effect: SLOWNESS
+      effect-duration-ticks: 60
+      effect-amplifier: 0
+      particle: CRIT
+    miasma:
+      damage: 1.0
+      potion-effect: POISON
+      effect-duration-ticks: 100
+      effect-amplifier: 0
+      particle: WITCH
+
+# Dynamic events fired once when a player first enters an EVENT room. One event
+# is chosen at random, weighted by 'weight'. Types: AMBUSH, BLESSING, CURSE,
+# TREASURE. All parameters are configurable.
+dynamic-events:
+  enabled: true
+  events:
+    ambush:
+      weight: 30
+      type: AMBUSH
+      extra-waves: 1
+      per-wave: 5
+    blessing:
+      weight: 25
+      type: BLESSING
+      potion-effects: [SPEED, REGENERATION]
+      effect-duration-ticks: 600
+      effect-amplifier: 0
+    curse:
+      weight: 20
+      type: CURSE
+      potion-effects: [SLOWNESS, WEAKNESS]
+      effect-duration-ticks: 400
+      effect-amplifier: 0
+    treasure:
+      weight: 25
+      type: TREASURE
+      loot-table: treasure_room_loot
+
 # How many dungeon instances may be active simultaneously.
 max-concurrent-instances: 10
 

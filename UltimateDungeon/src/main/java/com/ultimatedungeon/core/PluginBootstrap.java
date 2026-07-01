@@ -120,6 +120,8 @@ public final class PluginBootstrap {
     private TrapEngine           trapEngine;
     private PuzzleEngine         puzzleEngine;
     private BossEngine           bossEngine;
+    private com.ultimatedungeon.dungeon.hazard.HazardEngine hazardEngine;
+    private com.ultimatedungeon.dungeon.event.DynamicEventEngine dynamicEventEngine;
     private ArenaLockdownManager arenaLockdown;
     private com.ultimatedungeon.boss.arena.ArenaCountdownManager arenaCountdown;
     private ArenaCleanupService  arenaCleanup;
@@ -324,6 +326,13 @@ public final class PluginBootstrap {
         puzzleEngine  = new PuzzleEngine(pluginLogger);
         bossEngine    = new BossEngine(plugin, configManager.getBossesConfig(), difficultyService, pluginLogger);
 
+        // Environmental hazards & dynamic events (config-driven)
+        hazardEngine = new com.ultimatedungeon.dungeon.hazard.HazardEngine(
+                configManager.getDungeonConfig().getHazardSettings());
+        dynamicEventEngine = new com.ultimatedungeon.dungeon.event.DynamicEventEngine(
+                configManager.getDungeonConfig().getDynamicEventSettings(),
+                waveManager, rewardRoomService, notificationService, pluginLogger);
+
         // Arena
         arenaLockdown = new ArenaLockdownManager(pluginLogger);
         arenaCountdown = new com.ultimatedungeon.boss.arena.ArenaCountdownManager(pluginScheduler, pluginLogger);
@@ -374,6 +383,11 @@ public final class PluginBootstrap {
         pluginScheduler.runSyncRepeating(new BossAITickTask(bossEngine, dungeonInstanceManager)::run, 20L, 10L);
         pluginScheduler.runSyncRepeating(new TrapTickTask(trapEngine, dungeonInstanceManager)::run, 20L, 20L);
         pluginScheduler.runSyncRepeating(new DungeonTickTask(waveManager, dungeonInstanceManager)::run, 20L, 20L);
+        if (hazardEngine.isActive()) {
+            pluginScheduler.runSyncRepeating(
+                    new com.ultimatedungeon.tasks.HazardTickTask(hazardEngine, dungeonInstanceManager)::run,
+                    20L, hazardEngine.getTickIntervalTicks());
+        }
 
         pluginLogger.info("Gameplay systems initialised.");
     }
@@ -425,7 +439,7 @@ public final class PluginBootstrap {
         // Gameplay activation & safety listeners
         pm.registerEvents(new com.ultimatedungeon.listeners.room.RoomEnterListener(
                 dungeonInstanceManager, waveManager, trapEngine, puzzleEngine, bossEngine,
-                arenaLockdown, arenaCountdown), plugin);
+                arenaLockdown, arenaCountdown, dynamicEventEngine, rewardDistributor), plugin);
         pm.registerEvents(new com.ultimatedungeon.listeners.trap.TrapTriggerListener(
                 trapEngine, dungeonInstanceManager), plugin);
         pm.registerEvents(new com.ultimatedungeon.listeners.player.PlayerDeathInDungeonListener(
