@@ -39,6 +39,9 @@ public final class MonsterEngine {
 
     private final Map<String, MonsterDefinition> definitions = new LinkedHashMap<>();
     private final Map<UUID, List<LivingEntity>> active = new ConcurrentHashMap<>();
+    /** Per-spawned-entity ability list, keyed by entity UUID. */
+    private final Map<UUID, List<com.ultimatedungeon.monster.abilities.ConfiguredMonsterAbility>> entityAbilities
+            = new ConcurrentHashMap<>();
 
     public MonsterEngine(@NotNull final MonstersConfig config,
                          @NotNull final MonsterSpawner spawner,
@@ -84,6 +87,13 @@ public final class MonsterEngine {
         final LivingEntity entity = spawner.spawn(def, scaler.scale(def, preset), location);
         if (entity != null) {
             active.computeIfAbsent(instanceId, k -> new CopyOnWriteArrayList<>()).add(entity);
+            if (!def.getAbilities().isEmpty()) {
+                final List<com.ultimatedungeon.monster.abilities.ConfiguredMonsterAbility> abs = new ArrayList<>();
+                for (final MonsterDefinition.AbilitySpec spec : def.getAbilities()) {
+                    abs.add(new com.ultimatedungeon.monster.abilities.ConfiguredMonsterAbility(spec));
+                }
+                entityAbilities.put(entity.getUniqueId(), abs);
+            }
         }
         return entity;
     }
@@ -103,12 +113,41 @@ public final class MonsterEngine {
         return spawned;
     }
 
-    /** Runs an AI tick for every monster in the instance and prunes dead ones. */
+    /** Runs an AI tick for every monster in the instance, fires abilities, prunes dead ones. */
     public void tick(@NotNull final UUID instanceId) {
         final List<LivingEntity> list = active.get(instanceId);
         if (list == null || list.isEmpty()) return;
-        list.removeIf(e -> e == null || e.isDead() || !e.isValid());
+
+        final List<LivingEntity> dead = new ArrayList<>();
+        for (final LivingEntity e : list) {
+            if (e == null || e.isDead() || !e.isValid()) dead.add(e);
+        }
+        if (!dead.isEmpty()) {
+            list.removeAll(dead);
+            for (final LivingEntity e : dead) if (e != null) entityAbilities.remove(e.getUniqueId());
+        }
+
         ai.tick(list);
+
+        // Fire one ready ability per monster while a player is engaged nearby.
+        for (final LivingEntity e : list) {
+            final List<com.ultimatedungeon.monster.abilities.ConfiguredMonsterAbility> abs =
+                    entityAbilities.get(e.getUniqueId());
+            if (abs == null || abs.isEmpty() || !playerNear(e, 20.0)) continue;
+            for (final com.ultimatedungeon.monster.abilities.ConfiguredMonsterAbility a : abs) {
+                if (a.isReady()) { a.activate(e); break; }
+            }
+        }
+    }
+
+    private boolean playerNear(@NotNull final LivingEntity monster, final double range) {
+        if (monster.getWorld() == null) return false;
+        final double rSq = range * range;
+        for (final org.bukkit.entity.Player p : monster.getWorld().getPlayers()) {
+            if (p.getGameMode() == org.bukkit.GameMode.SPECTATOR) continue;
+            if (p.getLocation().distanceSquared(monster.getLocation()) <= rSq) return true;
+        }
+        return false;
     }
 
     public int aliveCount(@NotNull final UUID instanceId) {
@@ -128,6 +167,7 @@ public final class MonsterEngine {
         if (list == null) return;
         for (final LivingEntity e : list) {
             if (e != null && !e.isDead()) e.remove();
+            if (e != null) entityAbilities.remove(e.getUniqueId());
         }
     }
 }
