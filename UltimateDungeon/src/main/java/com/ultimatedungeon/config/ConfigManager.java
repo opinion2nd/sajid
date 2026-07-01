@@ -45,6 +45,7 @@ public final class ConfigManager {
     private static final String FILE_THEMES      = "themes.yml";
     private static final String FILE_BOSSES      = "bosses.yml";
     private static final String FILE_MONSTERS    = "monsters.yml";
+    private static final String FILE_WAVES       = "waves.yml";
     private static final String FILE_TRAPS       = "traps.yml";
     private static final String FILE_REWARDS     = "rewards.yml";
     private static final String FILE_LOOT        = "loot.yml";
@@ -56,7 +57,7 @@ public final class ConfigManager {
 
     private static final List<String> ALL_FILES = List.of(
             FILE_MAIN, FILE_MESSAGES, FILE_DUNGEON, FILE_THEMES,
-            FILE_BOSSES, FILE_MONSTERS, FILE_TRAPS, FILE_REWARDS,
+            FILE_BOSSES, FILE_MONSTERS, FILE_WAVES, FILE_TRAPS, FILE_REWARDS,
             FILE_LOOT, FILE_GUI, FILE_PARTY, FILE_DIFFICULTY,
             FILE_DATABASE, FILE_PERFORMANCE
     );
@@ -74,6 +75,7 @@ public final class ConfigManager {
     private ThemesConfig      themesConfig;
     private BossesConfig      bossesConfig;
     private MonstersConfig    monstersConfig;
+    private com.ultimatedungeon.config.files.WavesConfig wavesConfig;
     private TrapsConfig       trapsConfig;
     private RewardsConfig     rewardsConfig;
     private LootConfig        lootConfig;
@@ -134,6 +136,7 @@ public final class ConfigManager {
     @NotNull public ThemesConfig      getThemesConfig()      { return themesConfig; }
     @NotNull public BossesConfig      getBossesConfig()      { return bossesConfig; }
     @NotNull public MonstersConfig    getMonstersConfig()    { return monstersConfig; }
+    @NotNull public com.ultimatedungeon.config.files.WavesConfig getWavesConfig() { return wavesConfig; }
     @NotNull public TrapsConfig       getTrapsConfig()       { return trapsConfig; }
     @NotNull public RewardsConfig     getRewardsConfig()     { return rewardsConfig; }
     @NotNull public LootConfig        getLootConfig()        { return lootConfig; }
@@ -152,6 +155,7 @@ public final class ConfigManager {
         final FileConfiguration themesRaw      = load(FILE_THEMES);
         final FileConfiguration bossesRaw      = load(FILE_BOSSES);
         final FileConfiguration monstersRaw    = load(FILE_MONSTERS);
+        final FileConfiguration wavesRaw       = load(FILE_WAVES);
         final FileConfiguration trapsRaw       = load(FILE_TRAPS);
         final FileConfiguration rewardsRaw     = load(FILE_REWARDS);
         final FileConfiguration lootRaw        = load(FILE_LOOT);
@@ -167,6 +171,7 @@ public final class ConfigManager {
         themesConfig      = new ThemesConfig(themesRaw);
         bossesConfig      = new BossesConfig(bossesRaw);
         monstersConfig    = new MonstersConfig(monstersRaw);
+        wavesConfig       = new com.ultimatedungeon.config.files.WavesConfig(wavesRaw);
         trapsConfig       = new TrapsConfig(trapsRaw);
         rewardsConfig     = new RewardsConfig(rewardsRaw);
         lootConfig        = new LootConfig(lootRaw);

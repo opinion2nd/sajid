@@ -96,11 +96,6 @@ public final class RoomEnterListener implements Listener {
         this.countdown = countdown;
     }
 
-    /** Every wave room runs exactly 5 waves. */
-    private int waveCount(final int level) { return 5; }
-    /** Monsters per wave grow with level, so higher levels are harder. */
-    private int perWave(final int level)   { return 3 + Math.max(1, level); }
-
     @EventHandler
     public void onMove(@NotNull final PlayerMoveEvent event) {
         final Location to = event.getTo();
@@ -152,16 +147,13 @@ public final class RoomEnterListener implements Listener {
         final UUID id = instance.getInstanceId();
         final String difficultyId = instance.getContext().getRequest().getDifficultyId();
         final int level = difficulty.level(difficultyId);
-        final ThemeDefinition theme = instance.getTheme();
-        final List<String> monsters = theme != null ? theme.getMonsterPool() : List.of();
 
         switch (room.getType()) {
             case EVENT -> {
                 final List<Player> inRoom = playersInRoom(room);
-                final boolean fired = dynamicEventEngine.trigger(id, room, inRoom, monsters, difficultyId);
-                if (!fired && !monsters.isEmpty()) {
-                    waveManager.start(id, room, monsters, waveCount(level), perWave(level),
-                            difficultyId, () -> onWaveRoomCleared(id, room));
+                final boolean fired = dynamicEventEngine.trigger(id, room, inRoom, level);
+                if (!fired) {
+                    waveManager.start(id, room, level, () -> onWaveRoomCleared(id, room));
                 }
             }
             case SECRET -> discoverSecret(room);
@@ -200,13 +192,7 @@ public final class RoomEnterListener implements Listener {
                 bossEngine.spawnBoss(id, bossId, spot, difficultyId, arena);
             }
         } else {
-            final List<String> monsters = theme != null ? theme.getMonsterPool() : List.of();
-            if (!monsters.isEmpty()) {
-                waveManager.start(id, room, monsters, waveCount(level), perWave(level),
-                        difficultyId, () -> onWaveRoomCleared(id, room));
-            } else {
-                onWaveRoomCleared(id, room); // nothing to fight — just open it
-            }
+            waveManager.start(id, room, level, () -> onWaveRoomCleared(id, room));
         }
     }
 

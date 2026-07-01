@@ -1,0 +1,39 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# UltimateDungeon  |  waves.yml
+# Monster waves for combat rooms. Replaces the old per-monster definitions:
+# each wave room spawns 'waves-per-room' waves of MIXED vanilla mobs drawn from
+# the roster of the dungeon's level, scaled harder as the level rises.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+config-version: 1
+
+# How many waves each combat room runs.
+waves-per-room: 5
+# Monsters in the first wave; each later wave adds 'per-wave-growth' more.
+base-per-wave: 4
+per-wave-growth: 1
+
+# Per dungeon level (1-5). 'mobs' is the mixed roster a wave draws from; each
+# wave randomly fields a blend of them. health-multiplier and damage scale the
+# spawned mobs so higher levels are genuinely harder.
+levels:
+  1:
+    mobs: [ZOMBIE, SKELETON, SPIDER]
+    health-multiplier: 1.0
+    damage: 3.0
+  2:
+    mobs: [ZOMBIE, SKELETON, SPIDER, HUSK, STRAY]
+    health-multiplier: 1.4
+    damage: 4.0
+  3:
+    mobs: [HUSK, STRAY, CAVE_SPIDER, WITCH, DROWNED]
+    health-multiplier: 1.9
+    damage: 5.5
+  4:
+    mobs: [WITHER_SKELETON, PILLAGER, VINDICATOR, BLAZE, HUSK]
+    health-multiplier: 2.5
+    damage: 7.0
+  5:
+    mobs: [WITHER_SKELETON, PIGLIN_BRUTE, VINDICATOR, RAVAGER, BLAZE]
+    health-multiplier: 3.2
+    damage: 9.0

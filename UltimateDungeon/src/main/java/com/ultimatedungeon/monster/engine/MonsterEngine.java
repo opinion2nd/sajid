@@ -98,6 +98,31 @@ public final class MonsterEngine {
         return entity;
     }
 
+    /**
+     * Spawns one plain (config-driven) wave monster of a vanilla type, scaled by
+     * the level's health multiplier, and tracks it for wave/alive counting.
+     */
+    @Nullable
+    public LivingEntity spawnWaveMob(@NotNull final UUID instanceId,
+                                     @NotNull final org.bukkit.entity.EntityType type,
+                                     final double healthMultiplier, @NotNull final Location location) {
+        if (location.getWorld() == null) return null;
+        final Class<? extends org.bukkit.entity.Entity> cls = type.getEntityClass();
+        if (cls == null || !LivingEntity.class.isAssignableFrom(cls)) return null;
+        final org.bukkit.entity.Entity raw = location.getWorld().spawnEntity(location, type);
+        if (!(raw instanceof final LivingEntity living)) {
+            raw.remove();
+            return null;
+        }
+        final double base = living.getMaxHealth();
+        final double scaled = Math.max(1.0, base * Math.max(0.1, healthMultiplier));
+        living.setMaxHealth(scaled);
+        living.setHealth(scaled);
+        living.setRemoveWhenFarAway(false);
+        active.computeIfAbsent(instanceId, k -> new CopyOnWriteArrayList<>()).add(living);
+        return living;
+    }
+
     /** Spawns a group of monsters scattered around a centre point. */
     @NotNull
     public List<LivingEntity> spawnGroup(@NotNull final UUID instanceId, @NotNull final List<String> monsterIds,

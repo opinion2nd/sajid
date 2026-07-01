@@ -326,7 +326,7 @@ public final class PluginBootstrap {
         final MonsterSpawner spawner = new MonsterSpawner(plugin, pluginLogger);
         monsterEngine = new MonsterEngine(configManager.getMonstersConfig(), spawner,
                 new MonsterScaler(), difficultyService, pluginLogger);
-        waveManager   = new WaveManager(monsterEngine, pluginLogger);
+        waveManager   = new WaveManager(monsterEngine, configManager.getWavesConfig(), pluginLogger);
         trapEngine    = new TrapEngine(configManager.getTrapsConfig(), difficultyService, pluginLogger);
         puzzleEngine  = new PuzzleEngine(pluginLogger);
         bossEngine    = new BossEngine(plugin, configManager.getBossesConfig(), difficultyService, pluginLogger);

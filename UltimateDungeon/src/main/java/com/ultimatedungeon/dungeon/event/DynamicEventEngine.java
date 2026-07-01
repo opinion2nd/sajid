@@ -50,15 +50,14 @@ public final class DynamicEventEngine {
      *         should fall back to its default combat behaviour.
      */
     public boolean trigger(@NotNull final UUID instanceId, @NotNull final RoomData room,
-                           @NotNull final List<Player> players, @NotNull final List<String> monsterPool,
-                           @NotNull final String difficultyId) {
+                           @NotNull final List<Player> players, final int level) {
         if (!settings.isEnabled() || !settings.hasEvents() || settings.getTotalWeight() <= 0) return false;
         final DynamicEventSpec spec = pick();
         if (spec == null) return false;
 
         logger.debug("Dynamic event '" + spec.id() + "' (" + spec.kind() + ") firing in room " + room.getRoomId());
         switch (spec.kind()) {
-            case AMBUSH   -> ambush(instanceId, room, monsterPool, difficultyId, spec, players);
+            case AMBUSH   -> ambush(instanceId, room, level, players);
             case BLESSING -> applyEffects(players, spec, "<green><bold>Blessing", "<gray>Fortune favours you.");
             case CURSE    -> applyEffects(players, spec, "<dark_red><bold>Curse", "<gray>A dark aura clings to you.");
             case TREASURE -> treasure(room, players, spec);
@@ -76,14 +75,12 @@ public final class DynamicEventEngine {
     }
 
     private void ambush(@NotNull final UUID instanceId, @NotNull final RoomData room,
-                        @NotNull final List<String> monsterPool, @NotNull final String difficultyId,
-                        @NotNull final DynamicEventSpec spec, @NotNull final List<Player> players) {
+                        final int level, @NotNull final List<Player> players) {
         for (final Player p : players) {
             notifications.title(p, "<red><bold>Ambush!", "<gray>Enemies close in.");
             notifications.sound(p, Sound.ENTITY_ENDERMAN_SCREAM, 1.0f, 0.7f);
         }
-        waveManager.start(instanceId, room, monsterPool,
-                Math.max(1, spec.extraWaves()), Math.max(1, spec.perWave()), difficultyId, room::setCleared);
+        waveManager.start(instanceId, room, level, room::setCleared);
     }
 
     private void applyEffects(@NotNull final List<Player> players, @NotNull final DynamicEventSpec spec,
