@@ -184,6 +184,9 @@ public final class LayoutPlanner {
         if (roll < dungeonConfig.getEventChance()
                 && graph.getRoomsOfType(RoomType.EVENT).size() < 2)
             return RoomType.EVENT;
+        // One maze per dungeon for a proper explore-and-navigate section.
+        if (roll < 0.2 && graph.getRoomsOfType(RoomType.MAZE).isEmpty() && placed > 3)
+            return RoomType.MAZE;
 
         // Mid-game: inject elite and mini-boss
         if (placed > total / 2) {

@@ -237,6 +237,7 @@ public final class PluginBootstrap {
         roomRegistry.register(new MiniBossRoomTemplate());
         roomRegistry.register(new BossRoomTemplate());
         roomRegistry.register(new RewardRoomTemplate());
+        roomRegistry.register(new com.ultimatedungeon.room.templates.MazeRoomTemplate());
         serviceRegistry.register(RoomRegistry.class, roomRegistry);
         pluginLogger.info("Room templates registered: " + roomRegistry.getTemplateCount());
 

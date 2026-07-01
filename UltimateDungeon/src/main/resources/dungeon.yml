@@ -34,6 +34,7 @@ room-weights:
   MINI_BOSS: 3
   BOSS: 1
   REWARD: 1
+  MAZE: 4
 
 # Ambient environmental hazards applied while players stand in a hazardous room.
 # A profile is applied on a repeating tick to every player inside a room whose

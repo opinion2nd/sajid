@@ -125,7 +125,10 @@ public abstract class AbstractRoomTemplate implements IRoomTemplate {
                     if (y == 0) {
                         mat = palette.getFloor();
                     } else if (y == h - 1) {
-                        mat = palette.getCeiling();
+                        // Dungeon worlds are pitch black — inlay ceiling lights on
+                        // a grid so every room is naturally lit.
+                        mat = (x > 0 && z > 0 && x % 4 == 2 && z % 4 == 2)
+                                ? Material.GLOWSTONE : palette.getCeiling();
                     } else if (x == 0 || x == w - 1 || z == 0 || z == d - 1) {
                         // Vary wall material slightly for visual interest
                         mat = ((x + z) % 5 == 0) ? palette.getAccent()

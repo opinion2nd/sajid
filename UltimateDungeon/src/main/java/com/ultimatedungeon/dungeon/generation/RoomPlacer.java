@@ -149,7 +149,11 @@ public final class RoomPlacer {
                             new org.bukkit.Location(world, x + dx, y + dy, z + dz);
                     final Material mat;
                     if (dy == 0)               mat = palette.getFloor();
-                    else if (dy == CORRIDOR_HEIGHT - 1) mat = palette.getCeiling();
+                    else if (dy == CORRIDOR_HEIGHT - 1) {
+                        // Light the corridor ceiling periodically so it is walkable.
+                        mat = (dx == 0 && dz == 0 && (x + z) % 6 == 0)
+                                ? Material.GLOWSTONE : palette.getCeiling();
+                    }
                     else if (dx == -1 || dx == 1 || dz == -1 || dz == 1) mat = palette.getSecondary();
                     else                       mat = Material.AIR;
                     BlockUtil.setBlock(loc, mat);
