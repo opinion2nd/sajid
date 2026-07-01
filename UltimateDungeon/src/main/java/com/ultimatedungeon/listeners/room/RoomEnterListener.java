@@ -86,9 +86,9 @@ public final class RoomEnterListener implements Listener {
         this.waveResetSeconds = waveResetSeconds;
     }
 
-    /** Waves grow with the dungeon level: level 1 → 2 waves, level 4 → 5 waves. */
-    private int waveCount(final int level) { return 1 + Math.max(1, level); }
-    /** Monsters per wave grow with level: level 1 → 4, level 4 → 7. */
+    /** Every wave room runs exactly 5 waves. */
+    private int waveCount(final int level) { return 5; }
+    /** Monsters per wave grow with level, so higher levels are harder. */
     private int perWave(final int level)   { return 3 + Math.max(1, level); }
 
     @EventHandler
@@ -196,8 +196,7 @@ public final class RoomEnterListener implements Listener {
         if (!inRoom.isEmpty()) {
             rewardDistributor.distributeAll(inRoom, RewardEvent.WAVE_COMPLETION);
         }
-        // Arm the reset timer + countdown hologram; the room re-runs after it lapses.
-        waveResets.startCooldown(instanceId, room, waveResetSeconds);
+        // Once cleared the room stays cleared — waves never respawn on re-entry.
     }
 
     /** Grants secret-room loot to everyone inside and plays a discovery flourish. */

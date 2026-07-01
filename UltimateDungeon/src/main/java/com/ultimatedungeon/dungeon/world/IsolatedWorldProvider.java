@@ -27,6 +27,18 @@ public final class IsolatedWorldProvider {
     private static final class VoidChunkGenerator extends ChunkGenerator {
         // Intentionally empty: the base implementation generates no blocks,
         // which yields a void world across all supported platforms.
+
+        /**
+         * Give the server a fixed spawn so it does not scan the empty world for a
+         * "safe" spawn. That scan loads chunks endlessly in a blockless world and
+         * hangs the main thread for 20+ seconds during world creation — the freeze
+         * that was breaking every dungeon launch.
+         */
+        @Override
+        public org.bukkit.Location getFixedSpawnLocation(@NotNull final World world,
+                                                         @NotNull final java.util.Random random) {
+            return new org.bukkit.Location(world, 0, 64, 0);
+        }
     }
 
     private final PluginLogger logger;

@@ -26,7 +26,6 @@ room-weights:
   ELITE_COMBAT: 15
   TREASURE: 10
   PUZZLE: 10
-  PARKOUR: 8
   TRAP: 15
   SECRET: 5
   MERCHANT: 5

@@ -111,8 +111,10 @@ public final class WaveManager {
     private void spawnWave(@NotNull final UUID instanceId, @NotNull final WaveSession session) {
         session.currentWave++;
         final List<String> ids = new ArrayList<>();
+        // Offset the pool by the wave number so each wave fields a different mix
+        // of monsters rather than repeating the same set every time.
         for (int i = 0; i < session.perWave; i++) {
-            ids.add(session.pool.get(i % session.pool.size()));
+            ids.add(session.pool.get((i + session.currentWave) % session.pool.size()));
         }
         session.currentMonsters.clear();
         session.currentMonsters.addAll(
