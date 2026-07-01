@@ -1,0 +1,91 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# UltimateDungeon  |  traps.yml
+# Trap definitions — damage, cooldowns, trigger types, and difficulty scaling.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+config-version: 1
+
+traps:
+  SpikeTrap:
+    display-name: "Spike Trap"
+    trigger-type: PLAYER_MOVEMENT
+    base-damage: 4.0
+    cooldown-ticks: 60
+    trigger-radius: 1.0
+    activation-delay-ticks: 5
+    knockback: 0.5
+    status-effects: []
+
+  ArrowLauncherTrap:
+    display-name: "Arrow Launcher"
+    trigger-type: TIMED
+    base-damage: 3.0
+    cooldown-ticks: 40
+    trigger-radius: 0
+    activation-delay-ticks: 0
+    knockback: 0.2
+    status-effects: []
+
+  PoisonAreaTrap:
+    display-name: "Poison Cloud"
+    trigger-type: PLAYER_MOVEMENT
+    base-damage: 1.0
+    cooldown-ticks: 20
+    trigger-radius: 2.0
+    activation-delay-ticks: 0
+    knockback: 0.0
+    status-effects:
+      - effect: POISON
+        duration-ticks: 100
+        amplifier: 0
+
+  FallingBlockTrap:
+    display-name: "Falling Block"
+    trigger-type: PLAYER_MOVEMENT
+    base-damage: 6.0
+    cooldown-ticks: 100
+    trigger-radius: 2.0
+    activation-delay-ticks: 10
+    knockback: 0.2
+    status-effects: []
+
+  FireHazardTrap:
+    display-name: "Fire Jet"
+    trigger-type: PLAYER_MOVEMENT
+    base-damage: 3.0
+    cooldown-ticks: 80
+    trigger-radius: 2.0
+    activation-delay-ticks: 0
+    knockback: 0.0
+    status-effects: []
+
+  ExplosiveTrap:
+    display-name: "Explosive Rune"
+    trigger-type: PLAYER_MOVEMENT
+    base-damage: 8.0
+    cooldown-ticks: 120
+    trigger-radius: 2.5
+    activation-delay-ticks: 5
+    knockback: 1.0
+    status-effects: []
+
+  MovingObstacleTrap:
+    display-name: "Swinging Pillar"
+    trigger-type: TIMED
+    base-damage: 5.0
+    cooldown-ticks: 60
+    trigger-radius: 2.0
+    activation-delay-ticks: 0
+    knockback: 1.2
+    status-effects: []
+
+  HiddenTrap:
+    display-name: "Concealed Snare"
+    trigger-type: PLAYER_MOVEMENT
+    base-damage: 7.0
+    cooldown-ticks: 200
+    trigger-radius: 1.0
+    activation-delay-ticks: 0
+    knockback: 0.3
+    status-effects:
+      - { effect: SLOWNESS, duration-ticks: 80, amplifier: 1 }

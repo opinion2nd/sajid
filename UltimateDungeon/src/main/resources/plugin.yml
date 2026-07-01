@@ -1,0 +1,76 @@
+name: UltimateDungeon
+version: '${version}'
+main: com.ultimatedungeon.UltimateDungeon
+api-version: '1.21'
+description: Premium procedural dungeon plugin for Paper-based servers.
+authors:
+  - UltimateDungeon Team
+website: https://ultimatedungeon.com
+
+# ── Soft dependencies ─────────────────────────────────────────────────────────
+softdepend:
+  - Vault
+
+# ── Commands ──────────────────────────────────────────────────────────────────
+commands:
+  dungeon:
+    description: Main UltimateDungeon command.
+    usage: /dungeon [solo|party|leave|stats|reload|admin]
+    aliases:
+      - ud
+      - dungeons
+    permission: dungeon.use
+
+  party:
+    description: UltimateDungeon party management command.
+    usage: /party [create|invite|accept|deny|leave|kick|transfer|disband|list|chat]
+    aliases:
+      - dparty
+      - dp
+    permission: dungeon.party
+
+# ── Permissions ───────────────────────────────────────────────────────────────
+permissions:
+
+  # Top-level wildcard
+  dungeon.*:
+    description: Grants all UltimateDungeon permissions.
+    default: op
+    children:
+      dungeon.use: true
+      dungeon.party: true
+      dungeon.stats: true
+      dungeon.admin: true
+      dungeon.reload: true
+      dungeon.debug: true
+      dungeon.bypass: true
+
+  # Player permissions
+  dungeon.use:
+    description: Allows access to dungeon commands and GUI.
+    default: true
+
+  dungeon.party:
+    description: Allows creating and managing parties.
+    default: true
+
+  dungeon.stats:
+    description: Allows viewing personal dungeon statistics.
+    default: true
+
+  # Administrator permissions
+  dungeon.admin:
+    description: Allows access to all admin commands.
+    default: op
+
+  dungeon.reload:
+    description: Allows reloading plugin configuration.
+    default: op
+
+  dungeon.debug:
+    description: Allows enabling debug logging mode.
+    default: op
+
+  dungeon.bypass:
+    description: Bypasses cooldowns and entry restrictions.
+    default: op

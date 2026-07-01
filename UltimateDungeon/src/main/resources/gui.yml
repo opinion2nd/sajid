@@ -1,0 +1,36 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# UltimateDungeon  |  gui.yml
+# GUI screen layouts — inventory sizes, slot assignments, display items.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+config-version: 1
+
+screens:
+  main_menu:
+    title: "<dark_gray><bold>UltimateDungeon</bold></dark_gray>"
+    size: 54
+    slots:
+      solo: 20
+      party: 24
+      stats: 30
+      info: 48
+      close: 53
+
+  difficulty_select:
+    title: "<gold>Select Difficulty"
+    size: 27
+    slots:
+      easy: 10
+      normal: 12
+      hard: 14
+      nightmare: 16
+
+  theme_select:
+    title: "<dark_purple>Select Theme"
+    size: 27
+    slots:
+      ancient_ruins: 10
+      frozen_cavern: 12
+      corrupted_temple: 14
+      volcanic_fortress: 16
+      forgotten_catacombs: 22

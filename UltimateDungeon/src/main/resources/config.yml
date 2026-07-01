@@ -1,0 +1,18 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# UltimateDungeon  |  config.yml
+# Global plugin settings, debug mode, and performance tuning.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+config-version: 1
+
+# Set to true to enable verbose debug logging. Never leave on in production.
+debug: false
+
+# Language code for selecting the messages.yml locale (reserved for future i18n).
+language: "en"
+
+# Check for updates on startup and notify administrators.
+update-checker: true
+
+# Prefix used internally for dungeon world names.
+instance-prefix: "ud_instance_"
