@@ -113,6 +113,7 @@ public final class PluginBootstrap {
     private RewardRoomService    rewardRoomService;
     private WaveManager          waveManager;
     private com.ultimatedungeon.services.DungeonScoreboardManager scoreboardManager;
+    private com.ultimatedungeon.services.ReviveManager reviveManager;
     private TrapEngine           trapEngine;
     private PuzzleEngine         puzzleEngine;
     private BossEngine           bossEngine;
@@ -160,6 +161,7 @@ public final class PluginBootstrap {
             });
         }
         if (scoreboardManager != null) scoreboardManager.restoreAll();
+        if (reviveManager != null) reviveManager.restoreAll();
         if (pluginLogger != null) pluginLogger.info("UltimateDungeon shutdown complete.");
     }
 
@@ -333,8 +335,14 @@ public final class PluginBootstrap {
         arenaCountdown = new com.ultimatedungeon.boss.arena.ArenaCountdownManager(pluginScheduler, pluginLogger);
         arenaCleanup  = new ArenaCleanupService(arenaLockdown, bossEngine, pluginLogger);
 
+        // Party revive: downed players wait at their body for a teammate.
+        reviveManager = new com.ultimatedungeon.services.ReviveManager(
+                dungeonInstanceManager, configManager.getPartyConfig(), pluginLogger);
+        pluginScheduler.runSyncRepeating(reviveManager::tick, 20L, 10L);
+
         // Lifecycle — every engine contributes its own instance-cleanup action
         final DungeonCleanupService cleanupService = new DungeonCleanupService(pluginLogger);
+        cleanupService.registerAction(reviveManager::clearInstance);
         cleanupService.registerAction(waveManager::despawnAll);
         cleanupService.registerAction(bossEngine::cleanup);
         cleanupService.registerAction(arenaLockdown::unlock);
@@ -351,6 +359,16 @@ public final class PluginBootstrap {
             rewardDistributor.distributeAll(players, RewardEvent.DUNGEON_COMPLETION);
             rewardDistributor.distributeAll(players, RewardEvent.BOSS_KILL);
             rewardRoomService.grant(players, "completion_bonus_loot");
+        });
+
+        // A downed player nobody saved leaves; an empty dungeon fails.
+        reviveManager.setTimeoutHook(player -> {
+            final var raw = dungeonInstanceManager.getInstanceForPlayer(player);
+            dungeonLauncher.leave(player);
+            if (raw instanceof final DungeonInstance di && di.isActive()
+                    && dungeonLauncher.getPlayers(di.getInstanceId()).isEmpty()) {
+                dungeonFailureHandler.onFailure(di);
+            }
         });
 
         // Boss death → unseal THAT boss room, count the kill; the run completes
@@ -458,7 +476,7 @@ public final class PluginBootstrap {
                 trapEngine, dungeonInstanceManager), plugin);
         pm.registerEvents(new com.ultimatedungeon.listeners.player.PlayerDeathInDungeonListener(
                 plugin, statisticsService, dungeonInstanceManager,
-                dungeonLauncher, dungeonFailureHandler), plugin);
+                dungeonLauncher, dungeonFailureHandler, reviveManager), plugin);
         pm.registerEvents(new com.ultimatedungeon.listeners.dungeon.DungeonBlockProtectionListener(
                 dungeonWorldManager), plugin);
         pm.registerEvents(new com.ultimatedungeon.listeners.room.FateChestListener(

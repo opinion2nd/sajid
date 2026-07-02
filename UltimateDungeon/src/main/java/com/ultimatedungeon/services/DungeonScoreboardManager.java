@@ -123,7 +123,8 @@ public final class DungeonScoreboardManager {
         }
         int alive = 0;
         for (final Player p : Bukkit.getOnlinePlayers()) {
-            if (instances.getInstanceForPlayer(p) == instance && !p.isDead()) alive++;
+            if (instances.getInstanceForPlayer(p) == instance && !p.isDead()
+                    && p.getGameMode() != org.bukkit.GameMode.SPECTATOR) alive++;
         }
         final long elapsed = (System.currentTimeMillis() - instance.getStartedAtMillis()) / 1000L;
         final String time = String.format("%02d:%02d", elapsed / 60, elapsed % 60);

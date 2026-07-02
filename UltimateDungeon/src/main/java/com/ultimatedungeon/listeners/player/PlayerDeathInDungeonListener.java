@@ -5,6 +5,7 @@ import com.ultimatedungeon.dungeon.instance.DungeonInstance;
 import com.ultimatedungeon.dungeon.instance.DungeonInstanceManager;
 import com.ultimatedungeon.dungeon.lifecycle.DungeonFailureHandler;
 import com.ultimatedungeon.dungeon.lifecycle.DungeonLauncher;
+import com.ultimatedungeon.services.ReviveManager;
 import com.ultimatedungeon.services.StatisticsService;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
@@ -29,6 +30,7 @@ public final class PlayerDeathInDungeonListener implements Listener {
     private final DungeonInstanceManager instanceManager;
     private final DungeonLauncher launcher;
     private final DungeonFailureHandler failureHandler;
+    private final ReviveManager reviveManager;
     private final NamespacedKey monsterKey;
     private final NamespacedKey bossKey;
 
@@ -36,12 +38,14 @@ public final class PlayerDeathInDungeonListener implements Listener {
                                         @NotNull final StatisticsService statistics,
                                         @NotNull final DungeonInstanceManager instanceManager,
                                         @NotNull final DungeonLauncher launcher,
-                                        @NotNull final DungeonFailureHandler failureHandler) {
+                                        @NotNull final DungeonFailureHandler failureHandler,
+                                        @NotNull final ReviveManager reviveManager) {
         this.plugin = plugin;
         this.statistics = statistics;
         this.instanceManager = instanceManager;
         this.launcher = launcher;
         this.failureHandler = failureHandler;
+        this.reviveManager = reviveManager;
         this.monsterKey = new NamespacedKey(plugin, "ud_monster_id");
         this.bossKey = new NamespacedKey(plugin, "ud_boss_id");
     }
@@ -67,10 +71,27 @@ public final class PlayerDeathInDungeonListener implements Listener {
         final var raw = instanceManager.getInstanceForPlayer(player);
         if (!(raw instanceof final DungeonInstance instance)) return;
 
-        // Next tick: respawn the player, send them home, and fail the run if
-        // nobody is left inside. Surviving party members keep playing.
+        final org.bukkit.Location deathSpot = player.getLocation().clone();
+
+        // Next tick: respawn the player. With living teammates around they go
+        // DOWN (spectator at their body, revivable by a sneaking teammate);
+        // otherwise they leave, and an empty dungeon fails and despawns.
         org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
             if (player.isOnline() && player.isDead()) player.spigot().respawn();
+
+            int aliveTeammates = 0;
+            for (final Player p : launcher.getPlayers(instance.getInstanceId())) {
+                if (!p.equals(player) && !p.isDead() && !reviveManager.isDowned(p)
+                        && p.getGameMode() != org.bukkit.GameMode.SPECTATOR) {
+                    aliveTeammates++;
+                }
+            }
+
+            if (reviveManager.isEnabled() && aliveTeammates > 0 && instance.isActive()) {
+                reviveManager.down(instance, player, deathSpot);
+                return;
+            }
+
             launcher.leave(player);
             if (instance.isActive()
                     && launcher.getPlayers(instance.getInstanceId()).isEmpty()) {

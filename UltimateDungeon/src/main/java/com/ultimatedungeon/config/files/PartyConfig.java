@@ -15,6 +15,9 @@ public final class PartyConfig {
     private final LeaderTransferMode leaderTransferMode;
     private final boolean            friendlyFire;
     private final boolean            lateJoin;
+    private final boolean            reviveEnabled;
+    private final int                reviveHoldSeconds;
+    private final int                reviveTimeoutSeconds;
 
     public PartyConfig(@NotNull final FileConfiguration cfg) {
         maxPartySize               = cfg.getInt("max-party-size", 6);
@@ -23,6 +26,9 @@ public final class PartyConfig {
         reconnectTimeoutSeconds    = cfg.getInt("reconnect-timeout", 120);
         friendlyFire               = cfg.getBoolean("friendly-fire", false);
         lateJoin                   = cfg.getBoolean("late-join", false);
+        reviveEnabled              = cfg.getBoolean("revive.enabled", true);
+        reviveHoldSeconds          = Math.max(1, cfg.getInt("revive.hold-seconds", 5));
+        reviveTimeoutSeconds       = Math.max(10, cfg.getInt("revive.timeout-seconds", 60));
 
         final String modeStr = cfg.getString("leader-transfer-mode", "auto");
         leaderTransferMode = switch (modeStr.toLowerCase()) {
@@ -39,6 +45,9 @@ public final class PartyConfig {
     @NotNull public LeaderTransferMode getLeaderTransferMode() { return leaderTransferMode; }
     public boolean            isFriendlyFire()                 { return friendlyFire; }
     public boolean            isLateJoin()                     { return lateJoin; }
+    public boolean            isReviveEnabled()                { return reviveEnabled; }
+    public int                getReviveHoldSeconds()           { return reviveHoldSeconds; }
+    public int                getReviveTimeoutSeconds()        { return reviveTimeoutSeconds; }
 
     /** Invite timeout in ticks (for Bukkit scheduler). */
     public long getInviteTimeoutTicks()       { return (long) inviteTimeoutSeconds * 20L; }

@@ -17,3 +17,11 @@ leader-transfer-mode: auto
 
 friendly-fire: false
 late-join: false
+
+# Party revive: a dead member becomes a spectator at their body (soul beacon).
+# A living teammate who SNEAKS within 2.5 blocks for hold-seconds revives them
+# with half health. If nobody arrives within timeout-seconds they leave the run.
+revive:
+  enabled: true
+  hold-seconds: 5
+  timeout-seconds: 60
