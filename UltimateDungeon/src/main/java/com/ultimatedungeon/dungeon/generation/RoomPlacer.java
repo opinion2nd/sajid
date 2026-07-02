@@ -101,6 +101,29 @@ public final class RoomPlacer {
                 carveOpenColumn(world, x, floorY, z, palette, graph));
     }
 
+    /**
+     * Removes every block a dungeon placed — rooms and corridors — so a
+     * finished/failed instance fully despawns. Must run on the main thread.
+     */
+    public void clearAll(@NotNull final RoomGraph graph) {
+        for (final RoomData room : graph.getRooms()) clearRoom(room);
+        for (final RoomConnection conn : graph.getConnections()) clearCorridor(conn);
+    }
+
+    /** Sets one room's entire bounding box (plus a margin) to air. */
+    public void clearRoom(@NotNull final RoomData room) {
+        final var world = room.getOrigin().getWorld();
+        if (world == null) return;
+        final var origin = room.getOrigin();
+        for (int x = -1; x <= room.getWidth(); x++) {
+            for (int y = -1; y <= room.getHeight() + 1; y++) {
+                for (int z = -1; z <= room.getDepth(); z++) {
+                    BlockUtil.setBlock(origin.clone().add(x, y, z), Material.AIR);
+                }
+            }
+        }
+    }
+
     /** Clears one corridor's carved blocks back to air. */
     public void clearCorridor(@NotNull final RoomConnection conn) {
         walkCorridor(conn, (world, x, floorY, z) -> {
