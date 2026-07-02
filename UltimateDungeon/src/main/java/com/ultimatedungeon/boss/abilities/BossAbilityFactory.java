@@ -220,7 +220,7 @@ public final class BossAbilityFactory {
         EFFECTS.put("spore_cloud", (boss, a) -> {
             final Player target = a.nearest(boss);
             final Location at = target != null ? target.getLocation() : boss.getLocation();
-            sound(boss, Sound.ENTITY_PUFF_FISH_BLOW_UP, 1.0f, 0.6f);
+            sound(boss, Sound.ENTITY_PUFFER_FISH_BLOW_UP, 1.0f, 0.6f);
             cloud(boss, at, PotionEffectType.POISON, 1, (float) Math.min(4.0, a.range() / 2), 140);
         });
 
