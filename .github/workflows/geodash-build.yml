@@ -1,0 +1,59 @@
+name: Build GeoDash
+
+on:
+  push:
+    branches:
+      - main
+      - 'claude/**'
+    paths:
+      - 'GeoDash/**'
+      - '.github/workflows/geodash-build.yml'
+  pull_request:
+    paths:
+      - 'GeoDash/**'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: GeoDash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Build plugin jar
+        run: mvn -B package
+
+      - name: Upload GeoDash jar (Actions artifact)
+        uses: actions/upload-artifact@v4
+        with:
+          name: GeoDash-jar
+          path: GeoDash/target/GeoDash-*.jar
+          if-no-files-found: error
+
+      # Publish a rolling Release so the jar has a direct, mobile-friendly
+      # download link (no login required on a public repo).
+      - name: Publish rolling Release
+        if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/claude/')
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: geodash-latest
+          name: GeoDash (latest build)
+          prerelease: true
+          files: GeoDash/target/GeoDash-*.jar
+          body: |
+            Latest GeoDash build from `${{ github.sha }}`.
+            Download the jar below and drop it into your server's `plugins/` folder.
+            Works on Bukkit / Spigot / Paper / Folia / Purpur, Minecraft 1.21+.

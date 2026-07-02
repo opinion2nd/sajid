@@ -1,0 +1,56 @@
+# GeoDash configuration
+
+# Chat prefix used in front of every plugin message
+prefix: "&8[&bGeo&3Dash&8] &7"
+
+# Default forward speed (blocks per tick). Sprinting is ~0.28, GD feel is ~0.35-0.45
+default-speed: 0.35
+
+# Blocks that kill the runner on contact (one-hit death, like GD spikes)
+hazard-blocks:
+  - POINTED_DRIPSTONE
+  - CACTUS
+  - SWEET_BERRY_BUSH
+  - MAGMA_BLOCK
+  - LAVA
+  - FIRE
+  - SOUL_FIRE
+  - CAMPFIRE
+  - SOUL_CAMPFIRE
+  - WITHER_ROSE
+
+# Falling this many blocks below the level start also counts as death
+void-death-offset: 8
+
+# Extra upward boost applied when stepping on a slime block (jump pad)
+jump-pad-boost: 1.05
+
+effects:
+  # Particle trail behind the runner
+  trail: true
+  trail-particle: END_ROD
+  # Explosion particles + sound on death
+  death-explosion: true
+  # Jump pad / win / countdown sounds
+  sounds: true
+  # Firework on level completion
+  win-firework: true
+
+scoreboard:
+  # Show progress % in a boss bar
+  bossbar: true
+  # Show attempt/time info in the action bar
+  actionbar: true
+
+rewards:
+  # Only run completion rewards the first time a player beats a level
+  first-time-only: true
+  completion:
+    broadcast: "&b%player% &7just completed &f%level% &7(&e%stars%★&7) in &a%time%&7 after &c%attempts% &7attempts!"
+    # Commands run by the console. Placeholders: %player%, %level%, %stars%, %time%, %attempts%
+    commands:
+      - "give %player% diamond %stars%"
+  race-win:
+    broadcast: "&6%player% &7won the race on &f%level%&7!"
+    commands:
+      - "give %player% gold_ingot 5"
