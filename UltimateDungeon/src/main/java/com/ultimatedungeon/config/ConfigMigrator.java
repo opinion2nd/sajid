@@ -52,7 +52,11 @@ public final class ConfigMigrator {
             version = 1;
         }
 
-        // Future: add v1 → v2 here when the schema changes.
+        // ── v1 → v2: five-level system and the new boss roster ───────────────
+        if (version < 2) {
+            changed |= migrateV1ToV2(fileName, config);
+            version = 2;
+        }
 
         if (changed) {
             config.set("config-version", ConfigVersion.CURRENT);
@@ -84,5 +88,71 @@ public final class ConfigMigrator {
         }
 
         return changed;
+    }
+
+    /**
+     * Migration to version 2: the four legacy difficulty presets become five
+     * levels (which also control map size), and the legacy boss_1..boss_8
+     * roster is replaced by the seven named bosses. Legacy sections are
+     * removed so the new bundled defaults can be merged in on load; everything
+     * else a server owner customised is left untouched.
+     */
+    private boolean migrateV1ToV2(
+            @NotNull final String            fileName,
+            @NotNull final FileConfiguration config
+    ) {
+        boolean changed = false;
+
+        if (fileName.equals("difficulty.yml")) {
+            for (final String legacy : new String[]{"easy", "normal", "hard", "nightmare"}) {
+                final String path = "difficulties." + legacy;
+                if (config.isSet(path)) {
+                    config.set(path, null);
+                    changed = true;
+                    logger.debug(fileName + ": removed legacy preset '" + legacy + "'.");
+                }
+            }
+        }
+
+        if (fileName.equals("bosses.yml") || fileName.equals("loot.yml")) {
+            for (int i = 1; i <= 8; i++) {
+                final String bossPath = "bosses.boss_" + i;
+                final String lootPath = "loot-tables.boss_" + i + "_loot";
+                if (config.isSet(bossPath)) {
+                    config.set(bossPath, null);
+                    changed = true;
+                }
+                if (config.isSet(lootPath)) {
+                    config.set(lootPath, null);
+                    changed = true;
+                }
+            }
+            if (changed) logger.debug(fileName + ": removed legacy boss entries.");
+        }
+
+        if (fileName.equals("themes.yml") && config.isSet("themes")) {
+            changed |= replaceBossPool(config, "ancient_ruins",       java.util.List.of("tharok", "sylvara"));
+            changed |= replaceBossPool(config, "frozen_cavern",       java.util.List.of("boreas", "aethon"));
+            changed |= replaceBossPool(config, "corrupted_temple",    java.util.List.of("zharok"));
+            changed |= replaceBossPool(config, "volcanic_fortress",   java.util.List.of("vulkhan"));
+            changed |= replaceBossPool(config, "forgotten_catacombs", java.util.List.of("nyxara"));
+        }
+
+        return changed;
+    }
+
+    /** Replaces a theme's boss pool if it still references the legacy roster. */
+    private boolean replaceBossPool(
+            @NotNull final FileConfiguration config,
+            @NotNull final String            themeId,
+            @NotNull final java.util.List<String> newPool
+    ) {
+        final String path = "themes." + themeId + ".boss-pool";
+        final java.util.List<String> current = config.getStringList(path);
+        if (current.isEmpty() || current.stream().noneMatch(id -> id.startsWith("boss_"))) {
+            return false;
+        }
+        config.set(path, newPool);
+        return true;
     }
 }

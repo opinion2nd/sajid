@@ -131,12 +131,13 @@ public final class RoomEnterListener implements Listener {
                 final var world = room.getCentre().getWorld();
                 if (world == null) return;
                 // Pre-fight countdown, then spawn the boss and seal the arena.
-                arenaCountdown.start(seconds, world.getPlayers(), () -> {
-                    if (world.getPlayers().stream().noneMatch(p -> room.contains(p.getLocation()))) {
+                // Only players near THIS arena take part — instances share one world.
+                arenaCountdown.start(seconds, playersNearRoom(room), () -> {
+                    if (playersInRoom(room).isEmpty()) {
                         return; // countdown safety: everyone left, do not spawn
                     }
                     arenaLockdown.lock(id, room);
-                    bossEngine.spawnBoss(id, bossId, room.getCentre(), difficulty, world.getPlayers());
+                    bossEngine.spawnBoss(id, bossId, room.getCentre(), difficulty, playersNearRoom(room));
                 });
             }
             default -> { /* spawn, treasure, merchant, parkour, reward — no auto-activation */ }
@@ -167,6 +168,21 @@ public final class RoomEnterListener implements Listener {
         if (centre.getWorld() == null) return result;
         for (final Player p : centre.getWorld().getPlayers()) {
             if (room.contains(p.getLocation())) result.add(p);
+        }
+        return result;
+    }
+
+    /** Radius around a room considered part of the same encounter. */
+    private static final double NEAR_ROOM_RADIUS_SQ = 48.0 * 48.0;
+
+    /** @return the players inside or just outside {@code room} (same instance area). */
+    @NotNull
+    private List<Player> playersNearRoom(@NotNull final RoomData room) {
+        final List<Player> result = new ArrayList<>();
+        final Location centre = room.getCentre();
+        if (centre.getWorld() == null) return result;
+        for (final Player p : centre.getWorld().getPlayers()) {
+            if (p.getLocation().distanceSquared(centre) <= NEAR_ROOM_RADIUS_SQ) result.add(p);
         }
         return result;
     }

@@ -3,6 +3,7 @@ package com.ultimatedungeon.dungeon.generation;
 import com.ultimatedungeon.api.dungeon.DungeonGenerationRequest;
 import com.ultimatedungeon.api.dungeon.IDungeonGenerator;
 import com.ultimatedungeon.api.dungeon.IDungeonInstance;
+import com.ultimatedungeon.config.files.DifficultyConfig;
 import com.ultimatedungeon.config.files.DungeonConfig;
 import com.ultimatedungeon.core.PluginLogger;
 import com.ultimatedungeon.core.PluginScheduler;
@@ -15,11 +16,13 @@ import com.ultimatedungeon.theme.model.ThemeDefinition;
 import com.ultimatedungeon.theme.registry.ThemeRegistry;
 import com.ultimatedungeon.util.RandomUtil;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.World;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Top-level dungeon generator — implements {@link IDungeonGenerator}.
@@ -38,7 +41,16 @@ public final class DungeonGenerator implements IDungeonGenerator {
 
     private static final int MAX_RETRIES = 5;
 
+    /** Distance between instance origins in the shared dungeon world. */
+    private static final int INSTANCE_SPACING = 4096;
+    /** Instances cycle through this many origin slots on an 8×8 grid. */
+    private static final int ORIGIN_SLOTS = 64;
+
+    /** Rotating origin slot so concurrent instances never overlap in the shared world. */
+    private static final AtomicInteger ORIGIN_COUNTER = new AtomicInteger();
+
     private final DungeonConfig        dungeonConfig;
+    private final DifficultyConfig     difficultyConfig;
     private final ThemeRegistry        themeRegistry;
     private final RoomRegistry         roomRegistry;
     private final LayoutPlanner        layoutPlanner;
@@ -54,12 +66,14 @@ public final class DungeonGenerator implements IDungeonGenerator {
 
     public DungeonGenerator(
             @NotNull final DungeonConfig       dungeonConfig,
+            @NotNull final DifficultyConfig    difficultyConfig,
             @NotNull final ThemeRegistry       themeRegistry,
             @NotNull final RoomRegistry        roomRegistry,
             @NotNull final PluginScheduler     scheduler,
             @NotNull final PluginLogger        logger
     ) {
         this.dungeonConfig     = dungeonConfig;
+        this.difficultyConfig  = difficultyConfig;
         this.themeRegistry     = themeRegistry;
         this.roomRegistry      = roomRegistry;
         this.scheduler         = scheduler;
@@ -145,12 +159,15 @@ public final class DungeonGenerator implements IDungeonGenerator {
             return null;
         }
 
+        final int targetRooms = resolveTargetRooms(request.getDifficultyId());
+        final Location origin = nextInstanceOrigin(world);
+
         for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
             logger.debug("Generation attempt " + attempt + "/" + MAX_RETRIES
                     + " for instance " + instanceId);
 
             final long seed = RandomUtil.randomInt(Integer.MIN_VALUE, Integer.MAX_VALUE);
-            final RoomGraph graph = layoutPlanner.plan(world, theme, seed);
+            final RoomGraph graph = layoutPlanner.plan(world, theme, seed, targetRooms, origin);
             corridorRouter.route(graph);
 
             if (validator.validate(graph)) {
@@ -160,6 +177,31 @@ public final class DungeonGenerator implements IDungeonGenerator {
             logger.debug("Layout invalid on attempt " + attempt + ", retrying...");
         }
         return null; // all retries exhausted
+    }
+
+    /**
+     * Room budget for this run: the selected level defines the map size, so
+     * higher levels produce larger dungeons. Falls back to the global
+     * dungeon-size range when the level defines no room range.
+     */
+    private int resolveTargetRooms(@NotNull final String difficultyId) {
+        final DifficultyConfig.DifficultyPreset preset =
+                difficultyConfig.getPresetOrDefault(difficultyId);
+        final int min = preset.roomsMin() > 0 ? preset.roomsMin() : dungeonConfig.getDungeonSizeMin();
+        final int max = preset.roomsMax() >= min ? preset.roomsMax() : dungeonConfig.getDungeonSizeMax();
+        return RandomUtil.randomInt(min, Math.max(min, max));
+    }
+
+    /**
+     * Assigns each instance its own origin on an 8×8 grid of well-separated
+     * slots so concurrent dungeons in the shared world never overlap.
+     */
+    @NotNull
+    private Location nextInstanceOrigin(@NotNull final World world) {
+        final int slot = Math.floorMod(ORIGIN_COUNTER.getAndIncrement(), ORIGIN_SLOTS);
+        final int x = (slot % 8) * INSTANCE_SPACING;
+        final int z = (slot / 8) * INSTANCE_SPACING;
+        return new Location(world, x, 64, z);
     }
 
     private ThemeDefinition resolveTheme(@NotNull final String themeId) {

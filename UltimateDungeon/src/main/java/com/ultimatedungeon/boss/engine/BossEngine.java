@@ -152,15 +152,18 @@ public final class BossEngine {
         boss.bossBar.setProgress(ratio);
 
         final BossPhaseData newPhase = boss.stateMachine.update(ratio);
-        if (newPhase != null && boss.def.hasDialogue("phase-two")
-                && boss.stateMachine.getCurrentPhaseIndex() > 0) {
-            announce(arenaPlayers(boss), boss.def, "phase-two");
+        if (newPhase != null && boss.stateMachine.getCurrentPhaseIndex() > 0) {
+            // Announce the line matching the phase we just entered.
+            final String key = boss.stateMachine.getCurrentPhaseIndex() == 1
+                    ? "phase-two" : "phase-three";
+            announce(arenaPlayers(boss), boss.def, key);
         }
         boss.ai.tick(boss.entity);
     }
 
     public boolean hasActiveBoss(@NotNull final UUID instanceId) {
-        return active.containsKey(instanceId) && !active.get(instanceId).dead;
+        final ActiveBoss boss = active.get(instanceId);
+        return boss != null && !boss.dead;
     }
 
     public void cleanup(@NotNull final UUID instanceId) {
@@ -213,6 +216,10 @@ public final class BossEngine {
 
     @NotNull
     private IBossAbility create(final int index, @NotNull final BossDefinition.AbilitySpec spec) {
+        // Every boss power has its own unique behaviour keyed by ability id.
+        final IBossAbility unique = BossAbilityFactory.create(spec);
+        if (unique != null) return unique;
+        // Unknown ids (custom configs) fall back to a generic slot behaviour.
         final double range = spec.range() > 0 ? spec.range() : 8.0;
         return switch (index % 5) {
             case 0 -> new AreaDenialAbility(spec.id(), spec.damage(), spec.cooldownTicks(), range);
@@ -230,9 +237,17 @@ public final class BossEngine {
         players.forEach(p -> MiniMessageUtil.send(p, line));
     }
 
+    /** Radius around the boss considered part of its arena. */
+    private static final double ARENA_RADIUS_SQ = 64.0 * 64.0;
+
     @NotNull
     private Collection<Player> arenaPlayers(@NotNull final ActiveBoss boss) {
-        return boss.entity.getWorld() != null ? boss.entity.getWorld().getPlayers() : List.of();
+        if (boss.entity.getWorld() == null) return List.of();
+        // Instances share one dungeon world — only address players near THIS boss.
+        return boss.entity.getWorld().getPlayers().stream()
+                .filter(p -> p.getLocation().distanceSquared(boss.entity.getLocation())
+                        <= ARENA_RADIUS_SQ)
+                .toList();
     }
 
     @SuppressWarnings("deprecation")

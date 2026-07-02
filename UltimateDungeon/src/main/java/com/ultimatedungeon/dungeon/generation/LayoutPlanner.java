@@ -7,33 +7,45 @@ import com.ultimatedungeon.room.model.RoomGraph;
 import com.ultimatedungeon.room.model.RoomType;
 import com.ultimatedungeon.room.registry.RoomRegistry;
 import com.ultimatedungeon.room.templates.AbstractRoomTemplate;
-import com.ultimatedungeon.theme.model.ThemeBlockPalette;
+import com.ultimatedungeon.theme.model.LayoutStyle;
 import com.ultimatedungeon.theme.model.ThemeDefinition;
-import com.ultimatedungeon.util.RandomUtil;
 import org.bukkit.Location;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
 import java.util.UUID;
 
 /**
  * Plans the spatial layout of rooms for one dungeon run.
  *
- * <h3>Algorithm</h3>
- * <ol>
- *   <li>Always place a SPAWN room at the layout origin.</li>
- *   <li>Expand outward using BFS — for each placed room, pick a random
- *       direction and attempt to place the next room at a gap-separated offset.</li>
- *   <li>After the room budget is reached, force-place required rooms (BOSS,
- *       REWARD) if they are not yet present.</li>
- *   <li>Optionally inject SECRET, PUZZLE, TRAP rooms based on config
- *       probability weights.</li>
- * </ol>
+ * <h3>Layout archetypes</h3>
+ * Each theme selects one of five {@link LayoutStyle} archetypes so every map
+ * has its own recognisable shape:
+ * <ul>
+ *   <li>{@link LayoutStyle#HUB_AND_SPOKE} — central plaza, four branching wings,
+ *       boss at the tip of the longest wing.</li>
+ *   <li>{@link LayoutStyle#WINDING_PATH} — one long serpentine path with side
+ *       pockets, boss at the far end.</li>
+ *   <li>{@link LayoutStyle#SYMMETRIC_AXIS} — straight processional axis with
+ *       mirrored side chambers, elite antechamber guarding the boss.</li>
+ *   <li>{@link LayoutStyle#CONCENTRIC_RINGS} — outer ring breached first,
+ *       fighting inward ring by ring to the boss keep at the centre.</li>
+ *   <li>{@link LayoutStyle#GRID_MAZE} — depth-first maze with dead ends holding
+ *       treasure; boss in the cell farthest from spawn.</li>
+ * </ul>
  *
- * <p>All generated positions are on a 2D grid (rooms share the same Y level).
- * Rooms are separated by a gap of {@code corridorLengthMin} to prevent overlap
- * and to leave space for corridor carving.</p>
+ * <p>All planning is done on an abstract 2D grid of uniform cells (large enough
+ * for the biggest room template plus a corridor gap) and is fully deterministic
+ * for a given seed. Rooms share the same Y level.</p>
  *
  * <h3>Async safety</h3>
  * This class only builds {@link RoomData} value objects — it does NOT touch
@@ -41,8 +53,10 @@ import java.util.UUID;
  */
 public final class LayoutPlanner {
 
-    /** Spacing between room bounding boxes — reserved for corridors. */
-    private static final int ROOM_SEPARATION = 5;
+    /** Uniform grid cell size: largest room footprint (25) + corridor gap. */
+    private static final int CELL_SIZE = 30;
+    /** Y level all rooms are planned on. */
+    private static final int ROOM_Y = 64;
 
     private final DungeonConfig dungeonConfig;
     private final RoomRegistry  roomRegistry;
@@ -61,91 +75,430 @@ public final class LayoutPlanner {
     /**
      * Plans a complete room graph for one dungeon run.
      *
-     * @param world    the world where the dungeon will be built (used only for
-     *                 Location construction — no blocks touched here)
-     * @param theme    the selected dungeon theme (drives room pool choices)
-     * @param seed     deterministic seed for reproducible layouts (for testing)
+     * @param world       the world where the dungeon will be built (used only for
+     *                    Location construction — no blocks touched here)
+     * @param theme       the selected dungeon theme (drives layout style and room pools)
+     * @param seed        deterministic seed for reproducible layouts
+     * @param targetRooms total room budget for this run (from the selected level);
+     *                    values below the playable minimum are clamped
+     * @param origin      world-space origin of this instance's layout (each
+     *                    instance gets its own origin so concurrent dungeons
+     *                    never overlap)
      * @return a fully-connected {@link RoomGraph}
      */
     @NotNull
     public RoomGraph plan(
             @NotNull final org.bukkit.World world,
             @NotNull final ThemeDefinition  theme,
-            final long                      seed
+            final long                      seed,
+            final int                       targetRooms,
+            @NotNull final Location         origin
     ) {
-        final int targetRooms = RandomUtil.randomInt(
-                dungeonConfig.getDungeonSizeMin(),
-                dungeonConfig.getDungeonSizeMax()
-        );
+        final Random rng   = new Random(seed);
+        final int    total = Math.max(6, Math.min(targetRooms, 80));
+        final LayoutStyle style = theme.getLayoutStyle();
 
-        logger.debug("LayoutPlanner: planning " + targetRooms + " rooms (seed=" + seed + ")");
+        logger.debug("LayoutPlanner: planning " + total + " rooms, style=" + style
+                + " (seed=" + seed + ")");
 
-        final RoomGraph      graph         = new RoomGraph();
-        final List<RoomData> placedRooms   = new ArrayList<>();
-        final List<int[]>    occupiedGrid  = new ArrayList<>(); // [gridX, gridZ]
+        // Cells in visit order. Index 0 = spawn, last = boss; the reward cell is
+        // appended separately next to the boss.
+        final List<Cell> cells = switch (style) {
+            case HUB_AND_SPOKE    -> planHubAndSpoke(total - 1, rng);
+            case WINDING_PATH     -> planWindingPath(total - 1, rng);
+            case SYMMETRIC_AXIS   -> planSymmetricAxis(total - 1, rng);
+            case CONCENTRIC_RINGS -> planConcentricRings(total - 1, rng);
+            case GRID_MAZE        -> planGridMaze(total - 1, rng);
+        };
 
-        // ── Step 1: Place the spawn room at the origin ─────────────────────────
-        final Location spawnOrigin  = new Location(world, 0, 64, 0);
-        final RoomData spawnRoom    = placeRoom(RoomType.SPAWN, spawnOrigin);
-        graph.addRoom(spawnRoom);
-        placedRooms.add(spawnRoom);
-        occupiedGrid.add(new int[]{0, 0});
+        return buildGraph(world, origin, cells, rng);
+    }
 
-        // ── Step 2: Expand room-by-room ────────────────────────────────────────
-        int attempts = 0;
-        while (placedRooms.size() < targetRooms - 2 && attempts < targetRooms * 5) {
-            attempts++;
+    // ── Grid cell model ───────────────────────────────────────────────────────
 
-            // Pick a random existing room to expand from
-            final RoomData parent = RandomUtil.randomElement(placedRooms);
-            final int[] parentGrid = occupiedGrid.get(placedRooms.indexOf(parent));
+    /** One planned grid cell: position plus an optional forced room type. */
+    private static final class Cell {
+        final int gx;
+        final int gz;
+        RoomType forced; // null = pick dynamically
 
-            // Try a random direction
-            final int[] dir    = randomDirection();
-            final int   gx     = parentGrid[0] + dir[0];
-            final int   gz     = parentGrid[1] + dir[1];
-
-            if (isGridOccupied(occupiedGrid, gx, gz)) continue;
-
-            final RoomType type = pickRoomType(graph, placedRooms.size(), targetRooms);
-            final Location loc  = gridToWorld(world, spawnOrigin, gx, gz, parent, type);
-
-            final RoomData newRoom = placeRoom(type, loc);
-            graph.addRoom(newRoom);
-            placedRooms.add(newRoom);
-            occupiedGrid.add(new int[]{gx, gz});
+        Cell(final int gx, final int gz) { this(gx, gz, null); }
+        Cell(final int gx, final int gz, final RoomType forced) {
+            this.gx = gx;
+            this.gz = gz;
+            this.forced = forced;
         }
 
-        // ── Step 3: Guarantee required rooms ──────────────────────────────────
-        if (graph.getBossRoomId() == null) {
-            final RoomData last    = placedRooms.get(placedRooms.size() - 1);
-            final int[]    lastGrd = occupiedGrid.get(placedRooms.size() - 1);
-            final int[]    dir     = randomDirection();
-            final int      gx      = lastGrd[0] + dir[0];
-            final int      gz      = lastGrd[1] + dir[1];
-            final Location loc     = gridToWorld(world, spawnOrigin, gx, gz, last, RoomType.BOSS);
-            final RoomData bossRoom = placeRoom(RoomType.BOSS, loc);
-            graph.addRoom(bossRoom);
-            placedRooms.add(bossRoom);
-            occupiedGrid.add(new int[]{gx, gz});
+        long key() { return key(gx, gz); }
+        static long key(final int gx, final int gz) {
+            return ((long) gx << 32) ^ (gz & 0xFFFFFFFFL);
         }
-        if (graph.getRewardRoomId() == null) {
-            final RoomData boss    = graph.getBossRoom();
-            final int      bossIdx = placedRooms.indexOf(boss);
-            final int[]    bossGrd = bossIdx >= 0 ? occupiedGrid.get(bossIdx) : new int[]{0, 1};
-            final Location loc     = gridToWorld(world, spawnOrigin,
-                    bossGrd[0], bossGrd[1] + 1, boss, RoomType.REWARD);
-            final RoomData rewardRoom = placeRoom(RoomType.REWARD, loc);
-            graph.addRoom(rewardRoom);
-            placedRooms.add(rewardRoom);
-            occupiedGrid.add(new int[]{bossGrd[0], bossGrd[1] + 1});
+    }
+
+    // ── Archetype 1: hub-and-spoke (Ancient Ruins) ────────────────────────────
+
+    /**
+     * Central spawn hub with four spokes radiating out in the cardinal
+     * directions. Spokes bend slightly for a ruined, organic feel. The boss
+     * sits at the tip of the longest spoke.
+     */
+    @NotNull
+    private List<Cell> planHubAndSpoke(final int budget, @NotNull final Random rng) {
+        final List<Cell> cells = new ArrayList<>();
+        final Set<Long> used = new HashSet<>();
+        final Cell hub = new Cell(0, 0, RoomType.SPAWN);
+        cells.add(hub);
+        used.add(hub.key());
+
+        final int[][] dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+        final int interior = budget - 1; // minus hub
+        // Longest spoke gets the remainder and carries the boss.
+        final int base = interior / 4;
+        final int[] lengths = {base, base, base, interior - base * 3};
+
+        Cell bossTip = hub;
+        for (int s = 0; s < 4; s++) {
+            int gx = 0;
+            int gz = 0;
+            int dx = dirs[s][0];
+            int dz = dirs[s][1];
+            for (int step = 0; step < lengths[s]; step++) {
+                // Occasionally sidestep so wings feel crumbled, not ruler-straight.
+                int nx = gx + dx;
+                int nz = gz + dz;
+                if (step > 0 && rng.nextDouble() < 0.3) {
+                    final int[] side = (dx == 0)
+                            ? new int[]{rng.nextBoolean() ? 1 : -1, 0}
+                            : new int[]{0, rng.nextBoolean() ? 1 : -1};
+                    if (!used.contains(Cell.key(gx + side[0], gz + side[1]))) {
+                        nx = gx + side[0];
+                        nz = gz + side[1];
+                    }
+                }
+                if (used.contains(Cell.key(nx, nz))) {
+                    nx = gx + dx;
+                    nz = gz + dz;
+                    if (used.contains(Cell.key(nx, nz))) break; // spoke blocked
+                }
+                final Cell cell = new Cell(nx, nz);
+                cells.add(cell);
+                used.add(cell.key());
+                gx = nx;
+                gz = nz;
+                bossTip = cell;
+            }
+        }
+        // The last placed tip of the final (longest) spoke hosts the boss.
+        bossTip.forced = RoomType.BOSS;
+        moveToEnd(cells, bossTip);
+        return cells;
+    }
+
+    // ── Archetype 2: winding path (Frozen Cavern) ─────────────────────────────
+
+    /**
+     * One long serpentine tunnel carved by a heading-biased random walk, with
+     * small side pockets branching off. The boss waits at the far end.
+     */
+    @NotNull
+    private List<Cell> planWindingPath(final int budget, @NotNull final Random rng) {
+        final List<Cell> cells = new ArrayList<>();
+        final Set<Long> used = new HashSet<>();
+        Cell current = new Cell(0, 0, RoomType.SPAWN);
+        cells.add(current);
+        used.add(current.key());
+
+        final int pathLength = Math.max(4, (int) Math.ceil(budget * 0.72));
+        final int[][] dirs = {{1, 0}, {0, 1}, {-1, 0}, {0, -1}};
+        int heading = rng.nextInt(4);
+        final List<Cell> path = new ArrayList<>();
+        path.add(current);
+
+        int placed = 1;
+        while (placed < pathLength) {
+            // Prefer to keep heading; otherwise snake left/right. Never reverse.
+            final int[] candidates = rng.nextBoolean()
+                    ? new int[]{heading, (heading + 1) % 4, (heading + 3) % 4}
+                    : new int[]{heading, (heading + 3) % 4, (heading + 1) % 4};
+            Cell next = null;
+            int nextHeading = heading;
+            for (final int h : (rng.nextDouble() < 0.45
+                    ? new int[]{candidates[1], candidates[0], candidates[2]}
+                    : candidates)) {
+                final int nx = current.gx + dirs[h][0];
+                final int nz = current.gz + dirs[h][1];
+                if (!used.contains(Cell.key(nx, nz))) {
+                    next = new Cell(nx, nz);
+                    nextHeading = h;
+                    break;
+                }
+            }
+            if (next == null) break; // walled in — path ends here
+            cells.add(next);
+            used.add(next.key());
+            path.add(next);
+            current = next;
+            heading = nextHeading;
+            placed++;
+        }
+
+        // Side pockets: grottos hanging off the main tunnel holding goodies.
+        int pockets = budget - placed;
+        int guard = pockets * 6;
+        while (pockets > 0 && guard-- > 0 && path.size() > 2) {
+            final Cell host = path.get(1 + rng.nextInt(path.size() - 2));
+            final int[] d = dirs[rng.nextInt(4)];
+            final int nx = host.gx + d[0];
+            final int nz = host.gz + d[1];
+            if (used.contains(Cell.key(nx, nz))) continue;
+            final Cell pocket = new Cell(nx, nz, pocketType(rng));
+            cells.add(pocket);
+            used.add(pocket.key());
+            pockets--;
+        }
+
+        // Boss at the far end of the tunnel.
+        final Cell tail = path.get(path.size() - 1);
+        tail.forced = RoomType.BOSS;
+        moveToEnd(cells, tail);
+        return cells;
+    }
+
+    // ── Archetype 3: symmetric axis (Corrupted Temple) ────────────────────────
+
+    /**
+     * A straight processional nave running north with mirrored side chapels on
+     * both flanks, an elite antechamber before the inner sanctum, and the boss
+     * at the axis end.
+     */
+    @NotNull
+    private List<Cell> planSymmetricAxis(final int budget, @NotNull final Random rng) {
+        // Axis length: roughly a third of the budget; two side cells per axis room.
+        final int axisLen = Math.max(4, (int) Math.ceil((budget + 2) / 3.0));
+        final List<Cell> cells = new ArrayList<>();
+        final Set<Long> used = new HashSet<>();
+
+        for (int z = 0; z < axisLen; z++) {
+            final Cell cell = new Cell(0, z);
+            if (z == 0)               cell.forced = RoomType.SPAWN;
+            else if (z == axisLen - 1) cell.forced = RoomType.BOSS;
+            else if (z == axisLen - 2) cell.forced = RoomType.ELITE_COMBAT; // antechamber
+            cells.add(cell);
+            used.add(cell.key());
+        }
+
+        // Mirrored chapels: fill remaining budget with (±1, z) pairs.
+        int remaining = budget - axisLen;
+        for (int z = 1; z < axisLen - 1 && remaining > 0; z++) {
+            if (rng.nextDouble() < 0.25 && z != axisLen - 2) continue; // leave gaps
+            final Cell west = new Cell(-1, z);
+            cells.add(cells.size() - 1, west); // keep boss last
+            used.add(west.key());
+            remaining--;
+            if (remaining <= 0) break;
+            final Cell east = new Cell(1, z);
+            cells.add(cells.size() - 1, east);
+            used.add(east.key());
+            remaining--;
+        }
+        // Second row of chapels for large maps.
+        for (int z = 1; z < axisLen - 1 && remaining > 0; z++) {
+            for (final int gx : new int[]{-2, 2}) {
+                if (remaining <= 0) break;
+                if (used.contains(Cell.key(gx, z))
+                        || !used.contains(Cell.key(gx > 0 ? 1 : -1, z))) continue;
+                final Cell outer = new Cell(gx, z);
+                cells.add(cells.size() - 1, outer);
+                used.add(outer.key());
+                remaining--;
+            }
+        }
+        return cells;
+    }
+
+    // ── Archetype 4: concentric rings (Volcanic Fortress) ─────────────────────
+
+    /**
+     * Square defensive rings around a central boss keep. Players spawn on the
+     * outermost ring and fight inward. The cell directly north of the keep is
+     * reserved for the reward vault.
+     */
+    @NotNull
+    private List<Cell> planConcentricRings(final int budget, @NotNull final Random rng) {
+        final List<Cell> cells = new ArrayList<>();
+        final Set<Long> used = new HashSet<>();
+
+        // How many rings does the budget need? ring r has 8r cells.
+        int rings = 1;
+        int capacity = 1 + 8; // centre + ring 1
+        while (capacity < budget && rings < 4) {
+            rings++;
+            capacity += 8 * rings;
+        }
+
+        // Spawn gate: middle of the outer ring's south edge.
+        final Cell spawn = new Cell(0, -rings, RoomType.SPAWN);
+        cells.add(spawn);
+        used.add(spawn.key());
+        int remaining = budget - 2; // minus spawn and boss keep
+
+        // Fill rings from the outside in, walking each ring's perimeter.
+        for (int r = rings; r >= 1 && remaining > 0; r--) {
+            final List<Cell> ring = ringPerimeter(r);
+            // Rotate the starting point so each run breaches the walls elsewhere.
+            java.util.Collections.rotate(ring, rng.nextInt(ring.size()));
+            // Inner rings hold fewer, harder rooms — skip cells when over budget.
+            for (final Cell cell : ring) {
+                if (remaining <= 0) break;
+                if (used.contains(cell.key())) continue;
+                if (cell.gx == 0 && cell.gz == 1) continue; // reserved reward vault
+                // Thin out rings we cannot fully afford, keeping spacing even.
+                final int ringCells = 8 * r;
+                if (remaining < ringCells && rng.nextDouble() < 0.35) continue;
+                cells.add(cell);
+                used.add(cell.key());
+                remaining--;
+            }
+        }
+
+        final Cell keep = new Cell(0, 0, RoomType.BOSS);
+        cells.add(keep);
+        return cells;
+    }
+
+    /** All cells on the square ring of Chebyshev radius {@code r}, in walk order. */
+    @NotNull
+    private List<Cell> ringPerimeter(final int r) {
+        final List<Cell> ring = new ArrayList<>();
+        for (int x = -r; x <= r; x++)      ring.add(new Cell(x, -r));
+        for (int z = -r + 1; z <= r; z++)  ring.add(new Cell(r, z));
+        for (int x = r - 1; x >= -r; x--)  ring.add(new Cell(x, r));
+        for (int z = r - 1; z >= -r + 1; z--) ring.add(new Cell(-r, z));
+        return ring;
+    }
+
+    // ── Archetype 5: grid maze (Forgotten Catacombs) ──────────────────────────
+
+    /**
+     * Depth-first backtracking maze. Dead ends become treasure, secret and trap
+     * chambers; the boss crypt is the cell farthest (by tunnel distance) from
+     * the entrance.
+     */
+    @NotNull
+    private List<Cell> planGridMaze(final int budget, @NotNull final Random rng) {
+        final Map<Long, Cell> byKey = new LinkedHashMap<>();
+        final Map<Long, Long> parent = new HashMap<>();
+        final Deque<Cell> stack = new ArrayDeque<>();
+        final int[][] dirs = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+
+        final Cell start = new Cell(0, 0, RoomType.SPAWN);
+        byKey.put(start.key(), start);
+        stack.push(start);
+
+        while (!stack.isEmpty() && byKey.size() < budget) {
+            final Cell cur = stack.peek();
+            final List<int[]> shuffled = new ArrayList<>(List.of(dirs));
+            java.util.Collections.shuffle(shuffled, rng);
+            Cell next = null;
+            for (final int[] d : shuffled) {
+                final int nx = cur.gx + d[0];
+                final int nz = cur.gz + d[1];
+                if (byKey.containsKey(Cell.key(nx, nz))) continue;
+                // Keep the maze compact so corridors stay short.
+                if (Math.abs(nx) > 6 || Math.abs(nz) > 6) continue;
+                next = new Cell(nx, nz);
+                break;
+            }
+            if (next == null) {
+                stack.pop(); // dead end — backtrack
+                continue;
+            }
+            byKey.put(next.key(), next);
+            parent.put(next.key(), cur.key());
+            stack.push(next);
+        }
+
+        final List<Cell> cells = new ArrayList<>(byKey.values());
+
+        // Boss crypt: the cell deepest in the maze (longest parent chain).
+        Cell deepest = start;
+        int deepestDepth = 0;
+        for (final Cell cell : cells) {
+            int depth = 0;
+            Long k = cell.key();
+            while (parent.containsKey(k)) {
+                k = parent.get(k);
+                depth++;
+            }
+            if (depth > deepestDepth) {
+                deepestDepth = depth;
+                deepest = cell;
+            }
+        }
+        deepest.forced = RoomType.BOSS;
+        moveToEnd(cells, deepest);
+
+        // Dead ends (one neighbour only) hold the catacombs' hidden riches.
+        for (final Cell cell : cells) {
+            if (cell.forced != null) continue;
+            int neighbours = 0;
+            for (final int[] d : dirs) {
+                if (byKey.containsKey(Cell.key(cell.gx + d[0], cell.gz + d[1]))) neighbours++;
+            }
+            if (neighbours <= 1) cell.forced = pocketType(rng);
+        }
+        return cells;
+    }
+
+    // ── Graph assembly (shared by all archetypes) ─────────────────────────────
+
+    @NotNull
+    private RoomGraph buildGraph(
+            @NotNull final org.bukkit.World world,
+            @NotNull final Location         origin,
+            @NotNull final List<Cell>       cells,
+            @NotNull final Random           rng
+    ) {
+        final RoomGraph graph = new RoomGraph();
+        final Set<Long> used = new HashSet<>();
+        Cell bossCell = null;
+
+        int placed = 0;
+        for (final Cell cell : cells) {
+            used.add(cell.key());
+            final RoomType type = cell.forced != null
+                    ? cell.forced
+                    : pickRoomType(graph, placed, cells.size(), rng);
+            graph.addRoom(placeRoom(type, gridToWorld(world, origin, cell.gx, cell.gz)));
+            if (type == RoomType.BOSS) bossCell = cell;
+            placed++;
+        }
+
+        // Reward vault: first free cell adjacent to the boss room.
+        if (bossCell != null) {
+            final int[][] dirs = {{0, 1}, {1, 0}, {0, -1}, {-1, 0}};
+            for (final int[] d : dirs) {
+                final int nx = bossCell.gx + d[0];
+                final int nz = bossCell.gz + d[1];
+                if (used.contains(Cell.key(nx, nz))) continue;
+                graph.addRoom(placeRoom(RoomType.REWARD, gridToWorld(world, origin, nx, nz)));
+                break;
+            }
         }
 
         logger.debug("LayoutPlanner: placed " + graph.getRoomCount() + " rooms.");
         return graph;
     }
 
-    // ── Private helpers ───────────────────────────────────────────────────────
+    /** Room types used for dead ends and side pockets. */
+    @NotNull
+    private RoomType pocketType(@NotNull final Random rng) {
+        final double roll = rng.nextDouble();
+        if (roll < 0.35) return RoomType.TREASURE;
+        if (roll < 0.55) return RoomType.SECRET;
+        if (roll < 0.80) return RoomType.TRAP;
+        return RoomType.PUZZLE;
+    }
 
     @NotNull
     private RoomData placeRoom(@NotNull final RoomType type, @NotNull final Location origin) {
@@ -158,30 +511,30 @@ public final class LayoutPlanner {
     }
 
     /**
-     * Picks the next room type based on what's already been placed and
-     * the configured weights / frequencies.
+     * Picks the next room type based on what's already been placed and the
+     * configured frequencies. Each special room type rolls independently so
+     * the configured chances mean what they say.
      */
     @NotNull
     private RoomType pickRoomType(
             @NotNull final RoomGraph graph,
             final int                placed,
-            final int                total
+            final int                total,
+            @NotNull final Random    rng
     ) {
         // Early-game: more combat
         if (placed < 3) return RoomType.COMBAT;
 
-        // Probability-weighted injection of special rooms
-        final double roll = RandomUtil.random();
-        if (roll < dungeonConfig.getPuzzleFrequency()
+        if (rng.nextDouble() < dungeonConfig.getPuzzleFrequency()
                 && graph.getRoomsOfType(RoomType.PUZZLE).size() < 3)
             return RoomType.PUZZLE;
-        if (roll < dungeonConfig.getTrapFrequency()
+        if (rng.nextDouble() < dungeonConfig.getTrapFrequency()
                 && graph.getRoomsOfType(RoomType.TRAP).size() < 4)
             return RoomType.TRAP;
-        if (roll < dungeonConfig.getSecretRoomChance()
+        if (rng.nextDouble() < dungeonConfig.getSecretRoomChance()
                 && graph.getRoomsOfType(RoomType.SECRET).isEmpty())
             return RoomType.SECRET;
-        if (roll < dungeonConfig.getEventChance()
+        if (rng.nextDouble() < dungeonConfig.getEventChance()
                 && graph.getRoomsOfType(RoomType.EVENT).size() < 2)
             return RoomType.EVENT;
 
@@ -189,7 +542,7 @@ public final class LayoutPlanner {
         if (placed > total / 2) {
             if (graph.getRoomsOfType(RoomType.ELITE_COMBAT).size() < 2)
                 return RoomType.ELITE_COMBAT;
-            if (graph.getRoomsOfType(RoomType.MINI_BOSS).isEmpty() && roll < 0.15)
+            if (graph.getRoomsOfType(RoomType.MINI_BOSS).isEmpty() && rng.nextDouble() < 0.15)
                 return RoomType.MINI_BOSS;
         }
 
@@ -202,42 +555,25 @@ public final class LayoutPlanner {
         return RoomType.COMBAT;
     }
 
-    /** Converts a grid cell to a world Location with room-size spacing. */
+    /** Converts a grid cell to a world Location using the uniform cell size. */
     @NotNull
     private Location gridToWorld(
             @NotNull final org.bukkit.World world,
-            @NotNull final Location         spawnOrigin,
+            @NotNull final Location         origin,
             final int                       gx,
-            final int                       gz,
-            @NotNull final RoomData         parent,
-            @NotNull final RoomType         type
+            final int                       gz
     ) {
-        // Room size approximation — use average to space rooms cleanly
-        final int cellW = parent.getWidth()  + ROOM_SEPARATION;
-        final int cellD = parent.getDepth()  + ROOM_SEPARATION;
         return new Location(
                 world,
-                spawnOrigin.getBlockX() + (long) gx * cellW,
-                64,
-                spawnOrigin.getBlockZ() + (long) gz * cellD
+                origin.getBlockX() + (long) gx * CELL_SIZE,
+                ROOM_Y,
+                origin.getBlockZ() + (long) gz * CELL_SIZE
         );
     }
 
-    /** Returns a random cardinal direction as [dx, dz]. */
-    @NotNull
-    private int[] randomDirection() {
-        return switch (RandomUtil.randomInt(0, 3)) {
-            case 0 -> new int[]{ 1,  0};
-            case 1 -> new int[]{-1,  0};
-            case 2 -> new int[]{ 0,  1};
-            default-> new int[]{ 0, -1};
-        };
-    }
-
-    private boolean isGridOccupied(@NotNull final List<int[]> grid, final int gx, final int gz) {
-        for (final int[] cell : grid) {
-            if (cell[0] == gx && cell[1] == gz) return true;
-        }
-        return false;
+    /** Moves {@code cell} to the end of the list so the boss is always placed last. */
+    private void moveToEnd(@NotNull final List<Cell> cells, @NotNull final Cell cell) {
+        cells.remove(cell);
+        cells.add(cell);
     }
 }

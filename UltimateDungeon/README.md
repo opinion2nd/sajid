@@ -1,8 +1,11 @@
 # UltimateDungeon
 
 A commercial-grade, fully procedural dungeon plugin for Paper-based Minecraft
-servers (1.21.x). Solo and party runs, eight multi-phase bosses, ten monster
-types, eight traps, five puzzles, five themes, a six-tier loot system, isolated
+servers (1.21.x). Solo and party runs, seven multi-phase bosses (each with four
+signature powers — no two bosses share one), ten monster types, eight traps,
+five puzzles, five themes with five distinct map layouts (hub-and-spoke,
+winding path, symmetric axis, concentric rings, grid maze), five selectable
+levels that scale both map size and challenge, a six-tier loot system, isolated
 dungeon worlds, and a complete reward, statistics and GUI suite — all driven by
 configuration.
 
@@ -30,8 +33,8 @@ configuration.
 | Sub-command | Description | Permission |
 |-------------|-------------|------------|
 | *(none)* | Open the main menu GUI | `dungeon.use` |
-| `solo [theme] [difficulty]` | Start a solo dungeon | `dungeon.use` |
-| `party [theme] [difficulty]` | Start a dungeon for your party (leader only) | `dungeon.use` |
+| `solo [theme] [level]` | Start a solo dungeon | `dungeon.use` |
+| `party [theme] [level]` | Start a dungeon for your party (leader only) | `dungeon.use` |
 | `leave` | Leave your current dungeon | `dungeon.use` |
 | `stats` | View your personal statistics | `dungeon.stats` |
 | `reload` | Reload all configuration files | `dungeon.reload` |
@@ -62,15 +65,15 @@ All gameplay values live in configuration — nothing is hard-coded.
 | `config.yml` | Debug, language, instance prefix |
 | `messages.yml` | All player-facing text (MiniMessage) |
 | `dungeon.yml` | Size, room weights, corridor length, spawn/decoration rates |
-| `themes.yml` | Per-theme palette, ambience, monster/boss pools |
-| `bosses.yml` | Per-boss health, phases, five abilities, BossBar, drops, dialogue |
+| `themes.yml` | Per-theme palette, ambience, layout style, monster/boss pools |
+| `bosses.yml` | Per-boss health, phases, four signature powers, BossBar, drops, dialogue |
 | `monsters.yml` | Per-monster stats, abilities, equipment, drops, spawn weight |
 | `traps.yml` | Per-trap damage, cooldown, trigger, radius, effects |
 | `rewards.yml` | Per-event money, XP, loot table, commands, tokens |
 | `loot.yml` | Rarity chances and per-table item pools |
 | `gui.yml` | GUI layouts |
 | `party.yml` | Party size, timeouts, friendly fire, late join |
-| `difficulty.yml` | Per-difficulty multipliers and loot tier bonus |
+| `difficulty.yml` | The five levels: multipliers, loot tier bonus and map size |
 | `database.yml` | SQLite/MySQL connection and pool settings |
 | `performance.yml` | Entity caps, cache TTLs, async/expiry settings |
 

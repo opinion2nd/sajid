@@ -16,6 +16,7 @@ public class ThemeDefinition implements ITheme {
     private final ThemeBlockPalette palette;
     private final ThemeAmbience    ambience;
     private final ThemeMonsterPool monsterPool;
+    private final LayoutStyle      layoutStyle;
 
     public ThemeDefinition(
             @NotNull final String           themeId,
@@ -24,11 +25,23 @@ public class ThemeDefinition implements ITheme {
             @NotNull final ThemeAmbience    ambience,
             @NotNull final ThemeMonsterPool monsterPool
     ) {
+        this(themeId, displayName, palette, ambience, monsterPool, LayoutStyle.HUB_AND_SPOKE);
+    }
+
+    public ThemeDefinition(
+            @NotNull final String           themeId,
+            @NotNull final String           displayName,
+            @NotNull final ThemeBlockPalette palette,
+            @NotNull final ThemeAmbience    ambience,
+            @NotNull final ThemeMonsterPool monsterPool,
+            @NotNull final LayoutStyle      layoutStyle
+    ) {
         this.themeId     = themeId;
         this.displayName = displayName;
         this.palette     = palette;
         this.ambience    = ambience;
         this.monsterPool = monsterPool;
+        this.layoutStyle = layoutStyle;
     }
 
     @Override @NotNull public String getThemeId()     { return themeId;     }
@@ -43,4 +56,5 @@ public class ThemeDefinition implements ITheme {
     @NotNull public ThemeBlockPalette getPalette()     { return palette;     }
     @NotNull public ThemeAmbience     getAmbience()    { return ambience;    }
     @NotNull public ThemeMonsterPool  getMonsterPool2(){ return monsterPool; }
+    @NotNull public LayoutStyle       getLayoutStyle() { return layoutStyle; }
 }

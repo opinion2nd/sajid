@@ -10,6 +10,7 @@ import java.util.List;
 /**
  * Theme: Corrupted Temple
  * Purpur and blackstone, void energy, demon enemies.
+ * Layout: symmetric axis — a grand processional nave with mirrored side chapels.
  */
 public final class CorruptedTempleTheme extends ThemeDefinition {
     public CorruptedTempleTheme() {
@@ -22,6 +23,7 @@ public final class CorruptedTempleTheme extends ThemeDefinition {
                 List.of(Particle.SOUL_FIRE_FLAME, Particle.PORTAL)),
             new ThemeMonsterPool(
                 List.of("common_monster_4", "elite_monster_3"),
-                List.of("boss_4", "boss_5")));
+                List.of("zharok")),
+            LayoutStyle.SYMMETRIC_AXIS);
     }
 }

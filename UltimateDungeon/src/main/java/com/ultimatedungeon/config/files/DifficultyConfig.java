@@ -13,7 +13,13 @@ import java.util.Set;
 /** Typed wrapper for {@code difficulty.yml}. */
 public final class DifficultyConfig {
 
-    /** Immutable snapshot of a single difficulty preset. */
+    /**
+     * Immutable snapshot of a single level preset.
+     *
+     * <p>{@code roomsMin}/{@code roomsMax} define the map size for the level so
+     * higher levels generate bigger dungeons; {@code 0} means "use the global
+     * dungeon-size range from dungeon.yml".</p>
+     */
     public record DifficultyPreset(
         @NotNull String id,
         @NotNull String displayName,
@@ -22,7 +28,9 @@ public final class DifficultyConfig {
         double cooldownMultiplier,
         double spawnRateMultiplier,
         int    lootTierBonus,
-        double trapDamageMultiplier
+        double trapDamageMultiplier,
+        int    roomsMin,
+        int    roomsMax
     ) {}
 
     private final Map<String, DifficultyPreset> presets;
@@ -42,7 +50,9 @@ public final class DifficultyConfig {
                     ps.getDouble("cooldown-multiplier", 1.0),
                     ps.getDouble("spawn-rate-multiplier", 1.0),
                     ps.getInt("loot-tier-bonus", 0),
-                    ps.getDouble("trap-damage-multiplier", 1.0)
+                    ps.getDouble("trap-damage-multiplier", 1.0),
+                    ps.getInt("rooms.min", 0),
+                    ps.getInt("rooms.max", 0)
                 ));
             }
         }
@@ -57,7 +67,7 @@ public final class DifficultyConfig {
     @NotNull
     public DifficultyPreset getPresetOrDefault(@NotNull final String id) {
         return presets.getOrDefault(id, new DifficultyPreset(
-            "normal", "Normal", 1.0, 1.0, 1.0, 1.0, 0, 1.0
+            "level_1", "Level 1", 1.0, 1.0, 1.0, 1.0, 0, 1.0, 0, 0
         ));
     }
 
