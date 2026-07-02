@@ -1,0 +1,28 @@
+name: GeoDash
+version: ${project.version}
+main: com.geodash.GeoDashPlugin
+api-version: '1.21'
+folia-supported: true
+description: Geometry Dash style auto-run minigame with races, level editor, leaderboards and rewards
+author: opinion2nd
+website: https://github.com/opinion2nd
+
+commands:
+  gd:
+    description: GeoDash main command
+    usage: /gd help
+    aliases: [geodash, gdash]
+
+permissions:
+  geodash.play:
+    description: Join and play GeoDash levels
+    default: true
+  geodash.race:
+    description: Join multiplayer races
+    default: true
+  geodash.race.manage:
+    description: Create and start races
+    default: op
+  geodash.admin:
+    description: Create, edit and delete levels; reload the plugin
+    default: op
