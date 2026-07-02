@@ -34,6 +34,7 @@ public final class DungeonLaunchService {
     private final ThemeRegistry          themeRegistry;
     private final NotificationService    notifications;
     private final MessagesConfig         messages;
+    private final DungeonKeyService      keyService;
     private final PluginLogger           logger;
 
     public DungeonLaunchService(@NotNull final DungeonLauncher launcher,
@@ -43,6 +44,7 @@ public final class DungeonLaunchService {
                                 @NotNull final ThemeRegistry themeRegistry,
                                 @NotNull final NotificationService notifications,
                                 @NotNull final MessagesConfig messages,
+                                @NotNull final DungeonKeyService keyService,
                                 @NotNull final PluginLogger logger) {
         this.launcher = launcher;
         this.instanceManager = instanceManager;
@@ -51,6 +53,7 @@ public final class DungeonLaunchService {
         this.themeRegistry = themeRegistry;
         this.notifications = notifications;
         this.messages = messages;
+        this.keyService = keyService;
         this.logger = logger;
     }
 
@@ -62,6 +65,7 @@ public final class DungeonLaunchService {
         // = fifth), so each level is a visually distinct dungeon.
         final String theme = themeForLevel(difficultyId);
         if (!validate(player, theme, difficultyId)) return false;
+        if (!keyService.consumeForEntry(player, difficultyService.level(difficultyId))) return false;
         cooldowns.setCooldown(player, ENTRY_COOLDOWN_KEY, ENTRY_COOLDOWN_MS);
         final DungeonGenerationRequest request = new DungeonGenerationRequest(
                 player.getUniqueId(), theme, difficultyId, false, null);
@@ -92,6 +96,8 @@ public final class DungeonLaunchService {
                 return false;
             }
         }
+        // Only the leader needs to spend a key for the party.
+        if (!keyService.consumeForEntry(leader, difficultyService.level(difficultyId))) return false;
         members.forEach(m -> cooldowns.setCooldown(m, ENTRY_COOLDOWN_KEY, ENTRY_COOLDOWN_MS));
         final DungeonGenerationRequest request = new DungeonGenerationRequest(
                 leader.getUniqueId(), themeForLevel(difficultyId), difficultyId, true, partyId);

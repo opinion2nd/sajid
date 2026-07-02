@@ -133,6 +133,7 @@ public final class PluginBootstrap {
     private DungeonFailureHandler dungeonFailureHandler;
     private com.ultimatedungeon.dungeon.lifecycle.DungeonScoreService scoreService;
     private com.ultimatedungeon.dungeon.lifecycle.ReviveManager reviveManager;
+    private com.ultimatedungeon.services.DungeonKeyService keyService;
     private com.ultimatedungeon.listeners.player.DungeonCompassListener compassListener;
     private DungeonLaunchService dungeonLaunchService;
     private GuiManager           guiManager;
@@ -391,6 +392,9 @@ public final class PluginBootstrap {
             if ("S".equals(score.rank()) || "A".equals(score.rank())) {
                 rewardRoomService.grant(players, "completion_bonus_loot");
             }
+            // Progression keys (if enabled): grant the key for the next level.
+            keyService.grantNextLevelKey(players,
+                    difficultyService.level(instance.getContext().getRequest().getDifficultyId()));
             for (final org.bukkit.entity.Player p : players) {
                 com.ultimatedungeon.util.MiniMessageUtil.send(p,
                         "<gray>─────── <gold><bold>DUNGEON CLEARED</bold></gold> <gray>───────");
@@ -444,9 +448,11 @@ public final class PluginBootstrap {
             }
         });
 
+        keyService = new com.ultimatedungeon.services.DungeonKeyService(
+                plugin, configManager.getMainConfig(), notificationService);
         dungeonLaunchService = new DungeonLaunchService(dungeonLauncher, dungeonInstanceManager,
                 cooldownManager, difficultyService, themeRegistry, notificationService,
-                configManager.getMessagesConfig(), pluginLogger);
+                configManager.getMessagesConfig(), keyService, pluginLogger);
 
         guiManager = new GuiManager(pluginLogger);
         guiServices = new com.ultimatedungeon.gui.framework.GuiServices(
@@ -557,6 +563,16 @@ public final class PluginBootstrap {
                 arenaLockdown, dungeonInstanceManager), plugin);
 
         pluginLogger.info("Listeners registered.");
+
+        // PlaceholderAPI expansion — registered only when the plugin is present.
+        if (plugin.getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
+            try {
+                new com.ultimatedungeon.compat.UltimateDungeonExpansion(plugin, statisticsService).register();
+                pluginLogger.info("PlaceholderAPI expansion registered.");
+            } catch (final Throwable t) {
+                pluginLogger.warning("Failed to register PlaceholderAPI expansion: " + t.getMessage());
+            }
+        }
     }
 
     /** Launches one celebratory firework near a location. */

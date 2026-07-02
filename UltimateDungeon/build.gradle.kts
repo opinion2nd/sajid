@@ -23,6 +23,9 @@ repositories {
 
     // Vault (economy API)
     maven("https://jitpack.io")
+
+    // PlaceholderAPI
+    maven("https://repo.extendedclip.com/releases/")
 }
 
 dependencies {
@@ -32,6 +35,9 @@ dependencies {
 
     // ── Economy ──────────────────────────────────────────────────────────────
     compileOnly("com.github.MilkBowl:VaultAPI:1.7.1")
+
+    // ── PlaceholderAPI (soft-depend; expansion registered only if present) ─────
+    compileOnly("me.clip:placeholderapi:2.11.6")
 
     // ── Database ─────────────────────────────────────────────────────────────
     // SQLite JDBC driver — shaded into the final jar.

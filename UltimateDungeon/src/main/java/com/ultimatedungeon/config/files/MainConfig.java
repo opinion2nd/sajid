@@ -16,6 +16,8 @@ public final class MainConfig {
     private final boolean updateChecker;
     private final String  instancePrefix;
     private final int     configVersion;
+    private final boolean keysEnabled;
+    private final int     keysMinLevel;
 
     public MainConfig(@NotNull final FileConfiguration config) {
         this.configVersion  = config.getInt("config-version", 1);
@@ -23,6 +25,9 @@ public final class MainConfig {
         this.language       = config.getString("language", "en");
         this.updateChecker  = config.getBoolean("update-checker", true);
         this.instancePrefix = config.getString("instance-prefix", "ud_instance_");
+        // Progression keys are opt-in so default behaviour is unchanged.
+        this.keysEnabled    = config.getBoolean("keys.enabled", false);
+        this.keysMinLevel   = config.getInt("keys.min-level", 3);
     }
 
     public int     getConfigVersion()  { return configVersion; }
@@ -30,4 +35,8 @@ public final class MainConfig {
     @NotNull public String getLanguage()       { return language; }
     public boolean isUpdateChecker()   { return updateChecker; }
     @NotNull public String getInstancePrefix() { return instancePrefix; }
+    /** Whether level-gated dungeon keys are required for higher levels. */
+    public boolean isKeysEnabled()     { return keysEnabled; }
+    /** Lowest dungeon level that requires (and grants the next) a key. */
+    public int     getKeysMinLevel()   { return keysMinLevel; }
 }

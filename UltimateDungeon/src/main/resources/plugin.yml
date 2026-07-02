@@ -10,6 +10,7 @@ website: https://ultimatedungeon.com
 # ── Soft dependencies ─────────────────────────────────────────────────────────
 softdepend:
   - Vault
+  - PlaceholderAPI
 
 # ── Commands ──────────────────────────────────────────────────────────────────
 commands:

@@ -16,3 +16,10 @@ update-checker: true
 
 # Prefix used internally for dungeon world names.
 instance-prefix: "ud_instance_"
+
+# Progression keys (opt-in). When enabled, dungeons at or above min-level require
+# a matching key item to enter; clearing a dungeon grants the key for the next
+# level. Leave disabled to let players run any level freely.
+keys:
+  enabled: false
+  min-level: 3
