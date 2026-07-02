@@ -46,6 +46,12 @@ public final class IsolatedWorldProvider {
         final World existing = Bukkit.getWorld(worldName);
         if (existing != null) return existing;
 
+        // Dungeon worlds are disposable: any world folder left from a previous
+        // server session still contains old dungeon blocks, and new runs would
+        // generate right on top of them (maps visibly "mixing"). Wipe it so
+        // every server start begins with a truly empty void world.
+        wipeStaleWorldFolder(worldName);
+
         try {
             final World world = new WorldCreator(worldName)
                     .generator(new VoidChunkGenerator())
@@ -62,6 +68,29 @@ public final class IsolatedWorldProvider {
         } catch (final Exception e) {
             logger.severe("Exception creating dungeon world " + worldName, e);
             return null;
+        }
+    }
+
+    /** Deletes a stale (unloaded) dungeon world folder from a previous session. */
+    private void wipeStaleWorldFolder(@NotNull final String worldName) {
+        final java.io.File folder = new java.io.File(Bukkit.getWorldContainer(), worldName);
+        if (!folder.exists()) return;
+        try {
+            deleteRecursively(folder);
+            logger.info("Wiped stale dungeon world from previous session: " + worldName);
+        } catch (final Exception e) {
+            logger.warning("Could not wipe stale dungeon world " + worldName
+                    + ": " + e.getMessage());
+        }
+    }
+
+    private void deleteRecursively(@NotNull final java.io.File file) {
+        final java.io.File[] children = file.listFiles();
+        if (children != null) {
+            for (final java.io.File child : children) deleteRecursively(child);
+        }
+        if (!file.delete()) {
+            logger.debug("Could not delete: " + file.getAbsolutePath());
         }
     }
 
