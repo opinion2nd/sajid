@@ -97,8 +97,8 @@ public final class RoomPlacer {
             @NotNull final ThemeBlockPalette palette,
             @NotNull final RoomGraph        graph
     ) {
-        walkCorridor(conn, (world, x, floorY, z) ->
-                carveOpenColumn(world, x, floorY, z, palette, graph));
+        walkCorridor(conn, (world, x, floorY, z, alongX) ->
+                carveOpenColumn(world, x, floorY, z, alongX, palette, graph));
     }
 
     /**
@@ -126,9 +126,9 @@ public final class RoomPlacer {
 
     /** Clears one corridor's carved blocks back to air. */
     public void clearCorridor(@NotNull final RoomConnection conn) {
-        walkCorridor(conn, (world, x, floorY, z) -> {
-            for (int dx = -1; dx <= 1; dx++) {
-                for (int dz = -1; dz <= 1; dz++) {
+        walkCorridor(conn, (world, x, floorY, z, alongX) -> {
+            for (int dx = -2; dx <= 2; dx++) {
+                for (int dz = -2; dz <= 2; dz++) {
                     for (int dy = 0; dy <= 3; dy++) {
                         BlockUtil.setBlock(new org.bukkit.Location(
                                 world, x + dx, floorY + dy, z + dz), Material.AIR);
@@ -154,46 +154,70 @@ public final class RoomPlacer {
         final int endZ   = Math.max(from.getBlockZ(), to.getBlockZ());
 
         if (conn.getAxis() == RoomConnection.Axis.X) {
-            for (int x = startX; x <= endX; x++) visitor.visit(world, x, floorY, from.getBlockZ());
-            for (int z = startZ; z <= endZ; z++) visitor.visit(world, to.getBlockX(), floorY, z);
+            for (int x = startX; x <= endX; x++) visitor.visit(world, x, floorY, from.getBlockZ(), true);
+            for (int z = startZ; z <= endZ; z++) visitor.visit(world, to.getBlockX(), floorY, z, false);
         } else {
-            for (int z = startZ; z <= endZ; z++) visitor.visit(world, from.getBlockX(), floorY, z);
-            for (int x = startX; x <= endX; x++) visitor.visit(world, x, floorY, to.getBlockZ());
+            for (int z = startZ; z <= endZ; z++) visitor.visit(world, from.getBlockX(), floorY, z, false);
+            for (int x = startX; x <= endX; x++) visitor.visit(world, x, floorY, to.getBlockZ(), true);
         }
     }
 
     @FunctionalInterface
     private interface CorridorColumnVisitor {
-        void visit(@NotNull org.bukkit.World world, int x, int floorY, int z);
+        void visit(@NotNull org.bukkit.World world, int x, int floorY, int z, boolean alongX);
     }
 
     /**
-     * One open-walkway column: outside rooms, lay a 3-wide floor and clear the
-     * air above it; inside a room's footprint, only punch the doorway air —
-     * never place blocks that could obstruct the room.
+     * One slice of a decorated open walkway:
+     * <ul>
+     *   <li>3-wide floor with an accent centre line woven into it,</li>
+     *   <li>low side railings (secondary block) so the path reads as a bridge,</li>
+     *   <li>lanterns on the railings every few blocks for light and looks,</li>
+     *   <li>clear air above — never a wall or ceiling that could block the way.</li>
+     * </ul>
+     * Inside a room's footprint only the 3-wide doorway is punched; the
+     * walkway never places a block inside a room.
      */
     private void carveOpenColumn(
             @NotNull final org.bukkit.World world,
             final int x, final int floorY, final int z,
+            final boolean alongX,
             @NotNull final ThemeBlockPalette palette,
             @NotNull final RoomGraph graph
     ) {
-        final boolean insideRoom = isInsideAnyRoom(graph, x, z);
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dz = -1; dz <= 1; dz++) {
-                final int bx = x + dx;
-                final int bz = z + dz;
-                if (insideRoom || isInsideAnyRoom(graph, bx, bz)) {
-                    // Doorway punch only: clear walking space through walls.
-                    for (int dy = 1; dy <= 3; dy++) {
-                        BlockUtil.setBlock(new org.bukkit.Location(world, bx, floorY + dy, bz), Material.AIR);
-                    }
-                } else {
-                    BlockUtil.setBlock(new org.bukkit.Location(world, bx, floorY, bz), palette.getFloor());
+        final int along = alongX ? x : z;
+        for (int o = -2; o <= 2; o++) {
+            final int bx = alongX ? x : x + o;
+            final int bz = alongX ? z + o : z;
+
+            if (isInsideAnyRoom(graph, bx, bz)) {
+                // Doorway punch only (3-wide): clear walking space through walls.
+                if (Math.abs(o) <= 1) {
                     for (int dy = 1; dy <= 3; dy++) {
                         BlockUtil.setBlock(new org.bukkit.Location(world, bx, floorY + dy, bz), Material.AIR);
                     }
                 }
+                continue;
+            }
+
+            if (Math.abs(o) <= 1) {
+                // Walkway floor: accent centre line woven every other pair.
+                final Material floorMat = (o == 0 && ((along >> 1) & 1) == 0)
+                        ? palette.getAccent() : palette.getFloor();
+                BlockUtil.setBlock(new org.bukkit.Location(world, bx, floorY, bz), floorMat);
+                for (int dy = 1; dy <= 3; dy++) {
+                    BlockUtil.setBlock(new org.bukkit.Location(world, bx, floorY + dy, bz), Material.AIR);
+                }
+            } else {
+                // Railing edge: support block, low rail, and a lantern every
+                // 6 blocks (alternating sides) to light the way.
+                BlockUtil.setBlock(new org.bukkit.Location(world, bx, floorY, bz), palette.getFloor());
+                BlockUtil.setBlock(new org.bukkit.Location(world, bx, floorY + 1, bz), palette.getSecondary());
+                final boolean lanternHere = Math.floorMod(along, 6) == 0
+                        && ((Math.floorMod(along, 12) == 0) == (o < 0));
+                BlockUtil.setBlock(new org.bukkit.Location(world, bx, floorY + 2, bz),
+                        lanternHere ? Material.LANTERN : Material.AIR);
+                BlockUtil.setBlock(new org.bukkit.Location(world, bx, floorY + 3, bz), Material.AIR);
             }
         }
     }
