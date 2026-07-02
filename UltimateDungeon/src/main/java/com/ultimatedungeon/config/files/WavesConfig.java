@@ -30,8 +30,10 @@ public final class WavesConfig {
             35, 1, 1, 3, 5, Map.of(EntityType.ZOMBIE, 60, EntityType.SKELETON, 40), false);
 
     private final Map<String, LevelWaves> levels = new LinkedHashMap<>();
+    private final int countdownSeconds;
 
     public WavesConfig(@NotNull final FileConfiguration cfg) {
+        this.countdownSeconds = Math.max(1, cfg.getInt("countdown-seconds", 10));
         final ConfigurationSection root = cfg.getConfigurationSection("waves");
         if (root == null) return;
         for (final String key : root.getKeys(false)) {
@@ -92,4 +94,7 @@ public final class WavesConfig {
 
     @NotNull
     public Map<String, LevelWaves> getAllLevels() { return Collections.unmodifiableMap(levels); }
+
+    /** Boss-style pre-fight countdown before a wave room seals and starts. */
+    public int getCountdownSeconds() { return countdownSeconds; }
 }

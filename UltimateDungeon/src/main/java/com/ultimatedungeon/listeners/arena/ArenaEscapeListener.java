@@ -36,7 +36,9 @@ public final class ArenaEscapeListener implements Listener {
         if (instance == null) return;
         final UUID id = instance.getInstanceId();
         if (!lockdown.isLocked(id)) return;
-        final RoomData arena = lockdown.getArena(id);
+        // Only players stepping OUT of a sealed room are pushed back — players
+        // elsewhere in the dungeon are unaffected.
+        final RoomData arena = lockdown.getLockedRoomAt(id, event.getFrom());
         if (arena != null && blocker.isOutside(arena, to)) {
             blocker.pushBack(event.getPlayer(), arena);
         }

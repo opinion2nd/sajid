@@ -338,7 +338,8 @@ public final class PluginBootstrap {
         cleanupService.registerAction(waveManager::despawnAll);
         cleanupService.registerAction(bossEngine::cleanup);
         cleanupService.registerAction(arenaLockdown::unlock);
-        cleanupService.registerAction(dungeonGenerator::releaseOrigin);
+        // Despawn the dungeon's blocks and free its map slot afterwards.
+        cleanupService.registerInstanceAction(dungeonGenerator::clearInstanceBlocks);
         dungeonLauncher = new DungeonLauncher(generationPipeline, dungeonInstanceManager, sessionManager,
                 teleportService, notificationService, statisticsService, cleanupService,
                 configManager.getMessagesConfig(), pluginLogger);
@@ -352,14 +353,15 @@ public final class PluginBootstrap {
             rewardRoomService.grant(players, "completion_bonus_loot");
         });
 
-        // Boss death → count the kill; the run completes only when EVERY boss
-        // the level demands has been defeated (level 1 → 1 ... level 5 → 5).
-        bossEngine.setDeathHook((instanceId, bossId) -> {
-            arenaCleanup.cleanup(instanceId);
+        // Boss death → unseal THAT boss room, count the kill; the run completes
+        // only when EVERY boss the level demands has been defeated.
+        bossEngine.setDeathHook((instanceId, bossId, roomId) -> {
+            if (roomId != null) arenaLockdown.unlock(instanceId, roomId);
             final var instance = dungeonInstanceManager.getInstance(instanceId);
             if (instance instanceof final DungeonInstance di) {
                 final int defeated = di.addBossKill();
                 if (di.allBossesDefeated()) {
+                    arenaCleanup.cleanup(instanceId);
                     dungeonEndHandler.onComplete(di, bossId);
                 } else {
                     final int left = di.getTotalBosses() - defeated;

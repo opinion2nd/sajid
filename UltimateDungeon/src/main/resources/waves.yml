@@ -8,6 +8,10 @@
 
 config-version: 2
 
+# Boss-style countdown before a wave room seals shut and the fight begins.
+# Leaving the room cancels it; re-entering restarts it.
+countdown-seconds: 10
+
 waves:
   level-1:
     rooms-with-waves-percent: 35

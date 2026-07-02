@@ -27,7 +27,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiConsumer;
 
 /**
  * Spawns and drives boss encounters: builds the boss entities from their
@@ -43,6 +42,7 @@ public final class BossEngine {
 
     private static final class ActiveBoss {
         final UUID instanceId;
+        String roomId; // boss room this boss belongs to (unseal on death)
         final BossDefinition def;
         final LivingEntity entity;
         final BossHealthTracker health;
@@ -71,8 +71,17 @@ public final class BossEngine {
     private final Map<String, BossDefinition> definitions = new LinkedHashMap<>();
     private final Map<UUID, List<ActiveBoss>> active = new ConcurrentHashMap<>();
 
-    /** Fired every time a boss dies: (instanceId, bossId). */
-    private BiConsumer<UUID, String> onBossDeath = (i, b) -> {};
+    /** Death callback: (instanceId, bossId, roomId — may be null). */
+    @FunctionalInterface
+    public interface DeathHook {
+        void onDeath(@NotNull UUID instanceId, @NotNull String bossId, @Nullable String roomId);
+    }
+
+    /** Boss ids already used in each instance so every boss room gets a DIFFERENT boss. */
+    private final Map<UUID, java.util.Set<String>> usedBosses = new ConcurrentHashMap<>();
+
+    /** Fired every time a boss dies. */
+    private DeathHook onBossDeath = (i, b, r) -> {};
 
     public BossEngine(@NotNull final UltimateDungeon plugin,
                       @NotNull final BossesConfig config,
@@ -84,7 +93,7 @@ public final class BossEngine {
         loadDefinitions(config);
     }
 
-    public void setDeathHook(@NotNull final BiConsumer<UUID, String> hook) {
+    public void setDeathHook(@NotNull final DeathHook hook) {
         this.onBossDeath = hook;
     }
 
@@ -117,10 +126,12 @@ public final class BossEngine {
                                         @NotNull final List<String> themePool,
                                         @NotNull final Location centre,
                                         @NotNull final String difficultyId,
-                                        @NotNull final Collection<? extends Player> arenaPlayers) {
-        final java.util.Set<String> used = new java.util.HashSet<>();
-        final List<ActiveBoss> group = active.get(instanceId);
-        if (group != null) for (final ActiveBoss b : group) used.add(b.def.getId());
+                                        @NotNull final Collection<? extends Player> arenaPlayers,
+                                        @Nullable final String roomId) {
+        // Persistent per-instance memory: bosses stay "used" even after they
+        // die, so every boss room in the run meets a different boss.
+        final java.util.Set<String> used =
+                usedBosses.computeIfAbsent(instanceId, k -> ConcurrentHashMap.newKeySet());
 
         final List<String> candidates = new ArrayList<>();
         for (final String id : themePool) {
@@ -135,7 +146,16 @@ public final class BossEngine {
         if (candidates.isEmpty()) return null;
 
         java.util.Collections.shuffle(candidates);
-        return spawnBoss(instanceId, candidates.get(0), centre, difficultyId, arenaPlayers);
+        final String pick = candidates.get(0);
+        used.add(pick);
+        final LivingEntity boss = spawnBoss(instanceId, pick, centre, difficultyId, arenaPlayers);
+        if (boss != null && roomId != null) {
+            final List<ActiveBoss> group = active.get(instanceId);
+            if (group != null && !group.isEmpty()) {
+                group.get(group.size() - 1).roomId = roomId;
+            }
+        }
+        return boss;
     }
 
     /** Spawns one boss for an instance and shows its BossBar to the arena players. */
@@ -212,6 +232,7 @@ public final class BossEngine {
     }
 
     public void cleanup(@NotNull final UUID instanceId) {
+        usedBosses.remove(instanceId);
         final List<ActiveBoss> group = active.remove(instanceId);
         if (group == null) return;
         for (final ActiveBoss boss : group) {
@@ -233,7 +254,7 @@ public final class BossEngine {
 
         // Fires for EVERY boss death; the completion hook decides whether the
         // run is over by counting kills against the level's boss total.
-        onBossDeath.accept(boss.instanceId, boss.def.getId());
+        onBossDeath.onDeath(boss.instanceId, boss.def.getId(), boss.roomId);
     }
 
     private void spawnVictoryFireworks(@NotNull final org.bukkit.Location loc) {

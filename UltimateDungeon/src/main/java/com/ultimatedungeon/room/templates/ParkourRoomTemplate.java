@@ -30,6 +30,34 @@ public final class ParkourRoomTemplate extends AbstractRoomTemplate {
             @NotNull final ThemeBlockPalette palette
     ) {
         placeCornerPillars(origin, palette);
+        placeJumpCourse(origin, palette);
+    }
+
+    /**
+     * A zig-zag jump course across the room: floating accent platforms rising
+     * and falling from one end to the other, with a gold goal marker. The room
+     * stays sealed until a player reaches the far side.
+     */
+    private void placeJumpCourse(
+            @NotNull final Location          origin,
+            @NotNull final ThemeBlockPalette palette
+    ) {
+        final int w = getWidth();
+        final int d = getDepth();
+        int x = w / 2;
+        int step = 0;
+        for (int z = 4; z <= d - 5; z += 3) {
+            // Deterministic zig-zag: swing left/right, alternate platform height.
+            x += (step % 2 == 0 ? 3 : -3);
+            x = Math.max(3, Math.min(w - 4, x));
+            final int y = 1 + (step % 3 == 2 ? 2 : 1);
+            placeRelative(origin, x,     y, z,     palette.getAccent());
+            placeRelative(origin, x + 1, y, z,     palette.getAccent());
+            step++;
+        }
+        // Goal marker at the far end.
+        placeRelative(origin, w / 2, 1, d - 3, Material.GOLD_BLOCK);
+        placeRelative(origin, w / 2, 2, d - 3, Material.AIR);
     }
 
     /**

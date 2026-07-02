@@ -17,6 +17,7 @@ import com.ultimatedungeon.room.model.RoomData;
 import com.ultimatedungeon.room.model.RoomGraph;
 import com.ultimatedungeon.theme.model.ThemeDefinition;
 import com.ultimatedungeon.trap.engine.TrapEngine;
+import com.ultimatedungeon.util.MiniMessageUtil;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
@@ -89,16 +90,28 @@ public final class RoomEnterListener implements Listener {
         if (graph == null) return;
 
         final RoomData room = roomAt(graph, to);
-        if (room == null) return;
+        if (room == null) {
+            // In a corridor — forget the room so re-entering it re-triggers
+            // its countdown/activation.
+            currentRoom.remove(player.getUniqueId());
+            return;
+        }
 
         final String last = currentRoom.get(player.getUniqueId());
-        if (room.getRoomId().equals(last)) return;
+        if (room.getRoomId().equals(last)) {
+            checkParkourProgress(instance, room, player);
+            return;
+        }
         currentRoom.put(player.getUniqueId(), room.getRoomId());
 
         if (room.isEntered()) return; // already activated by someone
-        room.setEntered();
         activate(instance, room);
     }
+
+    /** Wave/boss rooms roll their fate once and remember it. */
+    private final Map<String, Boolean> waveRoll = new ConcurrentHashMap<>();
+    /** Where each player entered a parkour room (goal = the far side). */
+    private final Map<String, Location> parkourEntry = new ConcurrentHashMap<>();
 
     private void activate(@NotNull final DungeonInstance instance, @NotNull final RoomData room) {
         final UUID id = instance.getInstanceId();
@@ -108,24 +121,65 @@ public final class RoomEnterListener implements Listener {
 
         switch (room.getType()) {
             case COMBAT, ELITE_COMBAT, MINI_BOSS -> {
-                // waves.yml decides whether this room hosts waves at all — the
+                // waves.yml decides ONCE whether this room hosts waves; the
                 // percentage grows with the level, so not every room fights.
-                if (waveManager.shouldRoomHaveWaves(difficulty)) {
-                    waveManager.startForLevel(id, room, difficulty, room::setCleared);
-                } else {
+                final boolean hasWaves = waveRoll.computeIfAbsent(room.getRoomId(),
+                        k -> waveManager.shouldRoomHaveWaves(difficulty));
+                if (!hasWaves) {
+                    room.setEntered();
                     room.setCleared();
+                    return;
                 }
+                // 10s pre-fight countdown, boss-style: leaving the room cancels
+                // it, re-entering restarts it. On zero the room seals shut.
+                startSealedEncounter(id, room, waveManager.waveCountdownSeconds(difficulty), () ->
+                        waveManager.startForLevel(id, room, difficulty, () -> {
+                            room.setCleared();
+                            arenaLockdown.unlock(id, room.getRoomId());
+                        }));
             }
             case EVENT -> {
+                room.setEntered();
                 final List<Player> inRoom = playersInRoom(room);
                 final boolean fired = dynamicEventEngine.trigger(id, room, inRoom, monsters, difficulty);
                 if (!fired) {
-                    waveManager.startForLevel(id, room, difficulty, room::setCleared);
+                    arenaLockdown.lock(id, room);
+                    waveManager.startForLevel(id, room, difficulty, () -> {
+                        room.setCleared();
+                        arenaLockdown.unlock(id, room.getRoomId());
+                    });
                 }
             }
-            case SECRET -> discoverSecret(room);
-            case TRAP -> trapEngine.placeInRoom(id, room, TRAPS_PER_ROOM, difficulty);
-            case PUZZLE -> puzzleEngine.startPuzzle(id, new ColorSequencePuzzle(), room::setCleared);
+            case SECRET -> {
+                room.setEntered();
+                discoverSecret(room);
+            }
+            case TRAP -> {
+                room.setEntered();
+                trapEngine.placeInRoom(id, room, TRAPS_PER_ROOM, difficulty);
+            }
+            case PUZZLE -> {
+                // Puzzle rooms lock shut: the next door opens only when solved.
+                room.setEntered();
+                arenaLockdown.lock(id, room);
+                playersInRoom(room).forEach(p -> MiniMessageUtil.send(p,
+                        "<light_purple>Solve the puzzle to unlock the doors!"));
+                puzzleEngine.startPuzzle(id, new ColorSequencePuzzle(), () -> {
+                    room.setCleared();
+                    arenaLockdown.unlock(id, room.getRoomId());
+                });
+            }
+            case PARKOUR -> {
+                // Parkour rooms lock shut until a player reaches the far side.
+                room.setEntered();
+                arenaLockdown.lock(id, room);
+                final List<Player> inRoom = playersInRoom(room);
+                if (!inRoom.isEmpty()) {
+                    parkourEntry.put(room.getRoomId(), inRoom.get(0).getLocation().clone());
+                }
+                inRoom.forEach(p -> MiniMessageUtil.send(p,
+                        "<aqua>Reach the far side of the parkour to unlock the doors!"));
+            }
             case BOSS -> {
                 final List<String> bosses = theme != null ? theme.getBossPool() : List.of();
                 final String firstId = bosses.isEmpty() ? null
@@ -134,22 +188,59 @@ public final class RoomEnterListener implements Listener {
                 final int seconds = def != null ? def.getCountdownSeconds() : 10;
                 final var world = room.getCentre().getWorld();
                 if (world == null) return;
-                // Pre-fight countdown, then spawn ONE random boss in THIS room
-                // and seal the arena. Levels with more bosses have more boss
-                // rooms — each spawns its own, different boss.
-                arenaCountdown.start(seconds, playersNearRoom(room), () -> {
-                    if (playersInRoom(room).isEmpty()) {
-                        return; // countdown safety: everyone left, do not spawn
-                    }
-                    arenaLockdown.lock(id, room);
-                    bossEngine.spawnRandomBoss(id, bosses, room.getCentre(), difficulty, playersNearRoom(room));
+                // Pre-fight countdown (cancels if everyone leaves, restarts on
+                // re-entry), then seal the arena and spawn ONE random boss —
+                // each boss room in the run gets a DIFFERENT boss.
+                startSealedEncounter(id, room, seconds, () -> {
+                    bossEngine.spawnRandomBoss(id, bosses, room.getCentre(), difficulty,
+                            playersNearRoom(room), room.getRoomId());
                     // Boss rooms only host normal waves when the config allows it.
                     if (waveManager.bossRoomWavesEnabled(difficulty)) {
                         waveManager.startForLevel(id, room, difficulty, room::setCleared);
                     }
                 });
             }
-            default -> { /* spawn, treasure, merchant, parkour, reward — no auto-activation */ }
+            default -> {
+                // spawn, treasure, merchant, reward — no auto-activation
+                room.setEntered();
+            }
+        }
+    }
+
+    /**
+     * Boss-style room entry: a cancellable countdown bound to the room. If
+     * every player steps out, the countdown silently stops and the room can be
+     * re-entered to start it again. When it hits zero the room's doorways seal
+     * with bedrock and the encounter begins.
+     */
+    private void startSealedEncounter(@NotNull final UUID instanceId, @NotNull final RoomData room,
+                                      final int seconds, @NotNull final Runnable begin) {
+        arenaCountdown.startCancellable(room.getRoomId(), seconds,
+                () -> playersInRoom(room), () -> {
+                    room.setEntered();
+                    arenaLockdown.lock(instanceId, room);
+                    begin.run();
+                });
+    }
+
+    /** Completes a parkour room when a player crosses to the far side. */
+    private void checkParkourProgress(@NotNull final DungeonInstance instance,
+                                      @NotNull final RoomData room, @NotNull final Player player) {
+        if (room.getType() != com.ultimatedungeon.room.model.RoomType.PARKOUR
+                || !room.isEntered() || room.isCleared()) return;
+        final Location entry = parkourEntry.get(room.getRoomId());
+        if (entry == null) return;
+        final double dx = Math.abs(player.getLocation().getX() - entry.getX());
+        final double dz = Math.abs(player.getLocation().getZ() - entry.getZ());
+        final double span = Math.max(room.getWidth(), room.getDepth()) * 0.7;
+        if (Math.max(dx, dz) >= span) {
+            room.setCleared();
+            arenaLockdown.unlock(instance.getInstanceId(), room.getRoomId());
+            parkourEntry.remove(room.getRoomId());
+            playersInRoom(room).forEach(p -> {
+                MiniMessageUtil.send(p, "<green>Parkour complete — doors unlocked!");
+                p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.2f);
+            });
         }
     }
 

@@ -74,13 +74,19 @@ public final class CorridorRouter {
         }
 
         // ── Extra edges for branching ──────────────────────────────────────────
+        // Only NEIGHBOURING rooms get extra links — a corridor between two far
+        // rooms would slice straight through everything in between.
+        final double maxLinkDist = 45.0; // ~1.5 layout cells
         final int extraEdges = Math.max(1, rooms.size() / 5);
-        for (int i = 0; i < extraEdges; i++) {
+        int added = 0;
+        for (int i = 0; i < extraEdges * 6 && added < extraEdges; i++) {
             final RoomData a = RandomUtil.randomElement(rooms);
             final RoomData b = RandomUtil.randomElement(rooms);
             if (!a.getRoomId().equals(b.getRoomId())
-                    && !a.getConnectedRoomIds().contains(b.getRoomId())) {
+                    && !a.getConnectedRoomIds().contains(b.getRoomId())
+                    && chebyshevDist(a, b) <= maxLinkDist) {
                 edges.add(new RoomData[]{a, b});
+                added++;
             }
         }
 

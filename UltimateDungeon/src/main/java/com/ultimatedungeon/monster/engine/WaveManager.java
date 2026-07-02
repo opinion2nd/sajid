@@ -71,6 +71,11 @@ public final class WaveManager {
         return wavesConfig.forLevel(levelId).bossRoomWaves();
     }
 
+    /** Pre-fight countdown (seconds) before a wave room seals and starts. */
+    public int waveCountdownSeconds(@NotNull final String levelId) {
+        return wavesConfig.getCountdownSeconds();
+    }
+
     /** Starts a wave encounter for an instance using the level's rules. */
     public void startForLevel(@NotNull final UUID instanceId, @NotNull final RoomData room,
                               @NotNull final String levelId, @NotNull final Runnable onComplete) {

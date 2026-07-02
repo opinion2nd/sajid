@@ -97,32 +97,86 @@ public final class RoomPlacer {
 
         final var world = from.getWorld();
         if (world == null) return;
+        // Corridor floor must sit at ROOM-FLOOR level (doors are at walking
+        // level, one block above), so walking room→corridor→room is seamless.
+        final int floorY = from.getBlockY() - 1;
 
         if (conn.getAxis() == RoomConnection.Axis.X) {
             // Carve along X first, then Z elbow
             final int startX = Math.min(from.getBlockX(), to.getBlockX());
             final int endX   = Math.max(from.getBlockX(), to.getBlockX());
             for (int x = startX; x <= endX; x++) {
-                carveCorridorColumn(world, x, from.getBlockY(), from.getBlockZ(), palette);
+                carveCorridorColumn(world, x, floorY, from.getBlockZ(), palette, false);
             }
             // Z elbow
             final int startZ = Math.min(from.getBlockZ(), to.getBlockZ());
             final int endZ   = Math.max(from.getBlockZ(), to.getBlockZ());
             for (int z = startZ; z <= endZ; z++) {
-                carveCorridorColumn(world, to.getBlockX(), from.getBlockY(), z, palette);
+                carveCorridorColumn(world, to.getBlockX(), floorY, z, palette, false);
             }
         } else {
             // Carve along Z first, then X elbow
             final int startZ = Math.min(from.getBlockZ(), to.getBlockZ());
             final int endZ   = Math.max(from.getBlockZ(), to.getBlockZ());
             for (int z = startZ; z <= endZ; z++) {
-                carveCorridorColumn(world, from.getBlockX(), from.getBlockY(), z, palette);
+                carveCorridorColumn(world, from.getBlockX(), floorY, z, palette, false);
             }
             final int startX = Math.min(from.getBlockX(), to.getBlockX());
             final int endX   = Math.max(from.getBlockX(), to.getBlockX());
             for (int x = startX; x <= endX; x++) {
-                carveCorridorColumn(world, x, from.getBlockY(), to.getBlockZ(), palette);
+                carveCorridorColumn(world, x, floorY, to.getBlockZ(), palette, false);
             }
+        }
+    }
+
+    /**
+     * Removes every block a dungeon placed — rooms and corridors — so a
+     * finished/failed instance fully despawns and its map area can be reused.
+     * Must run on the main thread.
+     */
+    public void clearAll(@NotNull final RoomGraph graph) {
+        for (final RoomData room : graph.getRooms()) {
+            clearRoom(room);
+        }
+        for (final RoomConnection conn : graph.getConnections()) {
+            clearCorridor(conn);
+        }
+        logger.debug("RoomPlacer: cleared " + graph.getRoomCount() + " rooms and "
+                + graph.getConnections().size() + " corridors.");
+    }
+
+    /** Sets one room's entire bounding box (plus a margin above) to air. */
+    public void clearRoom(@NotNull final RoomData room) {
+        final var world = room.getOrigin().getWorld();
+        if (world == null) return;
+        final var origin = room.getOrigin();
+        for (int x = -1; x <= room.getWidth(); x++) {
+            for (int y = -1; y <= room.getHeight() + 1; y++) {
+                for (int z = -1; z <= room.getDepth(); z++) {
+                    BlockUtil.setBlock(origin.clone().add(x, y, z), Material.AIR);
+                }
+            }
+        }
+    }
+
+    /** Clears one corridor's carved blocks back to air. */
+    public void clearCorridor(@NotNull final RoomConnection conn) {
+        final var from = conn.getStartDoor();
+        final var to   = conn.getEndDoor();
+        final var world = from.getWorld();
+        if (world == null) return;
+        final int floorY = from.getBlockY() - 1;
+        final int startX = Math.min(from.getBlockX(), to.getBlockX());
+        final int endX   = Math.max(from.getBlockX(), to.getBlockX());
+        final int startZ = Math.min(from.getBlockZ(), to.getBlockZ());
+        final int endZ   = Math.max(from.getBlockZ(), to.getBlockZ());
+        for (int x = startX; x <= endX; x++) {
+            carveCorridorColumn(world, x, floorY, from.getBlockZ(), null, true);
+            carveCorridorColumn(world, x, floorY, to.getBlockZ(), null, true);
+        }
+        for (int z = startZ; z <= endZ; z++) {
+            carveCorridorColumn(world, from.getBlockX(), floorY, z, null, true);
+            carveCorridorColumn(world, to.getBlockX(), floorY, z, null, true);
         }
     }
 
@@ -130,13 +184,15 @@ public final class RoomPlacer {
      * Carves a 3-wide, 4-tall column centred on {@code (x, y, z)} in the
      * dungeon's own world (never the default overworld).
      * Floor = primary, walls = secondary, ceiling = ceiling, interior = air.
+     * When {@code toAir} is true every block becomes air (cleanup mode).
      */
     private void carveCorridorColumn(
             @NotNull final org.bukkit.World world,
             final int                     x,
             final int                     y,
             final int                     z,
-            @NotNull final ThemeBlockPalette palette
+            final ThemeBlockPalette       palette,
+            final boolean                 toAir
     ) {
         for (int dx = -1; dx <= 1; dx++) {
             for (int dz = -1; dz <= 1; dz++) {
@@ -144,10 +200,14 @@ public final class RoomPlacer {
                     final org.bukkit.Location loc =
                             new org.bukkit.Location(world, x + dx, y + dy, z + dz);
                     final Material mat;
-                    if (dy == 0)               mat = palette.getFloor();
+                    if (toAir || palette == null) mat = Material.AIR;
+                    else if (dy == 0)             mat = palette.getFloor();
                     else if (dy == CORRIDOR_HEIGHT - 1) mat = palette.getCeiling();
                     else if (dx == -1 || dx == 1 || dz == -1 || dz == 1) mat = palette.getSecondary();
-                    else                       mat = Material.AIR;
+                    else                          mat = Material.AIR;
+                    // Never overwrite the inside of a room when carving walls:
+                    // only replace solid wall cells with corridor lining, but
+                    // ALWAYS punch the interior air path through.
                     BlockUtil.setBlock(loc, mat);
                 }
             }

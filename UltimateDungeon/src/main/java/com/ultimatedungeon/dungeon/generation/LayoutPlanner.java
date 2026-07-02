@@ -564,6 +564,10 @@ public final class LayoutPlanner {
         if (rng.nextDouble() < dungeonConfig.getEventChance()
                 && graph.getRoomsOfType(RoomType.EVENT).size() < 2)
             return RoomType.EVENT;
+        // Parkour: bigger (higher-level) maps host more courses.
+        if (rng.nextDouble() < 0.12
+                && graph.getRoomsOfType(RoomType.PARKOUR).size() < 1 + total / 15)
+            return RoomType.PARKOUR;
 
         // Mid-game: inject elite and mini-boss
         if (placed > total / 2) {

@@ -19,6 +19,7 @@ public final class DungeonCleanupService {
 
     private final PluginLogger logger;
     private final List<Consumer<UUID>> actions = new ArrayList<>();
+    private final List<Consumer<DungeonInstance>> instanceActions = new ArrayList<>();
 
     public DungeonCleanupService(@NotNull final PluginLogger logger) {
         this.logger = logger;
@@ -29,11 +30,23 @@ public final class DungeonCleanupService {
         actions.add(action);
     }
 
+    /** Registers a cleanup action that needs the full instance (e.g. block clearing). */
+    public void registerInstanceAction(@NotNull final Consumer<DungeonInstance> action) {
+        instanceActions.add(action);
+    }
+
     public void cleanup(@NotNull final DungeonInstance instance) {
         final UUID id = instance.getInstanceId();
         for (final Consumer<UUID> action : actions) {
             try {
                 action.accept(id);
+            } catch (final Exception e) {
+                logger.warning("Cleanup action failed for " + id + ": " + e.getMessage());
+            }
+        }
+        for (final Consumer<DungeonInstance> action : instanceActions) {
+            try {
+                action.accept(instance);
             } catch (final Exception e) {
                 logger.warning("Cleanup action failed for " + id + ": " + e.getMessage());
             }

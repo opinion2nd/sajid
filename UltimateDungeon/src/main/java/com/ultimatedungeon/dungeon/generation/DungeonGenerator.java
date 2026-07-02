@@ -225,6 +225,33 @@ public final class DungeonGenerator implements IDungeonGenerator {
         if (slot != null) logger.debug("Instance " + instanceId + " released origin slot " + slot);
     }
 
+    /**
+     * Despawns a finished dungeon's BLOCKS: every room is cleared to air (one
+     * room per tick to avoid a lag spike), then the corridors, and finally the
+     * origin slot is released so the area can host a fresh dungeon. Without
+     * this, old dungeons piled up and new ones generated into their leftovers.
+     */
+    public void clearInstanceBlocks(@NotNull final com.ultimatedungeon.dungeon.instance.DungeonInstance instance) {
+        final RoomGraph graph = instance.getRoomGraph();
+        final UUID id = instance.getInstanceId();
+        if (graph == null) {
+            releaseOrigin(id);
+            return;
+        }
+        final var rooms = new java.util.ArrayList<>(graph.getRooms());
+        for (int i = 0; i < rooms.size(); i++) {
+            final var room = rooms.get(i);
+            scheduler.runSyncDelayed(() -> roomPlacer.clearRoom(room), i + 1L);
+        }
+        scheduler.runSyncDelayed(() -> {
+            for (final var conn : graph.getConnections()) {
+                roomPlacer.clearCorridor(conn);
+            }
+            releaseOrigin(id);
+            logger.info("Dungeon blocks despawned for instance " + id);
+        }, rooms.size() + 2L);
+    }
+
     private ThemeDefinition resolveTheme(@NotNull final String themeId) {
         final var theme = themeRegistry.getTheme(themeId);
         if (theme instanceof final ThemeDefinition def) return def;

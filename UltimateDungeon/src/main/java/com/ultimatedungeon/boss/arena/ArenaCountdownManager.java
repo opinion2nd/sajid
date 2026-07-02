@@ -25,6 +25,51 @@ public final class ArenaCountdownManager {
         this.logger = logger;
     }
 
+    private final java.util.Map<String, BukkitTask> activeCountdowns =
+            new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** True if a countdown with this key is currently ticking. */
+    public boolean isRunning(@NotNull final String key) {
+        return activeCountdowns.containsKey(key);
+    }
+
+    /**
+     * Starts a keyed countdown that CANCELS itself the moment the supplier
+     * returns no players (everyone left the room). Re-entering the room simply
+     * starts a fresh countdown because the key is freed on cancel.
+     */
+    public void startCancellable(@NotNull final String key, final int seconds,
+                                 @NotNull final java.util.function.Supplier<List<Player>> playersSupplier,
+                                 @NotNull final Runnable onComplete) {
+        if (activeCountdowns.containsKey(key)) return;
+        final int[] remaining = {Math.max(1, seconds)};
+        final BukkitTask[] holder = new BukkitTask[1];
+        holder[0] = scheduler.runSyncRepeating(() -> {
+            final List<Player> players = playersSupplier.get();
+            if (players.isEmpty()) {
+                // Everyone stepped out — abort silently; re-entry restarts.
+                holder[0].cancel();
+                activeCountdowns.remove(key);
+                return;
+            }
+            if (remaining[0] <= 0) {
+                for (final Player p : players) {
+                    MiniMessageUtil.sendTitle(p, "<red><bold>FIGHT!", "", 0, 20, 10);
+                }
+                holder[0].cancel();
+                activeCountdowns.remove(key);
+                onComplete.run();
+                return;
+            }
+            for (final Player p : players) {
+                MiniMessageUtil.sendTitle(p, "<yellow>" + remaining[0],
+                        "<gray>The encounter begins...", 0, 25, 5);
+            }
+            remaining[0]--;
+        }, 0L, 20L);
+        activeCountdowns.put(key, holder[0]);
+    }
+
     /** Starts a {@code seconds}-long countdown, then runs {@code onComplete} on the main thread. */
     public void start(final int seconds, @NotNull final Collection<? extends Player> players,
                       @NotNull final Runnable onComplete) {
