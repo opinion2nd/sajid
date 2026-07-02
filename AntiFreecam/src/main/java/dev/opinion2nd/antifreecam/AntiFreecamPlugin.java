@@ -3,6 +3,7 @@ package dev.opinion2nd.antifreecam;
 import com.github.retrooper.packetevents.PacketEvents;
 import dev.opinion2nd.antifreecam.command.AfCommand;
 import dev.opinion2nd.antifreecam.detect.BrandDetectionListener;
+import dev.opinion2nd.antifreecam.mask.BlockUpdateMaskListener;
 import dev.opinion2nd.antifreecam.mask.ChunkMaskListener;
 import dev.opinion2nd.antifreecam.mask.EntityMaskListener;
 import dev.opinion2nd.antifreecam.mask.MaskService;
@@ -34,6 +35,7 @@ public final class AntiFreecamPlugin extends JavaPlugin {
         // PacketEvents is initialised by the PacketEvents plugin (a hard depend),
         // so the API is ready by the time our onEnable runs.
         registerPacketListener(new ChunkMaskListener(maskService));
+        registerPacketListener(new BlockUpdateMaskListener(maskService));
         registerPacketListener(new EntityMaskListener(maskService));
         registerPacketListener(new BrandDetectionListener(this, maskService));
 
