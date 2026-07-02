@@ -59,6 +59,7 @@ public final class BossEngine {
         }
     }
 
+    private final UltimateDungeon plugin;
     private final DifficultyService difficulty;
     private final PluginLogger logger;
     private final NamespacedKey bossKey;
@@ -66,6 +67,8 @@ public final class BossEngine {
     private final Map<String, BossDefinition> definitions = new LinkedHashMap<>();
     /** All live bosses per instance — a dungeon can have several at once. */
     private final Map<UUID, java.util.List<ActiveBoss>> active = new ConcurrentHashMap<>();
+    /** Every boss id ever spawned per instance, so no dungeon repeats a boss. */
+    private final Map<UUID, java.util.Set<String>> usedBossIds = new ConcurrentHashMap<>();
 
     /** Fired when a boss dies: (instanceId, bossId). */
     private BiConsumer<UUID, String> onBossDeath = (i, b) -> {};
@@ -74,6 +77,7 @@ public final class BossEngine {
                       @NotNull final BossesConfig config,
                       @NotNull final DifficultyService difficulty,
                       @NotNull final PluginLogger logger) {
+        this.plugin = plugin;
         this.difficulty = difficulty;
         this.logger = logger;
         this.bossKey = new NamespacedKey(plugin, "ud_boss_id");
@@ -140,9 +144,25 @@ public final class BossEngine {
         active.computeIfAbsent(instanceId, k -> new java.util.concurrent.CopyOnWriteArrayList<>())
                 .add(activeBoss);
 
+        usedBossIds.computeIfAbsent(instanceId, k -> java.util.concurrent.ConcurrentHashMap.newKeySet())
+                .add(bossId);
         announce(arenaPlayers, def, "spawn");
         logger.info("Boss spawned: " + bossId + " for instance " + instanceId);
         return boss;
+    }
+
+    /**
+     * Picks a random boss from {@code pool} that has NOT yet appeared in this
+     * dungeon, so a dungeon with several boss rooms always shows distinct bosses.
+     * Falls back to the full pool only if every boss has already been used.
+     */
+    @Nullable
+    public String pickUnusedBoss(@NotNull final UUID instanceId, @NotNull final java.util.List<String> pool) {
+        if (pool.isEmpty()) return null;
+        final java.util.Set<String> used = usedBossIds.getOrDefault(instanceId, java.util.Set.of());
+        final java.util.List<String> fresh = pool.stream().filter(id -> !used.contains(id)).toList();
+        final java.util.List<String> pickFrom = fresh.isEmpty() ? pool : fresh;
+        return pickFrom.get(java.util.concurrent.ThreadLocalRandom.current().nextInt(pickFrom.size()));
     }
 
     /** Per-tick update: BossBar, phase transitions, ability rotation and death. */
@@ -176,6 +196,7 @@ public final class BossEngine {
     }
 
     public void cleanup(@NotNull final UUID instanceId) {
+        usedBossIds.remove(instanceId);
         final java.util.List<ActiveBoss> list = active.remove(instanceId);
         if (list == null) return;
         for (final ActiveBoss boss : list) {
@@ -262,10 +283,28 @@ public final class BossEngine {
     private void applyHealth(@NotNull final LivingEntity boss, final double health) {
         try {
             boss.setMaxHealth(health);
-            boss.setHealth(health);
+        } catch (final IllegalArgumentException ex) {
+            logger.debug("Could not set boss max health: " + ex.getMessage());
+        }
+        try {
+            // The server may clamp max health (spigot caps it, default 2048).
+            // Setting current health above the clamped max throws and would leave
+            // the boss at its vanilla default — so always heal to the REAL max.
+            boss.setHealth(Math.min(health, boss.getMaxHealth()));
         } catch (final IllegalArgumentException ex) {
             logger.debug("Could not set boss health: " + ex.getMessage());
         }
+        // Re-assert one tick later: spawn events and other plugins can adjust
+        // health right after spawn, which used to leave bosses below 100%.
+        org.bukkit.Bukkit.getScheduler().runTask(plugin, () -> {
+            if (boss.isValid() && !boss.isDead()) {
+                try {
+                    boss.setHealth(boss.getMaxHealth());
+                } catch (final IllegalArgumentException ignored) {
+                    // Boss took real damage in the same tick — leave it.
+                }
+            }
+        });
     }
 
     /** Reads back the entity's real max health, falling back to {@code requested}. */

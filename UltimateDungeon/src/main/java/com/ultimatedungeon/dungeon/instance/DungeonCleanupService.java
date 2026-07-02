@@ -16,24 +16,34 @@ public final class DungeonCleanupService {
     private final WaveManager waveManager;
     private final RoomSealer roomSealer;
     private final EncounterCountdownManager encounterCountdown;
+    private final com.ultimatedungeon.dungeon.lifecycle.DungeonScoreService scoreService;
     private final PluginLogger logger;
+    /** Set after construction to avoid a launcher↔revive dependency cycle. */
+    private com.ultimatedungeon.dungeon.lifecycle.ReviveManager reviveManager;
 
     public DungeonCleanupService(@NotNull final ArenaCleanupService arenaCleanup,
                                  @NotNull final MonsterEngine monsterEngine,
                                  @NotNull final WaveManager waveManager,
                                  @NotNull final RoomSealer roomSealer,
                                  @NotNull final EncounterCountdownManager encounterCountdown,
+                                 @NotNull final com.ultimatedungeon.dungeon.lifecycle.DungeonScoreService scoreService,
                                  @NotNull final PluginLogger logger) {
         this.arenaCleanup = arenaCleanup;
         this.monsterEngine = monsterEngine;
         this.waveManager = waveManager;
         this.roomSealer = roomSealer;
         this.encounterCountdown = encounterCountdown;
+        this.scoreService = scoreService;
         this.logger = logger;
+    }
+
+    public void setReviveManager(@NotNull final com.ultimatedungeon.dungeon.lifecycle.ReviveManager reviveManager) {
+        this.reviveManager = reviveManager;
     }
 
     public void cleanup(@NotNull final DungeonInstance instance) {
         final UUID id = instance.getInstanceId();
+        if (reviveManager != null) reviveManager.clearInstance(id);
         // Remove the boss bar + boss entity and unlock the arena. The boss bar is
         // a UI element, not a world entity, so deleting the world does NOT remove
         // it — this must run explicitly or the bar lingers on players' screens.
@@ -42,6 +52,7 @@ public final class DungeonCleanupService {
         waveManager.cancel(id);
         encounterCountdown.cancelInstance(id);
         roomSealer.clearInstance(id);
+        scoreService.clear(id);
         instance.cleanup();
         logger.debug("Dungeon instance cleaned up: " + id);
     }

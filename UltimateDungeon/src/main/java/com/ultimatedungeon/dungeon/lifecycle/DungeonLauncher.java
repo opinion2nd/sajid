@@ -58,6 +58,11 @@ public final class DungeonLauncher {
 
     /** Optional hook invoked on completion (instance, winners) — wired to rewards. */
     private BiConsumer<DungeonInstance, List<Player>> onComplete;
+    private BiConsumer<IDungeonInstance, List<Player>> onStart;
+    private BiConsumer<Runnable, Long> delayedRunner;
+
+    /** Ticks players get to celebrate in the cleared dungeon before teardown. */
+    private static final long VICTORY_LAP_TICKS = 160L;
 
     public DungeonLauncher(@NotNull final GenerationPipeline pipeline,
                            @NotNull final DungeonInstanceManager instanceManager,
@@ -83,6 +88,20 @@ public final class DungeonLauncher {
 
     public void setCompletionHook(@NotNull final BiConsumer<DungeonInstance, List<Player>> hook) {
         this.onComplete = hook;
+    }
+
+    /** Fired after players are teleported into a freshly generated dungeon. */
+    public void setStartHook(@NotNull final BiConsumer<IDungeonInstance, List<Player>> hook) {
+        this.onStart = hook;
+    }
+
+    /**
+     * Supplies a main-thread delayed executor (runnable, delayTicks). When set,
+     * completion waits {@link #VICTORY_LAP_TICKS} before tearing the dungeon
+     * down, giving players a victory lap for the rank screen and celebration.
+     */
+    public void setDelayedRunner(@NotNull final BiConsumer<Runnable, Long> runner) {
+        this.delayedRunner = runner;
     }
 
     // ── Launch ──────────────────────────────────────────────────────────────
@@ -125,6 +144,14 @@ public final class DungeonLauncher {
         }
         instancePlayers.put(instance.getInstanceId(), ids);
 
+        if (onStart != null) {
+            try {
+                onStart.accept(instance, players);
+            } catch (final Exception e) {
+                logger.severe("Start hook failed for " + instance.getInstanceId(), e);
+            }
+        }
+
         // Record run start (attribute to the requester).
         final Player requester = Bukkit.getPlayer(request.getRequesterId());
         if (requester != null) {
@@ -163,7 +190,14 @@ public final class DungeonLauncher {
             notifications.title(p, "<green>Victory!", "<gray>Dungeon complete");
         }
         instance.end();
-        teardown(instance, players);
+        if (delayedRunner != null) {
+            // Victory lap: leave everyone in the cleared dungeon briefly so the
+            // rank screen and celebration play out, then tear down with a FRESH
+            // player list (anyone who logged off or left is skipped).
+            delayedRunner.accept(() -> teardown(instance, onlinePlayers(id)), VICTORY_LAP_TICKS);
+        } else {
+            teardown(instance, players);
+        }
     }
 
     /** Fails a dungeon: notify, return players, cleanup. */

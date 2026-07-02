@@ -131,6 +131,9 @@ public final class PluginBootstrap {
     private DungeonLauncher      dungeonLauncher;
     private DungeonEndHandler    dungeonEndHandler;
     private DungeonFailureHandler dungeonFailureHandler;
+    private com.ultimatedungeon.dungeon.lifecycle.DungeonScoreService scoreService;
+    private com.ultimatedungeon.dungeon.lifecycle.ReviveManager reviveManager;
+    private com.ultimatedungeon.listeners.player.DungeonCompassListener compassListener;
     private DungeonLaunchService dungeonLaunchService;
     private GuiManager           guiManager;
     private com.ultimatedungeon.gui.framework.GuiServices guiServices;
@@ -348,19 +351,80 @@ public final class PluginBootstrap {
         encounterCountdown = new com.ultimatedungeon.dungeon.instance.EncounterCountdownManager(pluginScheduler);
 
         // Lifecycle
+        scoreService = new com.ultimatedungeon.dungeon.lifecycle.DungeonScoreService();
         final DungeonCleanupService cleanupService = new DungeonCleanupService(
-                arenaCleanup, monsterEngine, waveManager, roomSealer, encounterCountdown, pluginLogger);
+                arenaCleanup, monsterEngine, waveManager, roomSealer, encounterCountdown,
+                scoreService, pluginLogger);
         dungeonLauncher = new DungeonLauncher(generationPipeline, dungeonInstanceManager, sessionManager,
                 teleportService, notificationService, statisticsService, cleanupService,
                 dungeonWorldManager, configManager.getMessagesConfig(), pluginLogger);
         dungeonEndHandler     = new DungeonEndHandler(dungeonLauncher);
         dungeonFailureHandler = new DungeonFailureHandler(dungeonLauncher);
 
-        // Completion → rewards
+        // Down-and-revive: created after the launcher, then injected back into the
+        // cleanup service (which runs first) to break the dependency cycle.
+        reviveManager = new com.ultimatedungeon.dungeon.lifecycle.ReviveManager(
+                dungeonLauncher, notificationService);
+        cleanupService.setReviveManager(reviveManager);
+
+        // Victory lap: completion waits a few seconds before teardown so the
+        // rank screen and fireworks play out inside the cleared dungeon.
+        dungeonLauncher.setDelayedRunner((task, ticks) -> pluginScheduler.runSyncDelayed(task, ticks));
+
+        // Entry kit: every player gets a Dungeon Tracker compass on the way in.
+        compassListener = new com.ultimatedungeon.listeners.player.DungeonCompassListener(
+                plugin, dungeonInstanceManager);
+        dungeonLauncher.setStartHook((instance, players) -> {
+            for (final org.bukkit.entity.Player p : players) {
+                if (p.isOnline()) p.getInventory().addItem(compassListener.createTracker());
+            }
+        });
+
+        // Completion → rewards + graded end screen
         dungeonLauncher.setCompletionHook((instance, players) -> {
             rewardDistributor.distributeAll(players, RewardEvent.DUNGEON_COMPLETION);
             rewardDistributor.distributeAll(players, RewardEvent.BOSS_KILL);
             rewardRoomService.grant(players, "completion_bonus_loot");
+
+            final var score = scoreService.finish(instance);
+            // An S or A run earns one extra bonus-loot roll.
+            if ("S".equals(score.rank()) || "A".equals(score.rank())) {
+                rewardRoomService.grant(players, "completion_bonus_loot");
+            }
+            for (final org.bukkit.entity.Player p : players) {
+                com.ultimatedungeon.util.MiniMessageUtil.send(p,
+                        "<gray>─────── <gold><bold>DUNGEON CLEARED</bold></gold> <gray>───────");
+                com.ultimatedungeon.util.MiniMessageUtil.send(p,
+                        "<yellow>Rank: " + rankColor(score.rank()) + "<bold>" + score.rank() + "</bold>"
+                                + " <dark_gray>(" + score.points() + " pts)");
+                com.ultimatedungeon.util.MiniMessageUtil.send(p,
+                        "<yellow>Time: <white>" + score.formattedTime()
+                                + " <yellow>Deaths: <white>" + score.deaths()
+                                + " <yellow>Secrets: <white>" + score.secretsFound());
+                com.ultimatedungeon.util.MiniMessageUtil.send(p,
+                        "<yellow>Rooms cleared: <white>" + score.roomsCleared() + "/" + score.totalRooms());
+                com.ultimatedungeon.util.MiniMessageUtil.send(p,
+                        "<gray>──────────────────────────────");
+            }
+            // Shown after the launcher's "Victory!" title so the grade lands last.
+            pluginScheduler.runSyncDelayed(() -> {
+                for (final org.bukkit.entity.Player p : players) {
+                    if (!p.isOnline()) continue;
+                    notificationService.title(p,
+                            rankColor(score.rank()) + "<bold>RANK " + score.rank() + "</bold>",
+                            "<gray>" + score.formattedTime() + " · " + score.deaths() + " deaths · "
+                                    + score.secretsFound() + " secrets");
+                    p.playSound(p.getLocation(), org.bukkit.Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
+                }
+            }, 50L);
+            // Firework bursts around each player through the victory lap.
+            for (int wave = 0; wave < 3; wave++) {
+                pluginScheduler.runSyncDelayed(() -> {
+                    for (final org.bukkit.entity.Player p : players) {
+                        if (p.isOnline()) celebrationFirework(p.getLocation());
+                    }
+                }, 20L + wave * 40L);
+            }
         });
 
         // Boss death → open the room; complete the dungeon only when EVERY boss
@@ -405,6 +469,12 @@ public final class PluginBootstrap {
         pluginScheduler.runSyncRepeating(new TrapTickTask(trapEngine, dungeonInstanceManager)::run, 20L, 20L);
         pluginScheduler.runSyncRepeating(new DungeonTickTask(waveManager, dungeonInstanceManager)::run, 20L, 20L);
         pluginScheduler.runSyncRepeating(waveResetManager::tick, 20L, 20L);
+        pluginScheduler.runSyncRepeating(
+                new com.ultimatedungeon.tasks.BossProximityTask(dungeonInstanceManager, notificationService)::run,
+                40L, 20L);
+        if (reviveManager != null) {
+            pluginScheduler.runSyncRepeating(reviveManager::tick, 20L, 20L);
+        }
         if (hazardEngine.isActive()) {
             pluginScheduler.runSyncRepeating(
                     new com.ultimatedungeon.tasks.HazardTickTask(hazardEngine, dungeonInstanceManager)::run,
@@ -464,13 +534,16 @@ public final class PluginBootstrap {
                 arenaLockdown, arenaCountdown, dynamicEventEngine, rewardDistributor,
                 difficultyService, waveResetManager,
                 configManager.getDungeonConfig().getWaveResetSeconds(),
-                roomSealer, encounterCountdown), plugin);
+                roomSealer, encounterCountdown, scoreService), plugin);
         pm.registerEvents(new com.ultimatedungeon.listeners.protection.DungeonProtectionListener(
                 dungeonWorldManager), plugin);
         pm.registerEvents(new com.ultimatedungeon.listeners.trap.TrapTriggerListener(
                 trapEngine, dungeonInstanceManager), plugin);
         pm.registerEvents(new com.ultimatedungeon.listeners.player.PlayerDeathInDungeonListener(
-                plugin, statisticsService, dungeonInstanceManager), plugin);
+                plugin, statisticsService, dungeonInstanceManager, scoreService, dungeonFailureHandler), plugin);
+        pm.registerEvents(new com.ultimatedungeon.listeners.player.DungeonDownListener(
+                dungeonInstanceManager, reviveManager), plugin);
+        pm.registerEvents(compassListener, plugin);
         pm.registerEvents(new com.ultimatedungeon.listeners.arena.ArenaEscapeListener(
                 arenaLockdown, new com.ultimatedungeon.boss.arena.ArenaEscapeBlocker(), dungeonInstanceManager), plugin);
         pm.registerEvents(new com.ultimatedungeon.listeners.gui.GuiClickListener(guiManager), plugin);
@@ -484,6 +557,35 @@ public final class PluginBootstrap {
                 arenaLockdown, dungeonInstanceManager), plugin);
 
         pluginLogger.info("Listeners registered.");
+    }
+
+    /** Launches one celebratory firework near a location. */
+    private static void celebrationFirework(@NotNull final org.bukkit.Location loc) {
+        if (loc.getWorld() == null) return;
+        final org.bukkit.entity.Entity e = loc.getWorld().spawnEntity(
+                loc.clone().add(Math.random() * 6 - 3, 1, Math.random() * 6 - 3),
+                org.bukkit.entity.EntityType.FIREWORK_ROCKET);
+        if (!(e instanceof final org.bukkit.entity.Firework fw)) return;
+        final org.bukkit.inventory.meta.FireworkMeta meta = fw.getFireworkMeta();
+        meta.addEffect(org.bukkit.FireworkEffect.builder()
+                .withColor(org.bukkit.Color.AQUA, org.bukkit.Color.LIME, org.bukkit.Color.YELLOW)
+                .withFade(org.bukkit.Color.WHITE)
+                .with(org.bukkit.FireworkEffect.Type.STAR)
+                .flicker(true).trail(true).build());
+        meta.setPower(1);
+        fw.setFireworkMeta(meta);
+    }
+
+    /** MiniMessage colour tag for a dungeon rank letter. */
+    @NotNull
+    private static String rankColor(@NotNull final String rank) {
+        return switch (rank) {
+            case "S" -> "<gradient:#FFD700:#FFA500>";
+            case "A" -> "<green>";
+            case "B" -> "<aqua>";
+            case "C" -> "<yellow>";
+            default  -> "<red>";
+        };
     }
 
     // ── Accessors ─────────────────────────────────────────────────────────────

@@ -43,6 +43,7 @@ themes:
       - elite_monster_2
     boss-pool:
       - boss_3
+      - boss_2
 
   corrupted_temple:
     display-name: "Corrupted Temple"
@@ -59,9 +60,11 @@ themes:
     monster-pool:
       - common_monster_4
       - elite_monster_3
+    # Level 3 dungeons have 2 boss rooms — pool must hold at least 2 bosses.
     boss-pool:
       - boss_4
       - boss_5
+      - boss_3
 
   volcanic_fortress:
     display-name: "Volcanic Fortress"
@@ -78,8 +81,12 @@ themes:
     monster-pool:
       - common_monster_5
       - elite_monster_1
+    # Level 4 dungeons have 3 boss rooms — pool must hold at least 3 bosses.
     boss-pool:
       - boss_6
+      - boss_4
+      - boss_8
+      - boss_2
 
   forgotten_catacombs:
     display-name: "Forgotten Catacombs"
@@ -96,6 +103,10 @@ themes:
     monster-pool:
       - common_monster_1
       - rare_monster_1
+    # Level 5 dungeons have 4 boss rooms — pool must hold at least 4 bosses.
     boss-pool:
       - boss_7
       - boss_8
+      - boss_1
+      - boss_5
+      - boss_6

@@ -41,8 +41,10 @@ public final class DungeonCommand extends AbstractCommand {
         register(new DungeonPartySubCommand(launchService, partyManager, themeRegistry, configManager.getDifficultyConfig()));
         register(new DungeonLeaveSubCommand(launcher, instanceManager, messages));
         register(new DungeonStatsSubCommand(statistics));
+        register(new DungeonTopSubCommand(statistics));
         register(new DungeonReloadSubCommand(configManager));
         register(new DungeonAdminSubCommand(instanceManager));
+        register(new DungeonDebugSubCommand(instanceManager));
     }
 
     @Override
@@ -51,6 +53,6 @@ public final class DungeonCommand extends AbstractCommand {
             new MainMenuGui(player, guiServices).open();
             return;
         }
-        sender.sendMessage("§6Usage: §e/dungeon [solo|party|leave|stats|reload|admin]");
+        sender.sendMessage("§6Usage: §e/dungeon [solo|party|leave|stats|top|reload|admin|debug]");
     }
 }

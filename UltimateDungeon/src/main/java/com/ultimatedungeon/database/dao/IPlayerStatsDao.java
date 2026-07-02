@@ -71,6 +71,21 @@ public interface IPlayerStatsDao {
      */
     void updateHighestDifficulty(@NotNull UUID uuid, @NotNull String difficultyId) throws SQLException;
 
+    /**
+     * Returns the leaderboard for one stat column.
+     *
+     * @param column one of: dungeons_completed, bosses_defeated, monsters_killed,
+     *               secrets_found (descending) or fastest_run_ms (ascending,
+     *               players with no recorded run excluded)
+     * @param limit  max entries
+     * @throws SQLException on query failure
+     * @throws IllegalArgumentException if {@code column} is not an allowed column name
+     */
+    @NotNull java.util.List<TopEntry> topPlayers(@NotNull String column, int limit) throws SQLException;
+
+    /** One leaderboard row: a player and their value for the ranked column. */
+    record TopEntry(@NotNull String playerName, long value) {}
+
     // ── Stats record ──────────────────────────────────────────────────────────
 
     /**

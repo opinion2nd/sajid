@@ -95,6 +95,22 @@ public final class StatisticsService {
         });
     }
 
+    /** Loads a leaderboard asynchronously; completes with an empty list on error. */
+    @NotNull
+    public CompletableFuture<java.util.List<IPlayerStatsDao.TopEntry>> loadTop(
+            @NotNull final String column, final int limit) {
+        final CompletableFuture<java.util.List<IPlayerStatsDao.TopEntry>> future = new CompletableFuture<>();
+        scheduler.runAsync(() -> {
+            try {
+                future.complete(database.getPlayerStatsDao().topPlayers(column, limit));
+            } catch (final SQLException | IllegalArgumentException e) {
+                logger.severe("Failed to load leaderboard for " + column, e);
+                future.complete(java.util.List.of());
+            }
+        });
+        return future;
+    }
+
     /** Loads a player's stats snapshot asynchronously. */
     @NotNull
     public CompletableFuture<IPlayerStatsDao.PlayerStats> loadStats(@NotNull final UUID uuid) {

@@ -20,6 +20,11 @@ public class SqlitePlayerStatsDao extends AbstractDao implements IPlayerStatsDao
         "puzzles_solved", "secrets_found", "waves_completed"
     );
 
+    private static final Set<String> ALLOWED_TOP_COLS = Set.of(
+        "dungeons_completed", "bosses_defeated", "monsters_killed",
+        "secrets_found", "fastest_run_ms"
+    );
+
     public SqlitePlayerStatsDao(
             @NotNull final DatabaseConnectionFactory factory,
             @NotNull final PluginLogger              logger
@@ -127,6 +132,30 @@ public class SqlitePlayerStatsDao extends AbstractDao implements IPlayerStatsDao
             ps.setString(2, uuid.toString());
             ps.executeUpdate();
         }
+    }
+
+    @Override
+    @NotNull
+    public java.util.List<TopEntry> topPlayers(@NotNull final String column, final int limit)
+            throws SQLException {
+        if (!ALLOWED_TOP_COLS.contains(column)) {
+            throw new IllegalArgumentException("Illegal leaderboard column: " + column);
+        }
+        // The column name is interpolated but strictly whitelisted above, so no
+        // injection is possible; values still go through prepared parameters.
+        final boolean ascending = "fastest_run_ms".equals(column);
+        final String sql = "SELECT player_name, COALESCE(" + column + ", 0) AS v FROM ud_player_stats "
+                + (ascending ? "WHERE fastest_run_ms > 0 ORDER BY v ASC" : "ORDER BY v DESC")
+                + " LIMIT ?";
+        final java.util.List<TopEntry> result = new java.util.ArrayList<>();
+        try (final Connection conn = connection();
+             final PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, Math.max(1, limit));
+            try (final ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) result.add(new TopEntry(rs.getString(1), rs.getLong(2)));
+            }
+        }
+        return result;
     }
 
     // ── Row mapper ────────────────────────────────────────────────────────────

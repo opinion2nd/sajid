@@ -35,7 +35,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * Detects when a player first enters a dungeon room and activates it: combat
@@ -60,6 +59,7 @@ public final class RoomEnterListener implements Listener {
     private final int waveResetSeconds;
     private final com.ultimatedungeon.dungeon.instance.RoomSealer sealer;
     private final com.ultimatedungeon.dungeon.instance.EncounterCountdownManager countdown;
+    private final com.ultimatedungeon.dungeon.lifecycle.DungeonScoreService scoreService;
 
     /** Seconds a player must stay in a wave/boss room before it seals and starts. */
     private static final int ENCOUNTER_COUNTDOWN = 10;
@@ -79,7 +79,8 @@ public final class RoomEnterListener implements Listener {
                              @NotNull final com.ultimatedungeon.dungeon.lifecycle.WaveResetManager waveResets,
                              final int waveResetSeconds,
                              @NotNull final com.ultimatedungeon.dungeon.instance.RoomSealer sealer,
-                             @NotNull final com.ultimatedungeon.dungeon.instance.EncounterCountdownManager countdown) {
+                             @NotNull final com.ultimatedungeon.dungeon.instance.EncounterCountdownManager countdown,
+                             @NotNull final com.ultimatedungeon.dungeon.lifecycle.DungeonScoreService scoreService) {
         this.instanceManager = instanceManager;
         this.waveManager = waveManager;
         this.trapEngine = trapEngine;
@@ -94,6 +95,7 @@ public final class RoomEnterListener implements Listener {
         this.waveResetSeconds = waveResetSeconds;
         this.sealer = sealer;
         this.countdown = countdown;
+        this.scoreService = scoreService;
     }
 
     @EventHandler
@@ -162,7 +164,10 @@ public final class RoomEnterListener implements Listener {
                     waveManager.start(id, room, level, () -> onWaveRoomCleared(id, room));
                 }
             }
-            case SECRET -> discoverSecret(room);
+            case SECRET -> {
+                scoreService.recordSecret(id);
+                discoverSecret(room);
+            }
             case TRAP -> trapEngine.placeInRoom(id, room, TRAPS_PER_ROOM, difficultyId);
             case PUZZLE -> puzzleEngine.startPuzzle(id, new ColorSequencePuzzle(), room::setCleared);
             default -> { /* spawn, treasure, merchant, reward — no auto-activation */ }
@@ -188,8 +193,10 @@ public final class RoomEnterListener implements Listener {
             final List<String> bosses = theme != null ? theme.getBossPool() : List.of();
             if (bosses.isEmpty()) return;
             arenaLockdown.lock(id, room);
-            // Exactly ONE boss per boss room — random from the pool, no support mobs.
-            final String bossId = bosses.get(ThreadLocalRandom.current().nextInt(bosses.size()));
+            // Exactly ONE boss per boss room — random, and never the same boss
+            // twice in one dungeon (each boss room gets a distinct boss).
+            final String bossId = bossEngine.pickUnusedBoss(id, bosses);
+            if (bossId == null) return;
             bossEngine.spawnBoss(id, bossId, room.getCentre(), difficultyId, playersInRoom(room));
         } else {
             waveManager.start(id, room, level, () -> onWaveRoomCleared(id, room));

@@ -85,7 +85,7 @@ public final class LayoutPlanner {
         // L3 = 2, L4 = 3, L5 = 4 — each holds exactly one boss, placed far apart.
         final int lvl        = Math.max(1, Math.min(5, level));
         final int bossRooms  = lvl <= 2 ? 1 : lvl - 1;
-        final int roomCount  = RandomUtil.randomInt(3 + lvl * 3, 5 + lvl * 3); // L1 6-8 … L5 18-20
+        final int roomCount  = RandomUtil.randomInt(4 + lvl * 4, 7 + lvl * 4); // L1 8-11 … L5 24-27
         final int normalGoal = Math.max(3, roomCount - bossRooms - 1);
 
         logger.debug("LayoutPlanner: planning ~" + roomCount + " rooms, " + bossRooms
@@ -295,7 +295,7 @@ public final class LayoutPlanner {
             final int                total
     ) {
         // The first couple of rooms are calm so players ease in.
-        if (placed < 2) return RandomUtil.random() < 0.5 ? RoomType.COMBAT : RoomType.NORMAL;
+        if (placed < 2) return RandomUtil.random() < 0.35 ? RoomType.COMBAT : RoomType.NORMAL;
 
         final boolean mid = placed > total / 3;
         // Each special type is rolled independently and capped, so the mix is
@@ -309,8 +309,9 @@ public final class LayoutPlanner {
         if (mid && graph.getRoomsOfType(RoomType.ELITE_COMBAT).size() < 2 && chance(0.18)) return RoomType.ELITE_COMBAT;
         if (mid && graph.getRoomsOfType(RoomType.MINI_BOSS).isEmpty() && chance(0.10)) return RoomType.MINI_BOSS;
 
-        // Otherwise a roughly even split of combat and plain (empty) rooms.
-        return RandomUtil.random() < 0.5 ? RoomType.COMBAT : RoomType.NORMAL;
+        // Combat is deliberately the minority so exploring beats grinding —
+        // most filler rooms are calm, keeping wave rooms noticeably sparser.
+        return RandomUtil.random() < 0.35 ? RoomType.COMBAT : RoomType.NORMAL;
     }
 
     private boolean chance(final double p) { return RandomUtil.random() < p; }
