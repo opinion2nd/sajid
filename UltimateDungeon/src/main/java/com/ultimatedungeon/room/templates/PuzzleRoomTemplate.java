@@ -30,6 +30,23 @@ public final class PuzzleRoomTemplate extends AbstractRoomTemplate {
             @NotNull final ThemeBlockPalette palette
     ) {
         placeCornerPillars(origin, palette);
+        placeFateChests(origin, palette);
+    }
+
+    /**
+     * The Chest of Fate: three chests on pedestals across the room's centre.
+     * A player may open only ONE — fortune, ambush or curse decides the rest.
+     */
+    private void placeFateChests(
+            @NotNull final Location          origin,
+            @NotNull final ThemeBlockPalette palette
+    ) {
+        final int midZ = getDepth() / 2;
+        final int midX = getWidth() / 2;
+        for (final int dx : new int[]{-4, 0, 4}) {
+            placeRelative(origin, midX + dx, 1, midZ, palette.getAccent());
+            placeRelative(origin, midX + dx, 2, midZ, Material.CHEST);
+        }
     }
 
     /**

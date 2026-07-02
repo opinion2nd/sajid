@@ -159,14 +159,14 @@ public final class RoomEnterListener implements Listener {
                 trapEngine.placeInRoom(id, room, TRAPS_PER_ROOM, difficulty);
             }
             case PUZZLE -> {
-                // Puzzle rooms lock shut: the next door opens only when solved.
+                // Chest of Fate: the room locks shut, three chests await.
+                // Opening ONE decides your fate — fortune, ambush or curse.
                 room.setEntered();
                 arenaLockdown.lock(id, room);
-                playersInRoom(room).forEach(p -> MiniMessageUtil.send(p,
-                        "<light_purple>Solve the puzzle to unlock the doors!"));
-                puzzleEngine.startPuzzle(id, new ColorSequencePuzzle(), () -> {
-                    room.setCleared();
-                    arenaLockdown.unlock(id, room.getRoomId());
+                playersInRoom(room).forEach(p -> {
+                    MiniMessageUtil.send(p, "<gold><bold>Chest of Fate!</bold></gold> "
+                            + "<gray>Open ONE chest — fortune, ambush... or a curse.");
+                    p.playSound(p.getLocation(), Sound.BLOCK_ENDER_CHEST_OPEN, 1.0f, 0.6f);
                 });
             }
             case PARKOUR -> {
