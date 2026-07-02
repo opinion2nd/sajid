@@ -17,7 +17,7 @@ public final class FrozenCavernTheme extends ThemeDefinition {
         super("frozen_cavern", "Frozen Cavern",
             new ThemeBlockPalette(
                 Material.PACKED_ICE, Material.BLUE_ICE,
-                Material.SNOW_BLOCK, Material.ICE,
+                Material.SNOW_BLOCK, Material.PACKED_ICE,
                 Material.PACKED_ICE),
             new ThemeAmbience(Sound.BLOCK_POWDER_SNOW_STEP, 0.4f, 0.8f,
                 List.of(Particle.SNOWFLAKE, Particle.CLOUD)),

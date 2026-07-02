@@ -459,6 +459,8 @@ public final class PluginBootstrap {
         pm.registerEvents(new com.ultimatedungeon.listeners.player.PlayerDeathInDungeonListener(
                 plugin, statisticsService, dungeonInstanceManager,
                 dungeonLauncher, dungeonFailureHandler), plugin);
+        pm.registerEvents(new com.ultimatedungeon.listeners.dungeon.DungeonBlockProtectionListener(
+                dungeonWorldManager), plugin);
         pm.registerEvents(new com.ultimatedungeon.listeners.arena.ArenaEscapeListener(
                 arenaLockdown, new com.ultimatedungeon.boss.arena.ArenaEscapeBlocker(), dungeonInstanceManager), plugin);
         pm.registerEvents(new com.ultimatedungeon.listeners.gui.GuiClickListener(guiManager), plugin);

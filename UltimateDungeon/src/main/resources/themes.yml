@@ -41,7 +41,7 @@ themes:
       primary: PACKED_ICE
       secondary: BLUE_ICE
       accent: SNOW_BLOCK
-      floor: ICE
+      floor: PACKED_ICE
       ceiling: PACKED_ICE
     ambient-sound: BLOCK_POWDER_SNOW_STEP
     particles:
@@ -61,7 +61,7 @@ themes:
       primary: PURPUR_BLOCK
       secondary: BLACKSTONE
       accent: CRYING_OBSIDIAN
-      floor: PURPUR_SLAB
+      floor: PURPUR_BLOCK
       ceiling: BLACKSTONE
     ambient-sound: BLOCK_SOUL_SAND_PLACE
     particles:

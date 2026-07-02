@@ -17,7 +17,7 @@ public final class CorruptedTempleTheme extends ThemeDefinition {
         super("corrupted_temple", "Corrupted Temple",
             new ThemeBlockPalette(
                 Material.PURPUR_BLOCK, Material.BLACKSTONE,
-                Material.CRYING_OBSIDIAN, Material.PURPUR_SLAB,
+                Material.CRYING_OBSIDIAN, Material.PURPUR_BLOCK,
                 Material.BLACKSTONE),
             new ThemeAmbience(Sound.BLOCK_SOUL_SAND_PLACE, 0.5f, 0.7f,
                 List.of(Particle.SOUL_FIRE_FLAME, Particle.PORTAL)),
