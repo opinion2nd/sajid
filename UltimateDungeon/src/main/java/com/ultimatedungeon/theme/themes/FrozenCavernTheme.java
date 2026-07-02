@@ -10,6 +10,7 @@ import java.util.List;
 /**
  * Theme: Frozen Cavern
  * Ice blocks, blizzard effects, frost monsters.
+ * Layout: winding path — one long serpentine ice tunnel with frozen side grottos.
  */
 public final class FrozenCavernTheme extends ThemeDefinition {
     public FrozenCavernTheme() {
@@ -22,6 +23,7 @@ public final class FrozenCavernTheme extends ThemeDefinition {
                 List.of(Particle.SNOWFLAKE, Particle.CLOUD)),
             new ThemeMonsterPool(
                 List.of("common_monster_3", "elite_monster_2"),
-                List.of("boss_3")));
+                List.of("boreas", "aethon")),
+            LayoutStyle.WINDING_PATH);
     }
 }

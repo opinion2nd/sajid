@@ -1,13 +1,21 @@
 # ═══════════════════════════════════════════════════════════════════════════════
 # UltimateDungeon  |  themes.yml
-# Theme definitions — block palettes, ambience, monster pools, boss selection.
+# Theme definitions — block palettes, ambience, monster pools, boss selection
+# and the layout archetype each map uses. Every theme generates a visibly
+# different dungeon shape:
+#   ancient_ruins       -> HUB_AND_SPOKE    (central plaza, four ruined wings)
+#   frozen_cavern       -> WINDING_PATH     (serpentine ice tunnel, side grottos)
+#   corrupted_temple    -> SYMMETRIC_AXIS   (processional nave, mirrored chapels)
+#   volcanic_fortress   -> CONCENTRIC_RINGS (fight inward to the central keep)
+#   forgotten_catacombs -> GRID_MAZE        (branching burial maze, dead ends)
 # ═══════════════════════════════════════════════════════════════════════════════
 
-config-version: 1
+config-version: 2
 
 themes:
   ancient_ruins:
     display-name: "Ancient Ruins"
+    layout-style: HUB_AND_SPOKE
     blocks:
       primary: COBBLESTONE
       secondary: MOSSY_COBBLESTONE
@@ -17,17 +25,18 @@ themes:
     ambient-sound: BLOCK_CAVE_DRIP_WATER
     particles:
       - FALLING_DUST
-      - SMOKE_NORMAL
+      - SMOKE
     monster-pool:
       - common_monster_1
       - common_monster_2
       - elite_monster_1
     boss-pool:
-      - boss_1
-      - boss_2
+      - tharok
+      - sylvara
 
   frozen_cavern:
     display-name: "Frozen Cavern"
+    layout-style: WINDING_PATH
     blocks:
       primary: PACKED_ICE
       secondary: BLUE_ICE
@@ -42,10 +51,12 @@ themes:
       - common_monster_3
       - elite_monster_2
     boss-pool:
-      - boss_3
+      - boreas
+      - aethon
 
   corrupted_temple:
     display-name: "Corrupted Temple"
+    layout-style: SYMMETRIC_AXIS
     blocks:
       primary: PURPUR_BLOCK
       secondary: BLACKSTONE
@@ -60,11 +71,11 @@ themes:
       - common_monster_4
       - elite_monster_3
     boss-pool:
-      - boss_4
-      - boss_5
+      - zharok
 
   volcanic_fortress:
     display-name: "Volcanic Fortress"
+    layout-style: CONCENTRIC_RINGS
     blocks:
       primary: NETHER_BRICKS
       secondary: MAGMA_BLOCK
@@ -79,10 +90,11 @@ themes:
       - common_monster_5
       - elite_monster_1
     boss-pool:
-      - boss_6
+      - vulkhan
 
   forgotten_catacombs:
     display-name: "Forgotten Catacombs"
+    layout-style: GRID_MAZE
     blocks:
       primary: DEEPSLATE_BRICKS
       secondary: BONE_BLOCK
@@ -91,11 +103,10 @@ themes:
       ceiling: DEEPSLATE
     ambient-sound: BLOCK_ROOTED_DIRT_PLACE
     particles:
-      - SMOKE_LARGE
-      - SPELL_MOB
+      - LARGE_SMOKE
+      - WITCH
     monster-pool:
       - common_monster_1
       - rare_monster_1
     boss-pool:
-      - boss_7
-      - boss_8
+      - nyxara

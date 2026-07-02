@@ -95,45 +95,49 @@ public final class RoomPlacer {
         final var from = conn.getStartDoor();
         final var to   = conn.getEndDoor();
 
+        final var world = from.getWorld();
+        if (world == null) return;
+
         if (conn.getAxis() == RoomConnection.Axis.X) {
             // Carve along X first, then Z elbow
             final int startX = Math.min(from.getBlockX(), to.getBlockX());
             final int endX   = Math.max(from.getBlockX(), to.getBlockX());
             for (int x = startX; x <= endX; x++) {
-                carveCorridorColumn(x, from.getBlockY(), from.getBlockZ(), palette);
+                carveCorridorColumn(world, x, from.getBlockY(), from.getBlockZ(), palette);
             }
             // Z elbow
             final int startZ = Math.min(from.getBlockZ(), to.getBlockZ());
             final int endZ   = Math.max(from.getBlockZ(), to.getBlockZ());
             for (int z = startZ; z <= endZ; z++) {
-                carveCorridorColumn(to.getBlockX(), from.getBlockY(), z, palette);
+                carveCorridorColumn(world, to.getBlockX(), from.getBlockY(), z, palette);
             }
         } else {
             // Carve along Z first, then X elbow
             final int startZ = Math.min(from.getBlockZ(), to.getBlockZ());
             final int endZ   = Math.max(from.getBlockZ(), to.getBlockZ());
             for (int z = startZ; z <= endZ; z++) {
-                carveCorridorColumn(from.getBlockX(), from.getBlockY(), z, palette);
+                carveCorridorColumn(world, from.getBlockX(), from.getBlockY(), z, palette);
             }
             final int startX = Math.min(from.getBlockX(), to.getBlockX());
             final int endX   = Math.max(from.getBlockX(), to.getBlockX());
             for (int x = startX; x <= endX; x++) {
-                carveCorridorColumn(x, from.getBlockY(), to.getBlockZ(), palette);
+                carveCorridorColumn(world, x, from.getBlockY(), to.getBlockZ(), palette);
             }
         }
     }
 
     /**
-     * Carves a 3-wide, 4-tall column centred on {@code (x, y, z)}.
+     * Carves a 3-wide, 4-tall column centred on {@code (x, y, z)} in the
+     * dungeon's own world (never the default overworld).
      * Floor = primary, walls = secondary, ceiling = ceiling, interior = air.
      */
     private void carveCorridorColumn(
+            @NotNull final org.bukkit.World world,
             final int                     x,
             final int                     y,
             final int                     z,
             @NotNull final ThemeBlockPalette palette
     ) {
-        final var world = org.bukkit.Bukkit.getWorlds().get(0); // safe: caller sets world context
         for (int dx = -1; dx <= 1; dx++) {
             for (int dz = -1; dz <= 1; dz++) {
                 for (int dy = 0; dy < CORRIDOR_HEIGHT; dy++) {

@@ -10,6 +10,7 @@ import java.util.List;
 /**
  * Theme: Forgotten Catacombs
  * Deepslate, bone blocks, dark lighting, death ambience.
+ * Layout: grid maze — tight branching burial tunnels full of dead ends.
  */
 public final class ForgottenCatacombsTheme extends ThemeDefinition {
     public ForgottenCatacombsTheme() {
@@ -22,6 +23,7 @@ public final class ForgottenCatacombsTheme extends ThemeDefinition {
                 List.of(Particle.LARGE_SMOKE, Particle.WITCH)),
             new ThemeMonsterPool(
                 List.of("common_monster_1", "rare_monster_1"),
-                List.of("boss_7", "boss_8")));
+                List.of("nyxara")),
+            LayoutStyle.GRID_MAZE);
     }
 }

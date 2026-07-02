@@ -10,6 +10,7 @@ import java.util.List;
 /**
  * Theme: Volcanic Fortress
  * Lava flows, heat haze, fire-based enemies.
+ * Layout: concentric rings — outer walls breached first, fighting inward to the central keep.
  */
 public final class VolcanicFortressTheme extends ThemeDefinition {
     public VolcanicFortressTheme() {
@@ -22,6 +23,7 @@ public final class VolcanicFortressTheme extends ThemeDefinition {
                 List.of(Particle.FLAME, Particle.LAVA)),
             new ThemeMonsterPool(
                 List.of("common_monster_5", "elite_monster_1"),
-                List.of("boss_6")));
+                List.of("vulkhan")),
+            LayoutStyle.CONCENTRIC_RINGS);
     }
 }

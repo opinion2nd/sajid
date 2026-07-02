@@ -10,6 +10,7 @@ import java.util.List;
 /**
  * Theme: Ancient Ruins
  * Crumbling stone, overgrown vegetation, lost civilisation.
+ * Layout: hub-and-spoke — a ruined central plaza with collapsed wings radiating outward.
  */
 public final class AncientRuinsTheme extends ThemeDefinition {
     public AncientRuinsTheme() {
@@ -22,6 +23,7 @@ public final class AncientRuinsTheme extends ThemeDefinition {
                 List.of(Particle.FALLING_DUST, Particle.SMOKE)),
             new ThemeMonsterPool(
                 List.of("common_monster_1", "common_monster_2", "elite_monster_1"),
-                List.of("boss_1", "boss_2")));
+                List.of("tharok", "sylvara")),
+            LayoutStyle.HUB_AND_SPOKE);
     }
 }

@@ -36,10 +36,13 @@ public final class BossAI {
         }
     }
 
+    /** Bosses only hunt players inside their own arena, never across instances. */
+    private static final double TARGET_RANGE_SQ = 48.0 * 48.0;
+
     private void retarget(@NotNull final LivingEntity boss) {
         if (!(boss instanceof final Mob mob) || boss.getWorld() == null) return;
         Player nearest = null;
-        double best = Double.MAX_VALUE;
+        double best = TARGET_RANGE_SQ;
         for (final Player p : boss.getWorld().getPlayers()) {
             if (p.getGameMode() == org.bukkit.GameMode.SPECTATOR) continue;
             final double d = p.getLocation().distanceSquared(boss.getLocation());

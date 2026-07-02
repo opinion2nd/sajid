@@ -248,8 +248,8 @@ public final class PluginBootstrap {
         serviceRegistry.register(DungeonWorldManager.class, dungeonWorldManager);
 
         dungeonGenerator = new DungeonGenerator(
-                configManager.getDungeonConfig(), themeRegistry,
-                roomRegistry, pluginScheduler, pluginLogger);
+                configManager.getDungeonConfig(), configManager.getDifficultyConfig(),
+                themeRegistry, roomRegistry, pluginScheduler, pluginLogger);
         dungeonGenerator.setWorldManager(dungeonWorldManager);
         serviceRegistry.register(DungeonGenerator.class, dungeonGenerator);
 

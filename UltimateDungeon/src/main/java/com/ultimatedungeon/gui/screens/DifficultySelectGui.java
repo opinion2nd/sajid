@@ -40,18 +40,21 @@ public final class DifficultySelectGui extends AbstractGui {
 
     @Override
     public void open() {
-        inventory = Bukkit.createInventory(null, 27, MiniMessageUtil.legacy("<dark_gray>Select Difficulty"));
+        inventory = Bukkit.createInventory(null, 27, MiniMessageUtil.legacy("<dark_gray>Select Level"));
         final ItemStack filler = ItemBuilder.of(Material.BLACK_STAINED_GLASS_PANE).name(" ").build();
         for (int i = 0; i < inventory.getSize(); i++) inventory.setItem(i, filler);
         int slot = FIRST_SLOT;
         for (final String id : difficulties) {
             if (slot >= 17) break;
             final DifficultyConfig.DifficultyPreset p = services.difficultyConfig().getPresetOrDefault(id);
-            inventory.setItem(slot, ItemBuilder.of(icon(slot))
+            final ItemBuilder item = ItemBuilder.of(icon(slot - FIRST_SLOT))
                     .name("<gold>" + p.displayName())
                     .lore("<gray>Health x" + p.healthMultiplier())
-                    .lore("<gray>Damage x" + p.damageMultiplier())
-                    .lore("<yellow>Click to start!").build());
+                    .lore("<gray>Damage x" + p.damageMultiplier());
+            if (p.roomsMax() > 0) {
+                item.lore("<gray>Map size: <white>" + p.roomsMin() + "-" + p.roomsMax() + " rooms");
+            }
+            inventory.setItem(slot, item.lore("<yellow>Click to start!").build());
             slot++;
         }
         services.guiManager().register(viewer, this);
@@ -69,12 +72,13 @@ public final class DifficultySelectGui extends AbstractGui {
     }
 
     @NotNull
-    private Material icon(final int slot) {
-        return switch (slot % 4) {
+    private Material icon(final int index) {
+        return switch (index % 5) {
             case 0 -> Material.LIME_DYE;
             case 1 -> Material.YELLOW_DYE;
             case 2 -> Material.ORANGE_DYE;
-            default -> Material.RED_DYE;
+            case 3 -> Material.RED_DYE;
+            default -> Material.PURPLE_DYE;
         };
     }
 }

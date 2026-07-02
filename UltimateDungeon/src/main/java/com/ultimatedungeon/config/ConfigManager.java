@@ -107,8 +107,8 @@ public final class ConfigManager {
             extractDefault(fileName);
         }
 
-        loadAllFiles();
         runMigrations();
+        loadAllFiles();
         runValidation();
 
         logger.info("All " + ALL_FILES.size() + " configuration files loaded successfully.");
@@ -120,8 +120,8 @@ public final class ConfigManager {
      */
     public void reload() {
         logger.info("Reloading configuration files...");
-        loadAllFiles();
         runMigrations();
+        loadAllFiles();
         runValidation();
         logger.info("Configuration reloaded successfully.");
     }
@@ -257,19 +257,26 @@ public final class ConfigManager {
     // ── Private — migration ───────────────────────────────────────────────────
 
     private void runMigrations() {
-        migrateFile(FILE_MAIN,        mainConfig.getConfigVersion());
-        // All other files also carry config-version; migrate when needed.
-        // Future milestones will pass their own version numbers here.
+        // Migrations run BEFORE typed wrappers are built so the same boot
+        // already sees the migrated data.
+        for (final String fileName : ALL_FILES) {
+            migrateFile(fileName);
+        }
     }
 
-    private void migrateFile(@NotNull final String fileName, final int storedVersion) {
+    private void migrateFile(@NotNull final String fileName) {
+        final File file = new File(plugin.getDataFolder(), fileName);
+        if (!file.exists()) {
+            return;
+        }
+        final YamlConfiguration disk = YamlConfiguration.loadConfiguration(file);
+        final int storedVersion = disk.getInt("config-version", 0);
         if (storedVersion >= ConfigVersion.CURRENT) {
             return;
         }
-        final File        file   = new File(plugin.getDataFolder(), fileName);
-        final YamlConfiguration disk = YamlConfiguration.loadConfiguration(file);
         final boolean changed = migrator.migrate(fileName, disk, storedVersion);
         if (changed) {
+            disk.set("config-version", ConfigVersion.CURRENT);
             saveFile(file, disk);
         }
     }
