@@ -18,6 +18,7 @@ public final class PartyConfig {
     private final boolean            reviveEnabled;
     private final int                reviveHoldSeconds;
     private final int                reviveTimeoutSeconds;
+    private final int                reviveImmunitySeconds;
 
     public PartyConfig(@NotNull final FileConfiguration cfg) {
         maxPartySize               = cfg.getInt("max-party-size", 6);
@@ -29,6 +30,7 @@ public final class PartyConfig {
         reviveEnabled              = cfg.getBoolean("revive.enabled", true);
         reviveHoldSeconds          = Math.max(1, cfg.getInt("revive.hold-seconds", 5));
         reviveTimeoutSeconds       = Math.max(10, cfg.getInt("revive.timeout-seconds", 60));
+        reviveImmunitySeconds      = Math.max(0, cfg.getInt("revive.immunity-seconds", 10));
 
         final String modeStr = cfg.getString("leader-transfer-mode", "auto");
         leaderTransferMode = switch (modeStr.toLowerCase()) {
@@ -48,6 +50,7 @@ public final class PartyConfig {
     public boolean            isReviveEnabled()                { return reviveEnabled; }
     public int                getReviveHoldSeconds()           { return reviveHoldSeconds; }
     public int                getReviveTimeoutSeconds()        { return reviveTimeoutSeconds; }
+    public int                getReviveImmunitySeconds()       { return reviveImmunitySeconds; }
 
     /** Invite timeout in ticks (for Bukkit scheduler). */
     public long getInviteTimeoutTicks()       { return (long) inviteTimeoutSeconds * 20L; }

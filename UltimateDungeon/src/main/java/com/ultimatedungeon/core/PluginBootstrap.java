@@ -477,6 +477,8 @@ public final class PluginBootstrap {
         pm.registerEvents(new com.ultimatedungeon.listeners.player.PlayerDeathInDungeonListener(
                 plugin, statisticsService, dungeonInstanceManager,
                 dungeonLauncher, dungeonFailureHandler, reviveManager), plugin);
+        pm.registerEvents(new com.ultimatedungeon.listeners.player.ReviveImmunityListener(
+                reviveManager), plugin);
         pm.registerEvents(new com.ultimatedungeon.listeners.dungeon.DungeonBlockProtectionListener(
                 dungeonWorldManager), plugin);
         pm.registerEvents(new com.ultimatedungeon.listeners.room.FateChestListener(

@@ -26,6 +26,10 @@ import java.util.concurrent.ConcurrentHashMap;
  * revives them within {@code timeout-seconds}, they are sent home — and if
  * that leaves the dungeon empty, the run fails.</p>
  *
+ * <p>A freshly revived player gets a grace period of {@code immunity-seconds}
+ * during which they take no damage at all and mobs ignore them (enforced by
+ * {@link com.ultimatedungeon.listeners.player.ReviveImmunityListener}).</p>
+ *
  * <p>Tunables live in party.yml under {@code revive}.</p>
  */
 public final class ReviveManager {
@@ -48,8 +52,11 @@ public final class ReviveManager {
     private final boolean enabled;
     private final int holdSeconds;
     private final int timeoutSeconds;
+    private final int immunitySeconds;
 
     private final Map<UUID, Downed> downed = new ConcurrentHashMap<>();
+    /** Post-revive grace: player UUID → epoch millis when immunity expires. */
+    private final Map<UUID, Long> immuneUntil = new ConcurrentHashMap<>();
 
     /** Fired when a downed player times out and must leave (player). */
     private java.util.function.Consumer<Player> onTimeout = p -> {};
@@ -62,6 +69,7 @@ public final class ReviveManager {
         this.enabled = partyConfig.isReviveEnabled();
         this.holdSeconds = partyConfig.getReviveHoldSeconds();
         this.timeoutSeconds = partyConfig.getReviveTimeoutSeconds();
+        this.immunitySeconds = partyConfig.getReviveImmunitySeconds();
     }
 
     public boolean isEnabled() { return enabled; }
@@ -72,6 +80,17 @@ public final class ReviveManager {
 
     public boolean isDowned(@NotNull final Player player) {
         return downed.containsKey(player.getUniqueId());
+    }
+
+    /** True while the player is inside their post-revive grace period. */
+    public boolean isImmune(@NotNull final Player player) {
+        final Long until = immuneUntil.get(player.getUniqueId());
+        if (until == null) return false;
+        if (System.currentTimeMillis() >= until) {
+            immuneUntil.remove(player.getUniqueId());
+            return false;
+        }
+        return true;
     }
 
     /** Puts a dead party member into the downed (spectator) state at their body. */
@@ -88,7 +107,9 @@ public final class ReviveManager {
 
     /** One revive tick — runs every 10 ticks from the scheduler. */
     public void tick() {
-        if (!enabled || downed.isEmpty()) return;
+        if (!enabled) return;
+        tickImmunity();
+        if (downed.isEmpty()) return;
         for (final Map.Entry<UUID, Downed> entry : Map.copyOf(downed).entrySet()) {
             final Player dead = Bukkit.getPlayer(entry.getKey());
             final Downed state = entry.getValue();
@@ -156,9 +177,32 @@ public final class ReviveManager {
             }
         }
         downed.clear();
+        immuneUntil.clear();
     }
 
     // ── Internal ──────────────────────────────────────────────────────────────
+
+    /** Shows a shield aura around immune players and announces expiry. */
+    private void tickImmunity() {
+        if (immuneUntil.isEmpty()) return;
+        final long now = System.currentTimeMillis();
+        for (final Map.Entry<UUID, Long> entry : Map.copyOf(immuneUntil).entrySet()) {
+            final Player p = Bukkit.getPlayer(entry.getKey());
+            if (p == null || !p.isOnline()) {
+                immuneUntil.remove(entry.getKey());
+                continue;
+            }
+            if (now >= entry.getValue()) {
+                immuneUntil.remove(entry.getKey());
+                MiniMessageUtil.sendActionBar(p, "<gray>Revive protection has worn off.");
+                continue;
+            }
+            final int secondsLeft = (int) Math.ceil((entry.getValue() - now) / 1000.0);
+            MiniMessageUtil.sendActionBar(p, "<aqua>⛨ Protected <yellow>" + secondsLeft + "s");
+            p.getWorld().spawnParticle(Particle.HAPPY_VILLAGER,
+                    p.getLocation().add(0, 1, 0), 3, 0.4, 0.6, 0.4, 0.0);
+        }
+    }
 
     private Player findReviver(@NotNull final Downed state, @NotNull final Player dead) {
         final var world = state.deathSpot.getWorld();
@@ -180,8 +224,13 @@ public final class ReviveManager {
         final double max = maxAttr != null ? maxAttr.getValue() : 20.0;
         dead.setHealth(Math.max(1.0, max / 2.0));
         dead.setFoodLevel(Math.max(dead.getFoodLevel(), 10));
-        dead.addPotionEffect(new org.bukkit.potion.PotionEffect(
-                org.bukkit.potion.PotionEffectType.RESISTANCE, 100, 1));
+        if (immunitySeconds > 0) {
+            immuneUntil.put(dead.getUniqueId(),
+                    System.currentTimeMillis() + immunitySeconds * 1000L);
+        } else {
+            dead.addPotionEffect(new org.bukkit.potion.PotionEffect(
+                    org.bukkit.potion.PotionEffectType.RESISTANCE, 100, 1));
+        }
 
         final var world = state.deathSpot.getWorld();
         if (world != null) {
@@ -191,6 +240,10 @@ public final class ReviveManager {
         }
         MiniMessageUtil.send(dead, "<green><bold>REVIVED!</bold></green> <gray>by "
                 + reviver.getName() + " — back to the fight!");
+        if (immunitySeconds > 0) {
+            MiniMessageUtil.send(dead, "<aqua>⛨ You are untouchable for <yellow>"
+                    + immunitySeconds + "s</yellow> — nothing can hurt you.");
+        }
         MiniMessageUtil.send(reviver, "<green>You revived " + dead.getName() + "!");
         logger.debug("Player revived: " + dead.getName() + " by " + reviver.getName());
     }
