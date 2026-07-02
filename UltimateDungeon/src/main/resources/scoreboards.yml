@@ -1,0 +1,26 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# UltimateDungeon  |  scoreboards.yml
+# In-dungeon sidebar. Shown ONLY to players inside a dungeon; their previous
+# scoreboard is restored when the run ends (complete/fail/leave/death/quit).
+#
+# Placeholders: %level% %theme% %rooms_cleared% %total_rooms%
+#   %bosses_defeated% %total_bosses% %current_wave% %total_waves%
+#   %completed_waves% %mobs_left% %alive_party% %time% %objective%
+# ═══════════════════════════════════════════════════════════════════════════════
+
+config-version: 2
+
+enabled: true
+title: "&6&lUltimateDungeon"
+update-interval-ticks: 20
+lines:
+  - "&7Level: &e%level%"
+  - "&7Theme: &b%theme%"
+  - "&7Rooms: &a%rooms_cleared%&7/&a%total_rooms%"
+  - "&7Bosses: &c%bosses_defeated%&7/&c%total_bosses%"
+  - "&7Wave: &e%current_wave%&7/&e%total_waves%"
+  - "&7Completed: &a%completed_waves%&7/&a%total_waves%"
+  - "&7Mobs Left: &c%mobs_left%"
+  - "&7Alive: &a%alive_party%"
+  - "&7Time: &f%time%"
+  - "&7Goal: &d%objective%"

@@ -18,7 +18,8 @@ public final class DifficultyConfig {
      *
      * <p>{@code roomsMin}/{@code roomsMax} define the map size for the level so
      * higher levels generate bigger dungeons; {@code 0} means "use the global
-     * dungeon-size range from dungeon.yml".</p>
+     * dungeon-size range from dungeon.yml". {@code bossCount} is how many bosses
+     * spawn together in the boss arena (level 1 → 1 boss, level 5 → 5 bosses).</p>
      */
     public record DifficultyPreset(
         @NotNull String id,
@@ -30,7 +31,8 @@ public final class DifficultyConfig {
         int    lootTierBonus,
         double trapDamageMultiplier,
         int    roomsMin,
-        int    roomsMax
+        int    roomsMax,
+        int    bossCount
     ) {}
 
     private final Map<String, DifficultyPreset> presets;
@@ -52,7 +54,8 @@ public final class DifficultyConfig {
                     ps.getInt("loot-tier-bonus", 0),
                     ps.getDouble("trap-damage-multiplier", 1.0),
                     ps.getInt("rooms.min", 0),
-                    ps.getInt("rooms.max", 0)
+                    ps.getInt("rooms.max", 0),
+                    Math.max(1, ps.getInt("boss-count", 1))
                 ));
             }
         }
@@ -67,7 +70,7 @@ public final class DifficultyConfig {
     @NotNull
     public DifficultyPreset getPresetOrDefault(@NotNull final String id) {
         return presets.getOrDefault(id, new DifficultyPreset(
-            "level_1", "Level 1", 1.0, 1.0, 1.0, 1.0, 0, 1.0, 0, 0
+            "level_1", "Level 1", 1.0, 1.0, 1.0, 1.0, 0, 1.0, 0, 0, 1
         ));
     }
 

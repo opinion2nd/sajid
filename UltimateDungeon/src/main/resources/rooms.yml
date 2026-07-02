@@ -1,0 +1,20 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# UltimateDungeon  |  rooms.yml
+# Room-type tuning: relative selection weights used during layout planning and
+# per-room caps. (Room dimensions come from the built-in templates; weights
+# here mirror dungeon.yml room-weights and take precedence when set.)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+config-version: 2
+
+rooms:
+  COMBAT:        { weight: 40, max-per-dungeon: -1 }
+  ELITE_COMBAT:  { weight: 15, max-per-dungeon: 2 }
+  TREASURE:      { weight: 10, max-per-dungeon: 2 }
+  PUZZLE:        { weight: 10, max-per-dungeon: 3 }
+  PARKOUR:       { weight: 8,  max-per-dungeon: 2 }
+  TRAP:          { weight: 15, max-per-dungeon: 4 }
+  SECRET:        { weight: 5,  max-per-dungeon: 1 }
+  MERCHANT:      { weight: 5,  max-per-dungeon: 1 }
+  EVENT:         { weight: 8,  max-per-dungeon: 2 }
+  MINI_BOSS:     { weight: 3,  max-per-dungeon: 1 }

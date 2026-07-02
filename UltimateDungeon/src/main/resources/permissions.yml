@@ -1,0 +1,14 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# UltimateDungeon  |  permissions.yml
+# Permission node per feature. Change a node here and the plugin checks the
+# new node instead — useful for integrating with existing rank systems.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+config-version: 2
+
+permissions:
+  use: "dungeon.use"
+  party: "dungeon.party"
+  stats: "dungeon.stats"
+  admin: "dungeon.admin"
+  reload: "dungeon.reload"

@@ -1,0 +1,79 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# UltimateDungeon  |  waves.yml   (replaces the old monsters.yml)
+# Per-level wave rules. Not every room gets waves — rooms are selected randomly
+# by rooms-with-waves-percent. Boss rooms never get normal waves unless
+# boss-room-waves is true. Mob weights are relative (higher = more common).
+# A room's exit only unlocks after ALL of its waves are cleared.
+# ═══════════════════════════════════════════════════════════════════════════════
+
+config-version: 2
+
+waves:
+  level-1:
+    rooms-with-waves-percent: 35
+    min-waves-per-room: 1
+    max-waves-per-room: 1
+    mobs-per-wave: 3-5
+    boss-room-waves: false
+    mobs:
+      ZOMBIE: 50
+      SKELETON: 30
+      SPIDER: 20
+
+  level-2:
+    rooms-with-waves-percent: 45
+    min-waves-per-room: 1
+    max-waves-per-room: 2
+    mobs-per-wave: 4-7
+    boss-room-waves: false
+    mobs:
+      ZOMBIE: 40
+      SKELETON: 35
+      CREEPER: 15
+      SPIDER: 10
+
+  level-3:
+    rooms-with-waves-percent: 55
+    min-waves-per-room: 2
+    max-waves-per-room: 3
+    mobs-per-wave: 6-10
+    boss-room-waves: false
+    mobs:
+      ZOMBIE: 30
+      SKELETON: 30
+      CREEPER: 15
+      SPIDER: 10
+      WITCH: 10
+      VINDICATOR: 5
+
+  level-4:
+    rooms-with-waves-percent: 65
+    min-waves-per-room: 2
+    max-waves-per-room: 4
+    mobs-per-wave: 8-13
+    boss-room-waves: false
+    mobs:
+      ZOMBIE: 20
+      SKELETON: 25
+      CREEPER: 15
+      WITCH: 12
+      VINDICATOR: 13
+      PILLAGER: 10
+      WITHER_SKELETON: 5
+
+  level-5:
+    rooms-with-waves-percent: 75
+    min-waves-per-room: 3
+    max-waves-per-room: 5
+    mobs-per-wave: 10-16
+    boss-room-waves: false
+    mobs:
+      ZOMBIE: 15
+      SKELETON: 20
+      CREEPER: 12
+      WITCH: 13
+      VINDICATOR: 15
+      PILLAGER: 10
+      WITHER_SKELETON: 10
+      RAVAGER: 3
+      EVOKER: 2

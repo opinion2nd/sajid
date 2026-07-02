@@ -20,9 +20,9 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Top-level dungeon generator — implements {@link IDungeonGenerator}.
@@ -43,11 +43,11 @@ public final class DungeonGenerator implements IDungeonGenerator {
 
     /** Distance between instance origins in the shared dungeon world. */
     private static final int INSTANCE_SPACING = 4096;
-    /** Instances cycle through this many origin slots on an 8×8 grid. */
+    /** Maximum origin slots on an 8×8 grid — far above max-concurrent-instances. */
     private static final int ORIGIN_SLOTS = 64;
 
-    /** Rotating origin slot so concurrent instances never overlap in the shared world. */
-    private static final AtomicInteger ORIGIN_COUNTER = new AtomicInteger();
+    /** Origin slot currently claimed by each live instance. */
+    private final Map<UUID, Integer> claimedSlots = new java.util.concurrent.ConcurrentHashMap<>();
 
     private final DungeonConfig        dungeonConfig;
     private final DifficultyConfig     difficultyConfig;
@@ -121,6 +121,8 @@ public final class DungeonGenerator implements IDungeonGenerator {
                         final DungeonInstance instance = new DungeonInstance(ctx);
                         instance.setRoomGraph(result.getRoomGraph());
                         instance.setTheme(result.getTheme());
+                        instance.setTotalBosses(Math.max(1, difficultyConfig
+                                .getPresetOrDefault(request.getDifficultyId()).bossCount()));
                         logger.info("Dungeon generated: " + instanceId
                                 + " (" + result.getGenerationTimeMs() + "ms, "
                                 + result.getRoomGraph().getRoomCount() + " rooms, "
@@ -160,14 +162,17 @@ public final class DungeonGenerator implements IDungeonGenerator {
         }
 
         final int targetRooms = resolveTargetRooms(request.getDifficultyId());
-        final Location origin = nextInstanceOrigin(world);
+        final int bossCount = Math.max(1, difficultyConfig
+                .getPresetOrDefault(request.getDifficultyId()).bossCount());
+        final Location origin = claimInstanceOrigin(instanceId, world);
 
         for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
             logger.debug("Generation attempt " + attempt + "/" + MAX_RETRIES
                     + " for instance " + instanceId);
 
-            final long seed = RandomUtil.randomInt(Integer.MIN_VALUE, Integer.MAX_VALUE);
-            final RoomGraph graph = layoutPlanner.plan(world, theme, seed, targetRooms, origin);
+            // Fresh full-range seed per attempt — every run gets a unique layout.
+            final long seed = RandomUtil.randomSeed();
+            final RoomGraph graph = layoutPlanner.plan(world, theme, seed, targetRooms, bossCount, origin);
             corridorRouter.route(graph);
 
             if (validator.validate(graph)) {
@@ -181,27 +186,43 @@ public final class DungeonGenerator implements IDungeonGenerator {
 
     /**
      * Room budget for this run: the selected level defines the map size, so
-     * higher levels produce larger dungeons. Falls back to the global
-     * dungeon-size range when the level defines no room range.
+     * higher levels produce larger dungeons. Invalid or missing config values
+     * fall back to safe defaults with a warning rather than crashing.
      */
     private int resolveTargetRooms(@NotNull final String difficultyId) {
         final DifficultyConfig.DifficultyPreset preset =
                 difficultyConfig.getPresetOrDefault(difficultyId);
-        final int min = preset.roomsMin() > 0 ? preset.roomsMin() : dungeonConfig.getDungeonSizeMin();
-        final int max = preset.roomsMax() >= min ? preset.roomsMax() : dungeonConfig.getDungeonSizeMax();
-        return RandomUtil.randomInt(min, Math.max(min, max));
+        int min = preset.roomsMin() > 0 ? preset.roomsMin() : dungeonConfig.getDungeonSizeMin();
+        int max = preset.roomsMax() > 0 ? preset.roomsMax() : dungeonConfig.getDungeonSizeMax();
+        if (min <= 0 || max <= 0 || min > max) {
+            logger.warning("Invalid room range for level '" + difficultyId
+                    + "' (" + min + "-" + max + ") — using safe defaults 10-14.");
+        }
+        return RandomUtil.safeRange(min, max, 6, 80);
     }
 
     /**
-     * Assigns each instance its own origin on an 8×8 grid of well-separated
-     * slots so concurrent dungeons in the shared world never overlap.
+     * Claims a free, well-separated origin slot on an 8×8 grid for this
+     * instance so concurrent dungeons (solo or party) never overlap. The slot
+     * is released again in {@link #releaseOrigin} during cleanup.
      */
     @NotNull
-    private Location nextInstanceOrigin(@NotNull final World world) {
-        final int slot = Math.floorMod(ORIGIN_COUNTER.getAndIncrement(), ORIGIN_SLOTS);
+    private synchronized Location claimInstanceOrigin(@NotNull final UUID instanceId,
+                                                      @NotNull final World world) {
+        int slot = 0;
+        final var used = new java.util.HashSet<>(claimedSlots.values());
+        while (used.contains(slot) && slot < ORIGIN_SLOTS) slot++;
+        claimedSlots.put(instanceId, slot);
         final int x = (slot % 8) * INSTANCE_SPACING;
         final int z = (slot / 8) * INSTANCE_SPACING;
+        logger.debug("Instance " + instanceId + " claimed origin slot " + slot);
         return new Location(world, x, 64, z);
+    }
+
+    /** Frees the origin slot held by an instance once its dungeon is cleaned up. */
+    public void releaseOrigin(@NotNull final UUID instanceId) {
+        final Integer slot = claimedSlots.remove(instanceId);
+        if (slot != null) logger.debug("Instance " + instanceId + " released origin slot " + slot);
     }
 
     private ThemeDefinition resolveTheme(@NotNull final String themeId) {

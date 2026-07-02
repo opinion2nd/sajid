@@ -50,7 +50,8 @@ public final class DifficultySelectGui extends AbstractGui {
             final ItemBuilder item = ItemBuilder.of(icon(slot - FIRST_SLOT))
                     .name("<gold>" + p.displayName())
                     .lore("<gray>Health x" + p.healthMultiplier())
-                    .lore("<gray>Damage x" + p.damageMultiplier());
+                    .lore("<gray>Damage x" + p.damageMultiplier())
+                    .lore("<gray>Bosses: <red>" + p.bossCount());
             if (p.roomsMax() > 0) {
                 item.lore("<gray>Map size: <white>" + p.roomsMin() + "-" + p.roomsMax() + " rooms");
             }

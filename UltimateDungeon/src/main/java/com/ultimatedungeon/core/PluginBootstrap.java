@@ -33,9 +33,6 @@ import com.ultimatedungeon.loot.model.LootTable;
 import com.ultimatedungeon.loot.registry.LootTableRegistry;
 import com.ultimatedungeon.managers.CooldownManager;
 import com.ultimatedungeon.managers.PlayerSessionManager;
-import com.ultimatedungeon.monster.engine.MonsterEngine;
-import com.ultimatedungeon.monster.engine.MonsterScaler;
-import com.ultimatedungeon.monster.engine.MonsterSpawner;
 import com.ultimatedungeon.monster.engine.WaveManager;
 import com.ultimatedungeon.party.manager.InvitationManager;
 import com.ultimatedungeon.party.manager.PartyManager;
@@ -57,7 +54,6 @@ import com.ultimatedungeon.services.StatisticsService;
 import com.ultimatedungeon.tasks.BossAITickTask;
 import com.ultimatedungeon.tasks.DungeonTickTask;
 import com.ultimatedungeon.tasks.InvitationExpiryTask;
-import com.ultimatedungeon.tasks.MonsterAITickTask;
 import com.ultimatedungeon.tasks.TrapTickTask;
 import com.ultimatedungeon.theme.registry.ThemeRegistry;
 import com.ultimatedungeon.theme.themes.*;
@@ -115,8 +111,8 @@ public final class PluginBootstrap {
     private LootGenerator        lootGenerator;
     private RewardDistributor    rewardDistributor;
     private RewardRoomService    rewardRoomService;
-    private MonsterEngine        monsterEngine;
     private WaveManager          waveManager;
+    private com.ultimatedungeon.services.DungeonScoreboardManager scoreboardManager;
     private TrapEngine           trapEngine;
     private PuzzleEngine         puzzleEngine;
     private BossEngine           bossEngine;
@@ -158,10 +154,12 @@ public final class PluginBootstrap {
         // just remove any spawned dungeon entities so none are orphaned.
         if (dungeonInstanceManager != null) {
             dungeonInstanceManager.getActiveInstances().forEach(i -> {
-                if (monsterEngine != null) monsterEngine.despawnAll(i.getInstanceId());
+                if (waveManager != null) waveManager.despawnAll(i.getInstanceId());
                 if (bossEngine != null) bossEngine.cleanup(i.getInstanceId());
+                if (dungeonGenerator != null) dungeonGenerator.releaseOrigin(i.getInstanceId());
             });
         }
+        if (scoreboardManager != null) scoreboardManager.restoreAll();
         if (pluginLogger != null) pluginLogger.info("UltimateDungeon shutdown complete.");
     }
 
@@ -317,11 +315,8 @@ public final class PluginBootstrap {
                 statisticsService, rewardValidator, pluginLogger);
         rewardRoomService = new RewardRoomService(lootGenerator, notificationService, pluginLogger);
 
-        // Combat engines
-        final MonsterSpawner spawner = new MonsterSpawner(plugin, pluginLogger);
-        monsterEngine = new MonsterEngine(configManager.getMonstersConfig(), spawner,
-                new MonsterScaler(), difficultyService, pluginLogger);
-        waveManager   = new WaveManager(monsterEngine, pluginLogger);
+        // Combat engines — waves are fully driven by waves.yml
+        waveManager   = new WaveManager(configManager.getWavesConfig(), pluginLogger);
         trapEngine    = new TrapEngine(configManager.getTrapsConfig(), difficultyService, pluginLogger);
         puzzleEngine  = new PuzzleEngine(pluginLogger);
         bossEngine    = new BossEngine(plugin, configManager.getBossesConfig(), difficultyService, pluginLogger);
@@ -338,8 +333,12 @@ public final class PluginBootstrap {
         arenaCountdown = new com.ultimatedungeon.boss.arena.ArenaCountdownManager(pluginScheduler, pluginLogger);
         arenaCleanup  = new ArenaCleanupService(arenaLockdown, bossEngine, pluginLogger);
 
-        // Lifecycle
+        // Lifecycle — every engine contributes its own instance-cleanup action
         final DungeonCleanupService cleanupService = new DungeonCleanupService(pluginLogger);
+        cleanupService.registerAction(waveManager::despawnAll);
+        cleanupService.registerAction(bossEngine::cleanup);
+        cleanupService.registerAction(arenaLockdown::unlock);
+        cleanupService.registerAction(dungeonGenerator::releaseOrigin);
         dungeonLauncher = new DungeonLauncher(generationPipeline, dungeonInstanceManager, sessionManager,
                 teleportService, notificationService, statisticsService, cleanupService,
                 configManager.getMessagesConfig(), pluginLogger);
@@ -353,12 +352,21 @@ public final class PluginBootstrap {
             rewardRoomService.grant(players, "completion_bonus_loot");
         });
 
-        // Boss death → complete the dungeon
+        // Boss death → count the kill; the run completes only when EVERY boss
+        // the level demands has been defeated (level 1 → 1 ... level 5 → 5).
         bossEngine.setDeathHook((instanceId, bossId) -> {
             arenaCleanup.cleanup(instanceId);
             final var instance = dungeonInstanceManager.getInstance(instanceId);
             if (instance instanceof final DungeonInstance di) {
-                dungeonEndHandler.onComplete(di, bossId);
+                final int defeated = di.addBossKill();
+                if (di.allBossesDefeated()) {
+                    dungeonEndHandler.onComplete(di, bossId);
+                } else {
+                    final int left = di.getTotalBosses() - defeated;
+                    dungeonLauncher.getPlayers(instanceId).forEach(p ->
+                            notificationService.title(p, "<gold>Boss defeated!",
+                                    "<gray>" + left + " boss(es) remaining"));
+                }
             }
         });
 
@@ -373,16 +381,20 @@ public final class PluginBootstrap {
 
         serviceRegistry.register(DungeonLauncher.class,      dungeonLauncher);
         serviceRegistry.register(DungeonLaunchService.class, dungeonLaunchService);
-        serviceRegistry.register(MonsterEngine.class,        monsterEngine);
         serviceRegistry.register(TrapEngine.class,           trapEngine);
         serviceRegistry.register(BossEngine.class,           bossEngine);
         serviceRegistry.register(GuiManager.class,           guiManager);
 
         // Tick tasks
-        pluginScheduler.runSyncRepeating(new MonsterAITickTask(monsterEngine, dungeonInstanceManager)::run, 20L, 10L);
         pluginScheduler.runSyncRepeating(new BossAITickTask(bossEngine, dungeonInstanceManager)::run, 20L, 10L);
         pluginScheduler.runSyncRepeating(new TrapTickTask(trapEngine, dungeonInstanceManager)::run, 20L, 20L);
         pluginScheduler.runSyncRepeating(new DungeonTickTask(waveManager, dungeonInstanceManager)::run, 20L, 20L);
+
+        // In-dungeon scoreboard (scoreboards.yml) — only dungeon players see it
+        scoreboardManager = new com.ultimatedungeon.services.DungeonScoreboardManager(
+                configManager.getScoreboardsConfig(), dungeonInstanceManager, waveManager);
+        pluginScheduler.runSyncRepeating(scoreboardManager::updateAll, 20L,
+                configManager.getScoreboardsConfig().getUpdateIntervalTicks());
         if (hazardEngine.isActive()) {
             pluginScheduler.runSyncRepeating(
                     new com.ultimatedungeon.tasks.HazardTickTask(hazardEngine, dungeonInstanceManager)::run,
@@ -443,7 +455,8 @@ public final class PluginBootstrap {
         pm.registerEvents(new com.ultimatedungeon.listeners.trap.TrapTriggerListener(
                 trapEngine, dungeonInstanceManager), plugin);
         pm.registerEvents(new com.ultimatedungeon.listeners.player.PlayerDeathInDungeonListener(
-                plugin, statisticsService, dungeonInstanceManager), plugin);
+                plugin, statisticsService, dungeonInstanceManager,
+                dungeonLauncher, dungeonFailureHandler), plugin);
         pm.registerEvents(new com.ultimatedungeon.listeners.arena.ArenaEscapeListener(
                 arenaLockdown, new com.ultimatedungeon.boss.arena.ArenaEscapeBlocker(), dungeonInstanceManager), plugin);
         pm.registerEvents(new com.ultimatedungeon.listeners.gui.GuiClickListener(guiManager), plugin);

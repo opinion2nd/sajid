@@ -44,7 +44,7 @@ public final class ConfigManager {
     private static final String FILE_DUNGEON     = "dungeon.yml";
     private static final String FILE_THEMES      = "themes.yml";
     private static final String FILE_BOSSES      = "bosses.yml";
-    private static final String FILE_MONSTERS    = "monsters.yml";
+    private static final String FILE_WAVES       = "waves.yml";
     private static final String FILE_TRAPS       = "traps.yml";
     private static final String FILE_REWARDS     = "rewards.yml";
     private static final String FILE_LOOT        = "loot.yml";
@@ -53,12 +53,16 @@ public final class ConfigManager {
     private static final String FILE_DIFFICULTY  = "difficulty.yml";
     private static final String FILE_DATABASE    = "database.yml";
     private static final String FILE_PERFORMANCE = "performance.yml";
+    private static final String FILE_SCOREBOARDS = "scoreboards.yml";
+    private static final String FILE_ROOMS       = "rooms.yml";
+    private static final String FILE_PERMISSIONS = "permissions.yml";
 
     private static final List<String> ALL_FILES = List.of(
             FILE_MAIN, FILE_MESSAGES, FILE_DUNGEON, FILE_THEMES,
-            FILE_BOSSES, FILE_MONSTERS, FILE_TRAPS, FILE_REWARDS,
+            FILE_BOSSES, FILE_WAVES, FILE_TRAPS, FILE_REWARDS,
             FILE_LOOT, FILE_GUI, FILE_PARTY, FILE_DIFFICULTY,
-            FILE_DATABASE, FILE_PERFORMANCE
+            FILE_DATABASE, FILE_PERFORMANCE, FILE_SCOREBOARDS,
+            FILE_ROOMS, FILE_PERMISSIONS
     );
 
     // ── Dependencies ──────────────────────────────────────────────────────────
@@ -73,7 +77,8 @@ public final class ConfigManager {
     private DungeonConfig     dungeonConfig;
     private ThemesConfig      themesConfig;
     private BossesConfig      bossesConfig;
-    private MonstersConfig    monstersConfig;
+    private WavesConfig       wavesConfig;
+    private ScoreboardsConfig scoreboardsConfig;
     private TrapsConfig       trapsConfig;
     private RewardsConfig     rewardsConfig;
     private LootConfig        lootConfig;
@@ -133,7 +138,8 @@ public final class ConfigManager {
     @NotNull public DungeonConfig     getDungeonConfig()     { return dungeonConfig; }
     @NotNull public ThemesConfig      getThemesConfig()      { return themesConfig; }
     @NotNull public BossesConfig      getBossesConfig()      { return bossesConfig; }
-    @NotNull public MonstersConfig    getMonstersConfig()    { return monstersConfig; }
+    @NotNull public WavesConfig       getWavesConfig()       { return wavesConfig; }
+    @NotNull public ScoreboardsConfig getScoreboardsConfig() { return scoreboardsConfig; }
     @NotNull public TrapsConfig       getTrapsConfig()       { return trapsConfig; }
     @NotNull public RewardsConfig     getRewardsConfig()     { return rewardsConfig; }
     @NotNull public LootConfig        getLootConfig()        { return lootConfig; }
@@ -151,7 +157,10 @@ public final class ConfigManager {
         final FileConfiguration dungeonRaw     = load(FILE_DUNGEON);
         final FileConfiguration themesRaw      = load(FILE_THEMES);
         final FileConfiguration bossesRaw      = load(FILE_BOSSES);
-        final FileConfiguration monstersRaw    = load(FILE_MONSTERS);
+        final FileConfiguration wavesRaw       = load(FILE_WAVES);
+        final FileConfiguration scoreboardsRaw = load(FILE_SCOREBOARDS);
+        load(FILE_ROOMS);
+        load(FILE_PERMISSIONS);
         final FileConfiguration trapsRaw       = load(FILE_TRAPS);
         final FileConfiguration rewardsRaw     = load(FILE_REWARDS);
         final FileConfiguration lootRaw        = load(FILE_LOOT);
@@ -166,7 +175,8 @@ public final class ConfigManager {
         dungeonConfig     = new DungeonConfig(dungeonRaw);
         themesConfig      = new ThemesConfig(themesRaw);
         bossesConfig      = new BossesConfig(bossesRaw);
-        monstersConfig    = new MonstersConfig(monstersRaw);
+        wavesConfig       = new WavesConfig(wavesRaw);
+        scoreboardsConfig = new ScoreboardsConfig(scoreboardsRaw);
         trapsConfig       = new TrapsConfig(trapsRaw);
         rewardsConfig     = new RewardsConfig(rewardsRaw);
         lootConfig        = new LootConfig(lootRaw);

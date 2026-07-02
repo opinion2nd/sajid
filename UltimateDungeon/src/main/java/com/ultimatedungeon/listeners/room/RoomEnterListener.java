@@ -108,15 +108,19 @@ public final class RoomEnterListener implements Listener {
 
         switch (room.getType()) {
             case COMBAT, ELITE_COMBAT, MINI_BOSS -> {
-                if (!monsters.isEmpty()) {
-                    waveManager.start(id, room, monsters, WAVE_COUNT, PER_WAVE, difficulty, room::setCleared);
+                // waves.yml decides whether this room hosts waves at all — the
+                // percentage grows with the level, so not every room fights.
+                if (waveManager.shouldRoomHaveWaves(difficulty)) {
+                    waveManager.startForLevel(id, room, difficulty, room::setCleared);
+                } else {
+                    room.setCleared();
                 }
             }
             case EVENT -> {
                 final List<Player> inRoom = playersInRoom(room);
                 final boolean fired = dynamicEventEngine.trigger(id, room, inRoom, monsters, difficulty);
-                if (!fired && !monsters.isEmpty()) {
-                    waveManager.start(id, room, monsters, WAVE_COUNT, PER_WAVE, difficulty, room::setCleared);
+                if (!fired) {
+                    waveManager.startForLevel(id, room, difficulty, room::setCleared);
                 }
             }
             case SECRET -> discoverSecret(room);
@@ -124,20 +128,25 @@ public final class RoomEnterListener implements Listener {
             case PUZZLE -> puzzleEngine.startPuzzle(id, new ColorSequencePuzzle(), room::setCleared);
             case BOSS -> {
                 final List<String> bosses = theme != null ? theme.getBossPool() : List.of();
-                if (bosses.isEmpty()) return;
-                final String bossId = bosses.get(ThreadLocalRandom.current().nextInt(bosses.size()));
-                final BossDefinition def = bossEngine.getDefinition(bossId);
+                final String firstId = bosses.isEmpty() ? null
+                        : bosses.get(ThreadLocalRandom.current().nextInt(bosses.size()));
+                final BossDefinition def = firstId != null ? bossEngine.getDefinition(firstId) : null;
                 final int seconds = def != null ? def.getCountdownSeconds() : 10;
                 final var world = room.getCentre().getWorld();
                 if (world == null) return;
-                // Pre-fight countdown, then spawn the boss and seal the arena.
-                // Only players near THIS arena take part — instances share one world.
+                // Pre-fight countdown, then spawn ONE random boss in THIS room
+                // and seal the arena. Levels with more bosses have more boss
+                // rooms — each spawns its own, different boss.
                 arenaCountdown.start(seconds, playersNearRoom(room), () -> {
                     if (playersInRoom(room).isEmpty()) {
                         return; // countdown safety: everyone left, do not spawn
                     }
                     arenaLockdown.lock(id, room);
-                    bossEngine.spawnBoss(id, bossId, room.getCentre(), difficulty, playersNearRoom(room));
+                    bossEngine.spawnRandomBoss(id, bosses, room.getCentre(), difficulty, playersNearRoom(room));
+                    // Boss rooms only host normal waves when the config allows it.
+                    if (waveManager.bossRoomWavesEnabled(difficulty)) {
+                        waveManager.startForLevel(id, room, difficulty, room::setCleared);
+                    }
                 });
             }
             default -> { /* spawn, treasure, merchant, parkour, reward — no auto-activation */ }

@@ -67,7 +67,7 @@ All gameplay values live in configuration — nothing is hard-coded.
 | `dungeon.yml` | Size, room weights, corridor length, spawn/decoration rates |
 | `themes.yml` | Per-theme palette, ambience, layout style, monster/boss pools |
 | `bosses.yml` | Per-boss health, phases, four signature powers, BossBar, drops, dialogue |
-| `monsters.yml` | Per-monster stats, abilities, equipment, drops, spawn weight |
+| `waves.yml` | Per-level wave rules: wave rooms %, waves/room, mobs/wave, mob weights |
 | `traps.yml` | Per-trap damage, cooldown, trigger, radius, effects |
 | `rewards.yml` | Per-event money, XP, loot table, commands, tokens |
 | `loot.yml` | Rarity chances and per-table item pools |
@@ -76,6 +76,9 @@ All gameplay values live in configuration — nothing is hard-coded.
 | `difficulty.yml` | The five levels: multipliers, loot tier bonus and map size |
 | `database.yml` | SQLite/MySQL connection and pool settings |
 | `performance.yml` | Entity caps, cache TTLs, async/expiry settings |
+| `scoreboards.yml` | In-dungeon sidebar: title, lines, placeholders, update interval |
+| `rooms.yml` | Room-type weights and per-dungeon caps |
+| `permissions.yml` | Permission node per feature |
 
 ## Architecture highlights
 

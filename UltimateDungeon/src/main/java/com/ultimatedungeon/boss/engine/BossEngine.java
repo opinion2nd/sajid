@@ -30,9 +30,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 
 /**
- * Spawns and drives boss encounters: builds the boss entity from its definition,
- * scales health by difficulty, wires up the BossBar, phase state machine and
- * ability rotation, and fires a death hook when the boss falls.
+ * Spawns and drives boss encounters: builds the boss entities from their
+ * definitions, scales health by level, wires up BossBars, phase state machines
+ * and ability rotations.
+ *
+ * <p>An instance may host several bosses across separate boss rooms — the
+ * selected level decides how many (level 1 → 1 boss ... level 5 → 5 bosses).
+ * The death hook fires per boss; run completion is decided by the caller
+ * counting kills against the level's boss total.</p>
  */
 public final class BossEngine {
 
@@ -64,9 +69,9 @@ public final class BossEngine {
     private final NamespacedKey bossKey;
 
     private final Map<String, BossDefinition> definitions = new LinkedHashMap<>();
-    private final Map<UUID, ActiveBoss> active = new ConcurrentHashMap<>();
+    private final Map<UUID, List<ActiveBoss>> active = new ConcurrentHashMap<>();
 
-    /** Fired when a boss dies: (instanceId, bossId). */
+    /** Fired every time a boss dies: (instanceId, bossId). */
     private BiConsumer<UUID, String> onBossDeath = (i, b) -> {};
 
     public BossEngine(@NotNull final UltimateDungeon plugin,
@@ -101,7 +106,39 @@ public final class BossEngine {
         return definitions.get(id);
     }
 
-    /** Spawns a boss for an instance and shows its BossBar to the arena players. */
+    /**
+     * Spawns one boss for a boss room, picking a random type from bosses.yml.
+     * The theme's pool is preferred, and a boss already fighting in this
+     * instance is never picked twice while others remain — so a level-5 run
+     * meets five DIFFERENT bosses in five different rooms.
+     */
+    @Nullable
+    public LivingEntity spawnRandomBoss(@NotNull final UUID instanceId,
+                                        @NotNull final List<String> themePool,
+                                        @NotNull final Location centre,
+                                        @NotNull final String difficultyId,
+                                        @NotNull final Collection<? extends Player> arenaPlayers) {
+        final java.util.Set<String> used = new java.util.HashSet<>();
+        final List<ActiveBoss> group = active.get(instanceId);
+        if (group != null) for (final ActiveBoss b : group) used.add(b.def.getId());
+
+        final List<String> candidates = new ArrayList<>();
+        for (final String id : themePool) {
+            if (definitions.containsKey(id) && !used.contains(id)) candidates.add(id);
+        }
+        if (candidates.isEmpty()) {
+            for (final String id : definitions.keySet()) {
+                if (!used.contains(id)) candidates.add(id);
+            }
+        }
+        if (candidates.isEmpty()) candidates.addAll(definitions.keySet());
+        if (candidates.isEmpty()) return null;
+
+        java.util.Collections.shuffle(candidates);
+        return spawnBoss(instanceId, candidates.get(0), centre, difficultyId, arenaPlayers);
+    }
+
+    /** Spawns one boss for an instance and shows its BossBar to the arena players. */
     @Nullable
     public LivingEntity spawnBoss(@NotNull final UUID instanceId, @NotNull final String bossId,
                                   @NotNull final Location location, @NotNull final String difficultyId,
@@ -132,43 +169,52 @@ public final class BossEngine {
         final ActiveBoss activeBoss = new ActiveBoss(instanceId, def, boss,
                 new BossHealthTracker(boss, maxHealth), bar,
                 new BossStateMachine(def.getPhases()), new BossAI(abilities));
-        active.put(instanceId, activeBoss);
+        active.computeIfAbsent(instanceId, k -> new ArrayList<>()).add(activeBoss);
 
         announce(arenaPlayers, def, "spawn");
         logger.info("Boss spawned: " + bossId + " for instance " + instanceId);
         return boss;
     }
 
-    /** Per-tick update: BossBar, phase transitions, ability rotation and death. */
+    /** Per-tick update: BossBars, phase transitions, ability rotations and deaths. */
     public void tick(@NotNull final UUID instanceId) {
-        final ActiveBoss boss = active.get(instanceId);
-        if (boss == null || boss.dead) return;
+        final List<ActiveBoss> group = active.get(instanceId);
+        if (group == null || group.isEmpty()) return;
 
-        if (boss.health.isDead()) {
-            handleDeath(boss);
-            return;
-        }
-        final double ratio = boss.health.getHealthRatio();
-        boss.bossBar.setProgress(ratio);
+        for (final ActiveBoss boss : new ArrayList<>(group)) {
+            if (boss.dead) continue;
 
-        final BossPhaseData newPhase = boss.stateMachine.update(ratio);
-        if (newPhase != null && boss.stateMachine.getCurrentPhaseIndex() > 0) {
-            // Announce the line matching the phase we just entered.
-            final String key = boss.stateMachine.getCurrentPhaseIndex() == 1
-                    ? "phase-two" : "phase-three";
-            announce(arenaPlayers(boss), boss.def, key);
+            if (boss.health.isDead()) {
+                handleDeath(boss, group);
+                continue;
+            }
+            final double ratio = boss.health.getHealthRatio();
+            boss.bossBar.setProgress(ratio);
+
+            final BossPhaseData newPhase = boss.stateMachine.update(ratio);
+            if (newPhase != null && boss.stateMachine.getCurrentPhaseIndex() > 0) {
+                // Announce the line matching the phase we just entered.
+                final String key = boss.stateMachine.getCurrentPhaseIndex() == 1
+                        ? "phase-two" : "phase-three";
+                announce(arenaPlayers(boss), boss.def, key);
+            }
+            boss.ai.tick(boss.entity);
         }
-        boss.ai.tick(boss.entity);
     }
 
     public boolean hasActiveBoss(@NotNull final UUID instanceId) {
-        final ActiveBoss boss = active.get(instanceId);
-        return boss != null && !boss.dead;
+        final List<ActiveBoss> group = active.get(instanceId);
+        if (group == null) return false;
+        for (final ActiveBoss boss : group) {
+            if (!boss.dead) return true;
+        }
+        return false;
     }
 
     public void cleanup(@NotNull final UUID instanceId) {
-        final ActiveBoss boss = active.remove(instanceId);
-        if (boss != null) {
+        final List<ActiveBoss> group = active.remove(instanceId);
+        if (group == null) return;
+        for (final ActiveBoss boss : group) {
             boss.bossBar.remove();
             if (!boss.entity.isDead()) boss.entity.remove();
         }
@@ -176,14 +222,18 @@ public final class BossEngine {
 
     // ── Internal ────────────────────────────────────────────────────────────
 
-    private void handleDeath(@NotNull final ActiveBoss boss) {
+    private void handleDeath(@NotNull final ActiveBoss boss, @NotNull final List<ActiveBoss> group) {
         boss.dead = true;
         boss.bossBar.remove();
         announce(arenaPlayers(boss), boss.def, "death");
         spawnVictoryFireworks(boss.entity.getLocation());
-        active.remove(boss.instanceId);
-        onBossDeath.accept(boss.instanceId, boss.def.getId());
+        group.remove(boss);
+        if (group.isEmpty()) active.remove(boss.instanceId);
         logger.info("Boss defeated: " + boss.def.getId() + " in instance " + boss.instanceId);
+
+        // Fires for EVERY boss death; the completion hook decides whether the
+        // run is over by counting kills against the level's boss total.
+        onBossDeath.accept(boss.instanceId, boss.def.getId());
     }
 
     private void spawnVictoryFireworks(@NotNull final org.bukkit.Location loc) {

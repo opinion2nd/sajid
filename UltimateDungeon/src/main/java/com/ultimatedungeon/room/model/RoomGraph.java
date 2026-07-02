@@ -20,6 +20,7 @@ public final class RoomGraph {
 
     private final Map<String, RoomData>       rooms       = new LinkedHashMap<>();
     private final List<RoomConnection>        connections = new ArrayList<>();
+    private final List<String>                bossRoomIds = new ArrayList<>();
     private String                            spawnRoomId;
     private String                            bossRoomId;
     private String                            rewardRoomId;
@@ -29,7 +30,10 @@ public final class RoomGraph {
     public void addRoom(@NotNull final RoomData room) {
         rooms.put(room.getRoomId(), room);
         if (room.getType() == RoomType.SPAWN)  spawnRoomId  = room.getRoomId();
-        if (room.getType() == RoomType.BOSS)   bossRoomId   = room.getRoomId();
+        if (room.getType() == RoomType.BOSS) {
+            if (bossRoomId == null) bossRoomId = room.getRoomId(); // primary (deepest) boss room
+            bossRoomIds.add(room.getRoomId());
+        }
         if (room.getType() == RoomType.REWARD) rewardRoomId = room.getRoomId();
     }
 
@@ -54,6 +58,8 @@ public final class RoomGraph {
     @Nullable public RoomData  getSpawnRoom()  { return spawnRoomId  != null ? rooms.get(spawnRoomId)  : null; }
     @Nullable public RoomData  getBossRoom()   { return bossRoomId   != null ? rooms.get(bossRoomId)   : null; }
     @Nullable public RoomData  getRewardRoom() { return rewardRoomId != null ? rooms.get(rewardRoomId) : null; }
+    /** All boss room ids — one per boss the level demands. */
+    @NotNull  public List<String> getBossRoomIds() { return Collections.unmodifiableList(bossRoomIds); }
 
     /**
      * Returns all rooms of a specific type.

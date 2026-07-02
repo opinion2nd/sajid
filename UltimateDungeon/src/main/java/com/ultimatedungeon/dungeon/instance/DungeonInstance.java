@@ -23,6 +23,12 @@ public final class DungeonInstance implements IDungeonInstance {
     private volatile RoomGraph       roomGraph;
     private volatile ThemeDefinition theme;
 
+    // ── Run progress (drives completion checks and the scoreboard) ───────────
+    private volatile int  totalBosses = 1;
+    private final java.util.concurrent.atomic.AtomicInteger bossesDefeated =
+            new java.util.concurrent.atomic.AtomicInteger();
+    private volatile long startedAtMillis = System.currentTimeMillis();
+
     public DungeonInstance(@NotNull final DungeonContext context) {
         this.context = context;
         this.state   = DungeonState.GENERATING;
@@ -49,7 +55,18 @@ public final class DungeonInstance implements IDungeonInstance {
     @NotNull  public DungeonContext getContext() { return context; }
 
     public void setReady() { state = DungeonState.READY; }
-    public void setActive(){ state = DungeonState.ACTIVE;}
+    public void setActive(){ state = DungeonState.ACTIVE; startedAtMillis = System.currentTimeMillis(); }
+
+    // ── Boss progress ─────────────────────────────────────────────────────────
+
+    public void setTotalBosses(final int total) { this.totalBosses = Math.max(1, total); }
+    public int  getTotalBosses()                { return totalBosses; }
+    /** @return the new defeated count after this kill. */
+    public int  addBossKill()                   { return bossesDefeated.incrementAndGet(); }
+    public int  getBossesDefeated()             { return bossesDefeated.get(); }
+    public boolean allBossesDefeated()          { return bossesDefeated.get() >= totalBosses; }
+
+    public long getStartedAtMillis()            { return startedAtMillis; }
 
     // ── Generation results ────────────────────────────────────────────────────
 

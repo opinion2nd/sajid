@@ -82,8 +82,7 @@ public final class DynamicEventEngine {
             notifications.title(p, "<red><bold>Ambush!", "<gray>Enemies close in.");
             notifications.sound(p, Sound.ENTITY_ENDERMAN_SCREAM, 1.0f, 0.7f);
         }
-        waveManager.start(instanceId, room, monsterPool,
-                Math.max(1, spec.extraWaves()), Math.max(1, spec.perWave()), difficultyId, room::setCleared);
+        waveManager.startForLevel(instanceId, room, difficultyId, room::setCleared);
     }
 
     private void applyEffects(@NotNull final List<Player> players, @NotNull final DynamicEventSpec spec,

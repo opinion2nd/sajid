@@ -92,6 +92,7 @@ public final class LayoutPlanner {
             @NotNull final ThemeDefinition  theme,
             final long                      seed,
             final int                       targetRooms,
+            final int                       bossCount,
             @NotNull final Location         origin
     ) {
         final Random rng   = new Random(seed);
@@ -99,10 +100,10 @@ public final class LayoutPlanner {
         final LayoutStyle style = theme.getLayoutStyle();
 
         logger.debug("LayoutPlanner: planning " + total + " rooms, style=" + style
-                + " (seed=" + seed + ")");
+                + ", bosses=" + bossCount + " (seed=" + seed + ")");
 
-        // Cells in visit order. Index 0 = spawn, last = boss; the reward cell is
-        // appended separately next to the boss.
+        // Cells in visit order. Index 0 = spawn, last = the final boss; the
+        // reward cell is appended separately next to it.
         final List<Cell> cells = switch (style) {
             case HUB_AND_SPOKE    -> planHubAndSpoke(total - 1, rng);
             case WINDING_PATH     -> planWindingPath(total - 1, rng);
@@ -111,7 +112,33 @@ public final class LayoutPlanner {
             case GRID_MAZE        -> planGridMaze(total - 1, rng);
         };
 
+        markExtraBossRooms(cells, Math.max(1, bossCount), rng);
         return buildGraph(world, origin, cells, rng);
+    }
+
+    /**
+     * The level demands {@code bossCount} bosses, each in its OWN boss room.
+     * The archetype already placed the final boss room; this promotes the
+     * unforced cells farthest from spawn into additional boss rooms so the
+     * arenas are spread across the map, never stacked in one place.
+     */
+    private void markExtraBossRooms(@NotNull final List<Cell> cells,
+                                    final int bossCount, @NotNull final Random rng) {
+        int needed = bossCount - 1; // archetype already placed one
+        if (needed <= 0) return;
+        final List<Cell> candidates = new ArrayList<>();
+        for (final Cell cell : cells) {
+            if (cell.forced == null) candidates.add(cell);
+        }
+        // Farthest from the spawn (0,0) first, with a small shuffle for variety.
+        java.util.Collections.shuffle(candidates, rng);
+        candidates.sort((a, b) -> Integer.compare(
+                Math.abs(b.gx) + Math.abs(b.gz), Math.abs(a.gx) + Math.abs(a.gz)));
+        for (final Cell cell : candidates) {
+            if (needed <= 0) break;
+            cell.forced = RoomType.BOSS;
+            needed--;
+        }
     }
 
     // ── Grid cell model ───────────────────────────────────────────────────────

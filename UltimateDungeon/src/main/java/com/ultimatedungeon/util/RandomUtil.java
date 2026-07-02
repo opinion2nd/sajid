@@ -22,15 +22,38 @@ public final class RandomUtil {
     /**
      * Returns a random {@code int} in {@code [min, max]} inclusive.
      *
+     * <p>Never throws for any input: a reversed range is swapped and the
+     * internal bound is computed with long arithmetic, so
+     * {@code randomInt(Integer.MIN_VALUE, Integer.MAX_VALUE)} can never trigger
+     * "bound must be greater than origin".</p>
+     *
      * @param min inclusive lower bound
      * @param max inclusive upper bound
      * @return random int in range
-     * @throws IllegalArgumentException if {@code min > max}
      */
     public static int randomInt(final int min, final int max) {
-        if (min == max) return min;
-        if (min > max) throw new IllegalArgumentException("min (" + min + ") > max (" + max + ")");
-        return ThreadLocalRandom.current().nextInt(min, max + 1);
+        final int lo = Math.min(min, max);
+        final int hi = Math.max(min, max);
+        if (lo == hi) return lo;
+        // long arithmetic: hi + 1 must not overflow int
+        return (int) ThreadLocalRandom.current().nextLong(lo, (long) hi + 1L);
+    }
+
+    /**
+     * Safe range roll for values that come from configuration: swaps reversed
+     * bounds and clamps both ends into {@code [floor, ceiling]} before rolling.
+     *
+     * @return a random int inside the sanitised range
+     */
+    public static int safeRange(final int min, final int max, final int floor, final int ceiling) {
+        final int lo = Math.max(floor, Math.min(Math.min(min, max), ceiling));
+        final int hi = Math.max(floor, Math.min(Math.max(min, max), ceiling));
+        return randomInt(lo, hi);
+    }
+
+    /** Returns a random {@code long} across the full range — used for layout seeds. */
+    public static long randomSeed() {
+        return ThreadLocalRandom.current().nextLong();
     }
 
     /**
